@@ -807,13 +807,17 @@ const Admin = (() => {
             </div>
           </section>
 
-          <!-- Company Details — CIPC, VAT, addresses, contact persons, documents -->
+          ` : ''}
+
+          <!-- Company Details — CIPC, VAT, addresses, contact persons, documents.
+               Rendered for all roles; edit controls inside are gated by role. -->
           <section data-section-pane="company" style="display:none;">
             <div id="company-pane-container">
               <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
             </div>
           </section>
 
+          ${isFullAdmin ? `
           <!-- User Management — moved here from a top-level tab -->
           <section data-section-pane="users" style="display:none;">
             <div id="users-pane-container">
