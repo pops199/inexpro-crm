@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inexpro CRM</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+  <link rel="stylesheet" href="/src/styles/main.css?v=12" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       LOGIN SCREEN
+  ═══════════════════════════════════════════ -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="/logo-login.png?v=1" alt="Inexpro" class="login-logo-img"
+          onerror="this.style.display='none';document.getElementById('login-logo-fallback').style.display='flex';">
+        <span id="login-logo-fallback" style="display:none;align-items:center;gap:.75rem;">
+          <span class="login-logo-icon">✦</span>
+          <span class="login-logo-text">Inexpro CRM</span>
+        </span>
+      </div>
+      <p class="login-subtitle">Sign in to your account</p>
+
+      <div id="login-error" class="alert alert-danger" style="display:none;"></div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group">
+          <label for="login-username" class="form-label">Username</label>
+          <input
+            type="text"
+            id="login-username"
+            name="username"
+            class="form-control"
+            placeholder="Enter your username"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="login-password" class="form-label">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            name="password"
+            class="form-control"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-login" id="login-btn">
+          Sign In
+        </button>
+      </form>
+
+      <p class="login-footer">
+        &copy; <span id="login-year"></span> Inexpro. All rights reserved.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN APPLICATION (hidden until logged in)
+  ═══════════════════════════════════════════ -->
+  <div id="app" class="app-layout" style="display:none;">
+
+    <!-- ─── Sidebar ─────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <img src="/logo.png" alt="Inexpro" class="sidebar-logo-img"
+          onerror="this.style.display='none';">
+      </div>
+
+      <!-- Hamburger close (mobile) -->
+      <button class="sidebar-close" id="sidebar-close" aria-label="Close menu">✕</button>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <a href="#/dashboard"        data-route="dashboard"        class="nav-link">
+          <span class="nav-icon">▣</span>
+          <span class="nav-label">Dashboards</span>
+        </a>
+        <a href="#/contacts"         data-route="contacts"         class="nav-link">
+          <span class="nav-icon">●</span>
+          <span class="nav-label">Contacts</span>
+        </a>
+        <a href="#/accounts"         data-route="accounts"         class="nav-link">
+          <span class="nav-icon">◈</span>
+          <span class="nav-label">Accounts</span>
+        </a>
+        <a href="#/assets"           data-route="assets"           class="nav-link">
+          <span class="nav-icon">◆</span>
+          <span class="nav-label">Covers</span>
+        </a>
+        <a href="#/policies"         data-route="policies"         class="nav-link">
+          <span class="nav-icon">◉</span>
+          <span class="nav-label">Policies</span>
+        </a>
+        <a href="#/claims"           data-route="claims"           class="nav-link">
+          <span class="nav-icon">✦</span>
+          <span class="nav-label">Claims</span>
+        </a>
+        <a href="#/engagements"      data-route="engagements"      class="nav-link">
+          <span class="nav-icon">▶</span>
+          <span class="nav-label">Client Engagements</span>
+        </a>
+        <a href="#/advice-records"   data-route="advice-records"   class="nav-link">
+          <span class="nav-icon">≣</span>
+          <span class="nav-label">Records of Advice</span>
+        </a>
+        <a href="#/risk-details"     data-route="risk-details"     class="nav-link">
+          <span class="nav-icon">⚑</span>
+          <span class="nav-label">Risk Details</span>
+        </a>
+        <a href="#/popia"            data-route="popia"            class="nav-link">
+          <span class="nav-icon">⚖</span>
+          <span class="nav-label">POPIA</span>
+        </a>
+        <a href="#/fica"             data-route="fica"             class="nav-link">
+          <span class="nav-icon">✓</span>
+          <span class="nav-label">FICA</span>
+        </a>
+        <a href="#/complaints"       data-route="complaints"       class="nav-link">
+          <span class="nav-icon">✉</span>
+          <span class="nav-label">Complaints</span>
+        </a>
+        <a href="#/workflows"        data-route="workflows"        class="nav-link">
+          <span class="nav-icon">⟳</span>
+          <span class="nav-label">Workflows</span>
+        </a>
+        <a href="#/reports"          data-route="reports"          class="nav-link">
+          <span class="nav-icon">▤</span>
+          <span class="nav-label">Reports</span>
+        </a>
+
+        <!-- Admin link — only rendered when user has admin role (injected by main.js) -->
+        <a href="#/admin" data-route="admin" class="nav-link nav-link-admin" id="nav-admin" style="display:none;">
+          <span class="nav-icon">⚙</span>
+          <span class="nav-label">Admin</span>
+        </a>
+      </nav>
+
+      <!-- User info + logout -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <a href="#/profile" id="sidebar-user-link" title="My profile"
+             style="display:flex;align-items:center;gap:.55rem;flex:1;min-width:0;text-decoration:none;color:inherit;cursor:pointer;">
+            <span class="sidebar-user-avatar" id="sidebar-user-avatar">?</span>
+            <span class="sidebar-user-name"   id="sidebar-user-name">Loading…</span>
+          </a>
+          <a href="#/notifications" id="sidebar-bell" title="Notifications"
+             style="position:relative;text-decoration:none;color:inherit;font-size:1.1rem;margin-left:auto;padding:.25rem .35rem;">
+            🔔
+            <span id="sidebar-bell-badge"
+                  style="display:none;position:absolute;top:-2px;right:-4px;background:#c0392b;color:#fff;border-radius:10px;font-size:.65rem;line-height:1;padding:2px 5px;font-weight:700;">0</span>
+          </a>
+        </div>
+        <button class="btn btn-logout" id="logout-btn" title="Sign out">
+          ⏻ Logout
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ─── Main content area ────────────────── -->
+    <div class="main-wrapper" id="main-wrapper">
+
+      <!-- Top header bar -->
+      <header class="top-header" id="top-header" style="position:relative;">
+        <!-- Hamburger (mobile) -->
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+
+        <div class="header-title-area">
+          <h1 class="header-title"  id="header-title">Dashboard</h1>
+          <nav class="breadcrumb"   id="breadcrumb" aria-label="Breadcrumb">
+            <span class="breadcrumb-item">Home</span>
+          </nav>
+        </div>
+
+        <div class="header-center" id="header-center"
+             style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:auto;">
+          <!-- Per-page centered widgets injected by views (e.g. dashboard mode toggle) -->
+        </div>
+
+        <div class="header-actions" id="header-actions">
+          <!-- Per-page action buttons injected by views -->
+        </div>
+      </header>
+
+      <!-- View content -->
+      <main class="content-area" id="content-area">
+        <!-- Views are rendered into this div by the router -->
+        <div class="loading-spinner-wrapper" id="initial-loader">
+          <div class="loading-spinner"></div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       GLOBAL MODAL (shared, filled by views)
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="global-modal" style="display:none;" role="dialog" aria-modal="true">
+    <div class="modal" id="global-modal-dialog">
+      <div class="modal-header" id="global-modal-header">
+        <h3 class="modal-title" id="global-modal-title">Dialog</h3>
+        <button class="modal-close" id="global-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="global-modal-body">
+        <!-- content injected -->
+      </div>
+      <div class="modal-footer" id="global-modal-footer">
+        <!-- footer buttons injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       TOAST NOTIFICATION CONTAINER
+  ═══════════════════════════════════════════ -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ═══════════════════════════════════════════
+       SCRIPTS  (order matters)
+  ═══════════════════════════════════════════ -->
+  <!-- Chart.js for dashboard charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- QR code generator for 2FA enrollment (tiny pure-JS, no deps) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="/src/utils.js?v=34"></script>
+  <script src="/src/api.js?v=41"></script>
+  <script src="/src/router.js?v=25"></script>
+  <script src="/src/components/view-prefs.js?v=5"></script>
+  <script src="/src/components/notifications.js?v=1"></script>
+  <script src="/src/components/dashboard.js?v=18"></script>
+  <script src="/src/components/contacts.js?v=46"></script>
+  <script src="/src/components/accounts.js?v=37"></script>
+  <script src="/src/components/engagements.js?v=20"></script>
+  <script src="/src/components/policies.js?v=56"></script>
+  <script src="/src/components/assets.js?v=66"></script>
+  <script src="/src/components/risk-details.js?v=25"></script>
+  <script src="/src/components/claims.js?v=37"></script>
+  <script src="/src/components/advice-records.js?v=33"></script>
+  <script src="/src/components/complaints.js?v=16"></script>
+  <script src="/src/components/reviews.js?v=11"></script>
+  <script src="/src/components/reports.js?v=12"></script>
+  <script src="/src/components/workflows.js?v=24"></script>
+  <script src="/src/components/schedule.js?v=20"></script>
+  <script src="/src/components/admin.js?v=35"></script>
+  <script src="/src/components/compliance.js?v=34"></script>
+  <script src="/src/components/profile.js?v=2"></script>
+  <script src="/src/main.js?v=18"></script>
+
+  <script>
+    /* ── Inline bootstrap ──────────────────────────────────────────────────
+       Runs before main.js DOMContentLoaded fires; sets the copyright year.
+       The full auth + routing logic lives in main.js.
+    ─────────────────────────────────────────────────────────────────────── */
+    document.getElementById('login-year').textContent = new Date().getFullYear();
+  </script>
+
+</body>
+</html>

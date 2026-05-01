@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: inexpro-crm
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persistent data — DB, uploads, reports live on the host under
+      # /crm-data and are bind-mounted here so the same layout is
+      # visible inside the container. Tree (host == container):
+      #   /crm-data/server/db/inexpro.db   ← SQLite DB + WAL
+      #   /crm-data/client/uploads         ← user-uploaded documents
+      #   /crm-data/client/reports         ← generated PDFs / CSVs
+      - /crm-data:/crm-data
+      # Host-mounted signatures folder. Drop PNG/JPG files here to make
+      # them selectable as per-user email signatures without rebuilding.
+      - ./signatures:/app/signatures
+      # ── In-app self-update support ──────────────────────────────
+      # Bind-mounting the project root makes `git pull` inside the
+      # container persist across restarts. Without this, the in-app
+      # update button cannot upgrade a Docker deployment because the
+      # image filesystem is reset on every restart.
+      #
+      # Steps to enable on the server:
+      #   1. `git clone https://github.com/pops199/inexpro-crm /opt/inexpro-crm`
+      #   2. Uncomment the line below
+      #   3. `cd /opt/inexpro-crm && docker compose up -d`
+      #
+      # node_modules is excluded so the host's tree (which is built for
+      # the host OS) doesn't shadow the Alpine-compatible modules baked
+      # into the image. The first time the in-app updater runs npm
+      # install, it will populate node_modules inside the bind-mount.
+      # - /opt/inexpro-crm:/app
+    environment:
+      - NODE_ENV=production
+      - TZ=Africa/Johannesburg
+      - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-to-a-long-random-string}
+      - DB_PATH=/crm-data/server/db/inexpro.db
+      - UPLOAD_PATH=/crm-data/client/uploads
+      - REPORTS_PATH=/crm-data/client/reports
+      # Set to "true" only if you have HTTPS via Nginx
+      - COOKIE_SECURE=false
+
+  # Optional: Nginx reverse proxy for HTTPS
+  # 1. Place SSL certs in ./certs/ (fullchain.pem + privkey.pem)
+  # 2. Edit nginx.conf — change "your-domain.com"
+  # 3. Uncomment below and set COOKIE_SECURE=true above
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: inexpro-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - app
+

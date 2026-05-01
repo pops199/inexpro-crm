@@ -1,0 +1,60 @@
+# ─── Dependencies ─────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json.bak
+
+# ─── Environment & secrets ────────────────────────────────────
+.env
+.env.*.local
+.env.local
+*.pem
+*.key
+certs/
+
+# ─── SQLite databases & sidecars (POPIA: never commit live data) ─
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.bak
+*.bak.*
+server/db/inexpro.db*
+server/db/sessions.db*
+server/inexpro.db*
+server/sessions.db*
+
+# ─── Generated / runtime artefacts (PII risk) ─────────────────
+uploads/
+reports/
+signatures/
+*.log
+server.log
+
+# ─── Local working notes (not for the public repo) ────────────
+.planning/
+.claude/memory/
+.claude/.cache/
+.claude/settings.local.json
+spec_extracted.txt
+
+# ─── OS / editor noise ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Build / test output ──────────────────────────────────────
+coverage/
+.nyc_output/
+dist/
+build/
+
+# ─── Update mechanism artefacts ───────────────────────────────
+.update-lock
+.update-snapshots/
