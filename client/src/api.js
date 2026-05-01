@@ -783,6 +783,7 @@ const Api = {
     dismiss(id)               { return apiFetch('POST', `/api/notifications/${id}/dismiss`); },
     clearDismissed()          { return apiFetch('POST', '/api/notifications/clear-dismissed'); },
     adminBroadcast(payload)   { return apiFetch('POST', '/api/admin/notifications/broadcast', payload); },
+    adminBroadcastHistory()   { return apiFetch('GET',  '/api/admin/notifications/broadcast-history'); },
   },
 
   // ── Products ──────────────────────────────────────────────────

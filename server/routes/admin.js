@@ -194,6 +194,33 @@ router.post('/users', requireAdmin, (req, res) => {
   return res.status(201).json(created);
 });
 
+// ─── GET /notifications/broadcast-history — list past admin broadcasts ───────
+// Groups individual notification rows back into single broadcasts (one
+// notify() call inserts one row per recipient). Admin/admin-only only.
+router.get('/notifications/broadcast-history', requireAdminAny, (req, res) => {
+  const db = getDb();
+  const limit = Math.min(100, parseInt(req.query.limit, 10) || 50);
+  const rows = db.prepare(`
+    SELECT
+      MIN(id)                              AS id,
+      title,
+      body,
+      severity,
+      link,
+      source_module,
+      source_record_id,
+      MIN(created_at)                      AS sent_at,
+      COUNT(*)                             AS recipient_count,
+      GROUP_CONCAT(DISTINCT user_id)       AS recipient_ids
+    FROM notifications
+    WHERE category = 'admin_message'
+    GROUP BY title, body, severity, strftime('%Y-%m-%d %H:%M:%S', created_at)
+    ORDER BY MIN(created_at) DESC
+    LIMIT ?
+  `).all(limit);
+  res.json({ data: rows });
+});
+
 // ─── POST /notifications/broadcast — admin/admin-only custom notification ────
 // Body: { subject, message, target_user_ids?: number[]|'all', contact_id?, contact_module? }
 router.post('/notifications/broadcast', requireAdminAny, (req, res) => {

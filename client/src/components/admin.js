@@ -746,64 +746,79 @@ const Admin = (() => {
 
           <!-- Notifications -->
           <section data-section-pane="notifications" style="display:none;">
-            <div class="detail-section card" style="max-width:560px;">
-              <div class="detail-section-title">Send Notification</div>
-              <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
-                Push a custom in-app notification to a user (or all users). Optionally
-                attach a contact + module so the recipient knows where to look.
-              </p>
-              <div class="form-group">
-                <label class="form-label required">Subject</label>
-                <input type="text" id="notif-subject" class="form-control" maxlength="200" />
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;align-items:start;">
+              <div class="detail-section card">
+                <div class="detail-section-title">Send Notification</div>
+                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
+                  Push a custom in-app notification to a user (or all users). Optionally
+                  attach a contact + module so the recipient knows where to look.
+                </p>
+                <div class="form-group">
+                  <label class="form-label required">Subject</label>
+                  <input type="text" id="notif-subject" class="form-control" maxlength="200" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label required">Message</label>
+                  <textarea id="notif-message" class="form-control" rows="4" maxlength="2000"></textarea>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <div class="form-group">
+                    <label class="form-label">Severity</label>
+                    <select id="notif-severity" class="form-control">
+                      <option value="info" selected>Info</option>
+                      <option value="warning">Warning</option>
+                      <option value="danger">Danger</option>
+                      <option value="success">Success</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label required">Recipient</label>
+                    <select id="notif-recipient" class="form-control">
+                      <option value="all">All Users</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Module (optional)</label>
+                    <select id="notif-module" class="form-control">
+                      <option value="">— None —</option>
+                      <option value="contacts">Contacts</option>
+                      <option value="accounts">Accounts</option>
+                      <option value="policies">Policies</option>
+                      <option value="claims">Claims</option>
+                      <option value="complaints">Complaints</option>
+                      <option value="reviews">Reviews</option>
+                      <option value="advice_records">Records of Advice</option>
+                      <option value="client_engagements">Client Engagements</option>
+                      <option value="assets">Assets</option>
+                      <option value="popia">POPIA</option>
+                      <option value="fica">FICA</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Contact / Account (optional)</label>
+                    <select id="notif-contact" class="form-control">
+                      <option value="">— None —</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="notif-send-btn" onclick="Admin._sendNotification()" style="margin-top:.5rem;">
+                  Send Notification
+                </button>
+                <div id="notif-send-result" style="margin-top:.5rem;font-size:.82rem;"></div>
               </div>
-              <div class="form-group">
-                <label class="form-label required">Message</label>
-                <textarea id="notif-message" class="form-control" rows="4" maxlength="2000"></textarea>
-              </div>
-              <div class="form-grid form-grid-2">
-                <div class="form-group">
-                  <label class="form-label">Severity</label>
-                  <select id="notif-severity" class="form-control">
-                    <option value="info" selected>Info</option>
-                    <option value="warning">Warning</option>
-                    <option value="danger">Danger</option>
-                    <option value="success">Success</option>
-                  </select>
+
+              <div class="detail-section card">
+                <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
+                  Notification History
+                  <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;height:24px;padding:.1rem .5rem;" onclick="Admin._refreshNotifHistory()">↻ Refresh</button>
                 </div>
-                <div class="form-group">
-                  <label class="form-label required">Recipient</label>
-                  <select id="notif-recipient" class="form-control">
-                    <option value="all">All Users</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Module (optional)</label>
-                  <select id="notif-module" class="form-control">
-                    <option value="">— None —</option>
-                    <option value="contacts">Contacts</option>
-                    <option value="accounts">Accounts</option>
-                    <option value="policies">Policies</option>
-                    <option value="claims">Claims</option>
-                    <option value="complaints">Complaints</option>
-                    <option value="reviews">Reviews</option>
-                    <option value="advice_records">Records of Advice</option>
-                    <option value="client_engagements">Client Engagements</option>
-                    <option value="assets">Assets</option>
-                    <option value="popia">POPIA</option>
-                    <option value="fica">FICA</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Contact / Account (optional)</label>
-                  <select id="notif-contact" class="form-control">
-                    <option value="">— None —</option>
-                  </select>
+                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;">
+                  Past admin broadcasts. Click any item to see the full details.
+                </p>
+                <div id="notif-history-list" style="max-height:520px;overflow-y:auto;">
+                  <p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>
                 </div>
               </div>
-              <button class="btn btn-primary" id="notif-send-btn" onclick="Admin._sendNotification()" style="margin-top:.5rem;">
-                Send Notification
-              </button>
-              <div id="notif-send-result" style="margin-top:.5rem;font-size:.82rem;"></div>
             </div>
           </section>
 
@@ -1128,6 +1143,11 @@ const Admin = (() => {
 
     }
 
+    if (isFullAdmin) {
+      // Notification history (admin only) — fetched once per settings render
+      Admin._refreshNotifHistory();
+    }
+
     if (canSendNotifications) {
       // Populate the Send Notification recipient + contact/account lists
       (async () => {
@@ -1274,6 +1294,8 @@ const Admin = (() => {
       // Clear the form for the next send
       if (subjectEl) subjectEl.value = '';
       if (messageEl) messageEl.value = '';
+      // Refresh the history pane so the new broadcast appears immediately.
+      try { Admin._refreshNotifHistory(); } catch (_) {}
     } catch (err) {
       if (resultEl) {
         resultEl.innerHTML = `<span style="color:var(--danger)">Send failed: ${esc(err.message || 'Unknown error')}</span>`;
@@ -1281,6 +1303,102 @@ const Admin = (() => {
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = 'Send Notification'; }
     }
+  }
+
+  // ── Notification history (admin only) ────────────────────────────────
+  let _notifHistoryCache = [];
+
+  async function _refreshNotifHistory() {
+    const list = document.getElementById('notif-history-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>';
+    try {
+      const res = await Api.notifications.adminBroadcastHistory();
+      _notifHistoryCache = res.data || res || [];
+    } catch (err) {
+      list.innerHTML = `<p style="color:var(--danger);font-size:.82rem;">Failed to load history: ${esc(err.message || 'unknown error')}</p>`;
+      return;
+    }
+    if (!_notifHistoryCache.length) {
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">No broadcasts sent yet.</p>';
+      return;
+    }
+    const sevColor = (s) => ({
+      info: '#2980b9', warning: '#b78105', danger: '#c0392b', success: '#1a7a3a',
+    })[s] || '#666';
+    list.innerHTML = _notifHistoryCache.map((r, i) => {
+      const sent = (r.sent_at || '').replace('T', ' ').slice(0, 16);
+      return `
+        <div class="notif-history-row" data-idx="${i}" style="
+          padding:.55rem .65rem;border:1px solid var(--border);border-radius:6px;
+          margin-bottom:.4rem;cursor:pointer;background:var(--card-bg);
+          transition:background var(--transition);
+        ">
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sevColor(r.severity)};"></span>
+            <span style="font-weight:600;font-size:.85rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.title || '(no subject)')}</span>
+            <span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;">${esc(sent)}</span>
+          </div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+            <span>${r.recipient_count} recipient${r.recipient_count === 1 ? '' : 's'}</span>
+            ${r.source_module ? `<span>• ${esc(r.source_module)}</span>` : ''}
+            ${r.severity && r.severity !== 'info' ? `<span style="color:${sevColor(r.severity)};">• ${esc(r.severity)}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.notif-history-row').forEach(row => {
+      row.addEventListener('mouseenter', () => { row.style.background = 'var(--hover-bg, #f5f7fa)'; });
+      row.addEventListener('mouseleave', () => { row.style.background = 'var(--card-bg)'; });
+      row.addEventListener('click', () => {
+        const idx = parseInt(row.dataset.idx, 10);
+        const item = _notifHistoryCache[idx];
+        if (item) _openNotifHistoryItem(item);
+      });
+    });
+  }
+
+  function _openNotifHistoryItem(item) {
+    document.getElementById('notif-history-modal')?.remove();
+    const sent = (item.sent_at || '').replace('T', ' ').slice(0, 19);
+    const recipientIds = String(item.recipient_ids || '').split(',').filter(Boolean).map(s => parseInt(s, 10));
+    const userById = new Map(_usersCache.map(u => [u.id, u]));
+    const namesHtml = recipientIds.length
+      ? recipientIds.map(id => {
+          const u = userById.get(id);
+          return `<li>${esc(u ? (u.full_name || u.username) : `User #${id}`)}</li>`;
+        }).join('')
+      : '<li style="color:var(--text-muted);">No recipient details on file.</li>';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'notif-history-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    overlay.innerHTML = `
+      <div style="background:var(--card-bg);border-radius:8px;width:640px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;font-size:1rem;">Broadcast detail</h3>
+          <button type="button" id="notif-history-close" style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+        </div>
+        <div style="padding:1rem 1.25rem;font-size:.88rem;line-height:1.5;">
+          <div style="font-weight:600;font-size:1rem;margin-bottom:.4rem;">${esc(item.title || '(no subject)')}</div>
+          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.85rem;">
+            Sent ${esc(sent)} · severity <strong>${esc(item.severity || 'info')}</strong>
+            ${item.source_module ? ` · module <strong>${esc(item.source_module)}</strong>` : ''}
+          </div>
+          <pre style="white-space:pre-wrap;word-wrap:break-word;margin:0 0 1rem;padding:.75rem .85rem;background:var(--surface-secondary,#f8f9fa);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85rem;line-height:1.5;">${esc(item.body || '')}</pre>
+          ${item.link ? `<div style="margin-bottom:.85rem;"><strong>Link:</strong> <a href="${esc(item.link)}" target="_self">${esc(item.link)}</a></div>` : ''}
+          <div style="font-weight:600;margin-bottom:.3rem;">Recipients (${item.recipient_count})</div>
+          <ul style="margin:.2rem 0 0;padding-left:1.25rem;font-size:.84rem;max-height:180px;overflow-y:auto;">${namesHtml}</ul>
+        </div>
+        <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary" id="notif-history-close-btn">Close</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#notif-history-close').addEventListener('click', close);
+    overlay.querySelector('#notif-history-close-btn').addEventListener('click', close);
   }
 
   async function _loadAlertCadence() {
@@ -2742,7 +2860,7 @@ const Admin = (() => {
   }
 
   return { render, users, auditLog, settings, dashboardDefault, brokerFitness, productsTab, dataBreachesTab, _openUserModal, _saveUser, _deleteUser, _closeModal,
-    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
+    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _refreshNotifHistory, _openNotifHistoryItem, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
 })();
 // Expose on window so cross-component callers (e.g. BrokerProfiles in
 // compliance.js) can access Admin._renderBrokerCodes — top-level `const` does

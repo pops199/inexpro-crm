@@ -362,8 +362,7 @@ const Reports = (() => {
           placeholder="🔍 Search reports by name or description…"
           style="font-size:.9rem;" />
       </div>
-      <div id="predefined-list" style="background:var(--card-bg);border:1px solid var(--border);
-                  border-radius:var(--border-radius);overflow:hidden;"></div>`;
+      <div id="predefined-list" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;"></div>`;
 
     const listEl   = container.querySelector('#predefined-list');
     const searchEl = container.querySelector('#predefined-search');
@@ -378,42 +377,29 @@ const Reports = (() => {
 
       const rows = filtered.map(r => `
         <div class="predefined-report-row" data-key="${esc(r.key)}" style="
-          display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;
-          border-bottom:1px solid var(--border);cursor:pointer;
-          transition:background var(--transition);
+          background:var(--card-bg);border:1px solid var(--border);
+          border-radius:var(--border-radius);padding:.85rem 1rem;cursor:pointer;
+          transition:background var(--transition),border-color var(--transition);
+          display:flex;flex-direction:column;gap:.2rem;
         ">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:.92rem;color:var(--text);margin-bottom:.2rem;">
-              ${esc(r.name)}
-            </div>
-            <div style="font-size:.82rem;color:var(--text-light);line-height:1.4;">
-              ${esc(r.description || '')}
-            </div>
+          <div style="font-weight:600;font-size:.92rem;color:var(--text);">
+            ${esc(r.name)}
           </div>
-          <button class="btn btn-sm btn-primary predefined-report-run" data-key="${esc(r.key)}" style="flex-shrink:0;">
-            ▶ Run
-          </button>
+          <div style="font-size:.82rem;color:var(--text-light);line-height:1.4;">
+            ${esc(r.description || '')}
+          </div>
         </div>`).join('');
 
       listEl.innerHTML = rows ||
-        `<p style="padding:1rem;color:var(--text-muted);font-size:.85rem;">
+        `<p style="padding:1rem;color:var(--text-muted);font-size:.85rem;grid-column:1 / -1;">
           ${term ? 'No reports match your search.' : 'No predefined reports available.'}
         </p>`;
 
       listEl.querySelectorAll('.predefined-report-row').forEach(row => {
         row.addEventListener('mouseenter', () => { row.style.background = 'var(--hover-bg, #f5f7fa)'; });
-        row.addEventListener('mouseleave', () => { row.style.background = ''; });
-        row.addEventListener('click', e => {
-          if (e.target.closest('.predefined-report-run')) return;
+        row.addEventListener('mouseleave', () => { row.style.background = 'var(--card-bg)'; });
+        row.addEventListener('click', () => {
           const key = row.dataset.key;
-          const report = _preReports.find(r => r.key === key);
-          if (report) _openPredefinedModal(report);
-        });
-      });
-      listEl.querySelectorAll('.predefined-report-run').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const key = btn.dataset.key;
           const report = _preReports.find(r => r.key === key);
           if (report) _openPredefinedModal(report);
         });

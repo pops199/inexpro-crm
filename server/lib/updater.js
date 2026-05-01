@@ -163,6 +163,28 @@ function workingTreeDirty() {
  * Errors are caught and surfaced as { error } so the UI degrades
  * gracefully — a missing changelog should never block the update flow.
  */
+/**
+ * Look up the markdown body of a `## vX.Y.Z` section in RELEASES.md,
+ * stripping the heading. Returns null if the file or section is
+ * missing. The lookup tolerates extra text after the version (e.g.
+ * "## v1.0.9 — 2026-05-02") so notes can carry a date suffix.
+ */
+function readReleasesNote(toTag) {
+  try {
+    const file = path.join(PROJECT_ROOT, 'RELEASES.md');
+    if (!fs.existsSync(file)) return null;
+    const text = fs.readFileSync(file, 'utf8');
+    const escTag = String(toTag).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^##\\s+${escTag}(?:\\s.*)?$([\\s\\S]*?)(?=^##\\s+v?\\d|\\Z)`, 'm');
+    const m = text.match(re);
+    if (!m) return null;
+    const body = m[1]
+      .replace(/^\s*---\s*$/gm, '')   // drop the section dividers
+      .trim();
+    return body || null;
+  } catch (_) { return null; }
+}
+
 function getChangelog(fromRef, toTag) {
   const result = {
     to_tag: toTag,
@@ -178,15 +200,22 @@ function getChangelog(fromRef, toTag) {
     return result;
   }
   try {
-    // Annotated tag message — strip the leading "tag <name>" / signature
-    // headers `git cat-file` would include. `git for-each-ref` with
-    // `%(contents:body)` returns just the user-supplied annotation.
+    // Prefer per-version notes from RELEASES.md so the panel shows what
+    // actually changed (the annotated tag message is usually just the
+    // bare version string). Falls back to the tag body when the file
+    // is missing or has no matching section.
+    const releasesNote = readReleasesNote(toTag);
+    if (releasesNote) {
+      result.to_tag_message = releasesNote;
+    } else {
+      const ref = `refs/tags/${toTag}`;
+      result.to_tag_message = git([
+        'for-each-ref',
+        '--format=%(contents:subject)%0a%0a%(contents:body)',
+        ref,
+      ]).trim() || null;
+    }
     const ref = `refs/tags/${toTag}`;
-    result.to_tag_message = git([
-      'for-each-ref',
-      '--format=%(contents:subject)%0a%0a%(contents:body)',
-      ref,
-    ]).trim() || null;
     result.to_tag_date = git([
       'for-each-ref',
       '--format=%(taggerdate:short)',
