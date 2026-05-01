@@ -713,6 +713,8 @@ const Api = {
     systemApplyUpdate(opts)    { return apiFetch('POST', '/api/admin/system/apply', opts || {}); },
     systemRollback(snapshotId) { return apiFetch('POST', '/api/admin/system/rollback', snapshotId ? { snapshotId } : {}); },
     systemSnapshots()          { return apiFetch('GET',  '/api/admin/system/snapshots'); },
+    systemReleaseTags()        { return apiFetch('GET',  '/api/admin/system/release-tags'); },
+    systemReleaseNotes(tag)    { return apiFetch('GET',  `/api/admin/system/release-notes?tag=${encodeURIComponent(tag)}`); },
     /** Triggers a browser download of a fresh DB snapshot. Not a JSON call. */
     systemBackupUrl()          { return '/api/admin/system/backup'; },
     /** Uploads a .db file to replace the live database. The current DB

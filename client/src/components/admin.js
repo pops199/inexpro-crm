@@ -931,37 +931,56 @@ const Admin = (() => {
 
           <!-- System Update -->
           <section data-section-pane="system-update" style="display:none;">
-            <div class="detail-section card" style="max-width:780px;">
-              <div class="detail-section-title">System Update</div>
-              <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
-                Pulls the latest tagged release from GitHub, snapshots the
-                database, installs dependencies, and runs any pending schema
-                migrations. The server restarts automatically once the update
-                is applied. If anything goes wrong, use <strong>Rollback</strong>
-                to restore the most recent snapshot. Every action is recorded
-                in the audit log.
-              </p>
-              <div id="sys-update-status" style="font-size:.85rem;color:var(--text-muted);margin-bottom:.75rem;">
-                Loading status…
-              </div>
-              <div id="sys-update-changelog" style="margin-bottom:.75rem;"></div>
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-                <button class="btn btn-secondary btn-sm" id="sys-update-check"
-                  onclick="Admin._systemCheckUpdates()">Check for Updates</button>
-                <button class="btn btn-primary btn-sm" id="sys-update-apply"
-                  onclick="Admin._systemApplyUpdate()" disabled>Apply Update</button>
-                <button class="btn btn-danger btn-sm" id="sys-update-rollback"
-                  onclick="Admin._systemRollback()" disabled
-                  style="margin-left:auto;">Rollback to Last Snapshot</button>
-              </div>
-              <div id="sys-update-result" style="margin-top:.75rem;font-size:.85rem;"></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;align-items:start;">
+              <div class="detail-section card">
+                <div class="detail-section-title">System Update</div>
+                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
+                  Pulls the latest tagged release from GitHub, snapshots the
+                  database, installs dependencies, and runs any pending schema
+                  migrations. The server restarts automatically once the update
+                  is applied. If anything goes wrong, use <strong>Rollback</strong>
+                  to restore the most recent snapshot. Every action is recorded
+                  in the audit log.
+                </p>
+                <div id="sys-update-status" style="font-size:.85rem;color:var(--text-muted);margin-bottom:.75rem;">
+                  Loading status…
+                </div>
+                <div id="sys-update-changelog" style="margin-bottom:.75rem;"></div>
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+                  <button class="btn btn-secondary btn-sm" id="sys-update-check"
+                    onclick="Admin._systemCheckUpdates()">Check for Updates</button>
+                  <button class="btn btn-primary btn-sm" id="sys-update-apply"
+                    onclick="Admin._systemApplyUpdate()" disabled>Apply Update</button>
+                  <button class="btn btn-danger btn-sm" id="sys-update-rollback"
+                    onclick="Admin._systemRollback()" disabled
+                    style="margin-left:auto;">Rollback to Last Snapshot</button>
+                </div>
+                <div id="sys-update-result" style="margin-top:.75rem;font-size:.85rem;"></div>
 
-              <div class="detail-section-title" style="margin-top:1.5rem;font-size:.9rem;">Database Snapshots</div>
-              <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .5rem;">
-                Most recent snapshot is restored by Rollback. Last 5 snapshots
-                are retained automatically.
-              </p>
-              <div id="sys-update-snapshots" style="font-size:.82rem;">Loading…</div>
+                <div class="detail-section-title" style="margin-top:1.5rem;font-size:.9rem;">Database Snapshots</div>
+                <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .5rem;">
+                  Most recent snapshot is restored by Rollback. Last 5 snapshots
+                  are retained automatically.
+                </p>
+                <div id="sys-update-snapshots" style="font-size:.82rem;">Loading…</div>
+              </div>
+
+              <div class="detail-section card">
+                <div class="detail-section-title">Release Notes Browser</div>
+                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
+                  View the notes for any past release, not just the latest. Defaults
+                  to the version you're currently running.
+                </p>
+                <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                  <label for="sys-release-pick" style="font-size:.82rem;font-weight:500;">Show notes for:</label>
+                  <select id="sys-release-pick" class="form-control" style="height:30px;padding:.15rem .5rem;font-size:.85rem;max-width:160px;">
+                    <option value="">Loading…</option>
+                  </select>
+                </div>
+                <div id="sys-release-notes" style="margin-top:.75rem;font-size:.85rem;">
+                  <p style="color:var(--text-muted);">Pick a release above to see its notes.</p>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -2634,6 +2653,93 @@ const Admin = (() => {
   async function _initSystemUpdatePane() {
     await _systemRefresh();
     await _systemRefreshSnapshots();
+    await _initReleaseBrowser();
+  }
+
+  // ── Release Notes Browser ───────────────────────────────────────────
+  async function _initReleaseBrowser() {
+    const pick  = document.getElementById('sys-release-pick');
+    const notes = document.getElementById('sys-release-notes');
+    if (!pick || !notes) return;
+
+    let tags = [];
+    try {
+      const r = await Api.admin.systemReleaseTags();
+      tags = (r && r.data) || [];
+    } catch (err) {
+      pick.innerHTML = '<option value="">Failed to load</option>';
+      notes.innerHTML = `<p style="color:var(--danger);">${esc(err.message || 'Failed to load tags')}</p>`;
+      return;
+    }
+    if (!tags.length) {
+      pick.innerHTML = '<option value="">No releases yet</option>';
+      notes.innerHTML = '<p style="color:var(--text-muted);">No tagged releases found.</p>';
+      return;
+    }
+
+    // Default selection: the running tag if known, otherwise the newest.
+    let defaultTag = tags[0];
+    try {
+      const status = await Api.admin.systemStatus();
+      if (status && status.current_tag && tags.includes(status.current_tag)) {
+        defaultTag = status.current_tag;
+      }
+    } catch (_) {}
+
+    pick.innerHTML = tags.map(t =>
+      `<option value="${esc(t)}" ${t === defaultTag ? 'selected' : ''}>${esc(t)}</option>`
+    ).join('');
+
+    pick.addEventListener('change', () => {
+      const t = pick.value;
+      if (t) _renderReleaseNotes(t);
+    });
+
+    _renderReleaseNotes(defaultTag);
+  }
+
+  async function _renderReleaseNotes(tag) {
+    const notes = document.getElementById('sys-release-notes');
+    if (!notes) return;
+    notes.innerHTML = '<p style="color:var(--text-muted);">Loading…</p>';
+    let cl;
+    try {
+      cl = await Api.admin.systemReleaseNotes(tag);
+    } catch (err) {
+      notes.innerHTML = `<p style="color:var(--danger);">${esc(err.message || 'Failed to load notes')}</p>`;
+      return;
+    }
+    const dateBit = cl.to_tag_date
+      ? `<span style="color:var(--text-muted);font-weight:400;font-size:.85rem;"> · ${esc(cl.to_tag_date)}</span>` : '';
+    const message = cl.to_tag_message
+      ? `<pre style="white-space:pre-wrap;word-wrap:break-word;margin:.4rem 0 .6rem;padding:.6rem .8rem;background:var(--surface-secondary,#f8f9fa);border:1px solid var(--border,#dee2e6);border-radius:6px;font-family:inherit;font-size:.85rem;line-height:1.5;">${esc(cl.to_tag_message)}</pre>`
+      : '<p style="color:var(--text-muted);font-size:.82rem;">No notes recorded for this release.</p>';
+    const commits = (cl.commits && cl.commits.length)
+      ? `<details style="margin-top:.4rem;">
+           <summary style="cursor:pointer;font-size:.82rem;color:var(--text-muted);">
+             ${cl.commits.length}${cl.truncated ? '+' : ''} commit${cl.commits.length === 1 ? '' : 's'} leading up to ${esc(tag)}
+           </summary>
+           <ul style="margin:.4rem 0 0 .25rem;padding-left:1.1rem;font-size:.8rem;line-height:1.45;">
+             ${cl.commits.map(c => `
+               <li>
+                 <code style="color:var(--text-muted);">${esc((c.sha||'').slice(0,7))}</code>
+                 <span style="color:var(--text-muted);margin:0 .3rem;">${esc(c.date || '')}</span>
+                 ${esc(c.subject || '')}
+               </li>`).join('')}
+           </ul>
+           ${cl.truncated ? '<p style="color:var(--text-muted);font-size:.78rem;margin:.3rem 0 0;">List capped — older commits not shown.</p>' : ''}
+         </details>`
+      : '';
+    const err = cl.error
+      ? `<div style="color:var(--danger);font-size:.78rem;margin-top:.3rem;">${esc(cl.error)}</div>`
+      : '';
+    notes.innerHTML = `
+      <div style="border-left:3px solid var(--border,#dee2e6);padding:.4rem 0 .4rem .85rem;">
+        <div style="font-weight:600;font-size:.92rem;">${esc(tag)}${dateBit}</div>
+        ${message}
+        ${commits}
+        ${err}
+      </div>`;
   }
 
   function _systemRenderStatus(s) {
@@ -2943,7 +3049,7 @@ const Admin = (() => {
   }
 
   return { render, users, auditLog, settings, dashboardDefault, brokerFitness, productsTab, dataBreachesTab, _openUserModal, _saveUser, _deleteUser, _closeModal,
-    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _refreshNotifHistory, _refreshSystemNotifHistory, _openNotifHistoryItem, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
+    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _refreshNotifHistory, _refreshSystemNotifHistory, _openNotifHistoryItem, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _initReleaseBrowser, _renderReleaseNotes, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
 })();
 // Expose on window so cross-component callers (e.g. BrokerProfiles in
 // compliance.js) can access Admin._renderBrokerCodes — top-level `const` does

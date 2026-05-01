@@ -57,6 +57,28 @@ router.get('/status', (req, res) => {
   }
 });
 
+// ── GET /release-tags — every v* tag known locally, newest first ──────
+router.get('/release-tags', (_req, res) => {
+  try {
+    const tags = updater.listReleaseTags();
+    res.json({ data: tags });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /release-notes?tag=v1.0.5 — release notes for one specific tag ─
+router.get('/release-notes', (req, res) => {
+  const tag = String(req.query.tag || '').trim();
+  if (!tag) return res.status(400).json({ error: 'tag query parameter is required' });
+  try {
+    const cl = updater.getChangelog(null, tag);
+    res.json(cl);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /check-updates — fetches tags from origin then returns status ─
 router.post('/check-updates', (req, res) => {
   try {

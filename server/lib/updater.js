@@ -115,6 +115,19 @@ function latestReleaseTag() {
   return tags[tags.length - 1];
 }
 
+/**
+ * Returns every `v*` tag, newest first by semver. Used by the admin
+ * UI to populate the release-notes browser dropdown.
+ */
+function listReleaseTags() {
+  let raw;
+  try { raw = git(['tag', '--list', 'v*']); }
+  catch (_) { return []; }
+  const tags = raw.split(/\r?\n/).filter(Boolean);
+  tags.sort(semverCompareTag);
+  return tags.reverse();
+}
+
 function semverCompareTag(a, b) {
   const pa = parseSemver(a), pb = parseSemver(b);
   if (!pa || !pb) return a.localeCompare(b);
@@ -601,6 +614,7 @@ module.exports = {
   rollback,
   listSnapshots,
   getChangelog,
+  listReleaseTags,
   clearStaleLockAtBoot,
   // Exposed for tests:
   _internals: { parseSemver, semverCompareTag, latestReleaseTag, currentCommit, isGitRepo },

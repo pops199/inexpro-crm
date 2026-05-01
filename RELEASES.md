@@ -6,6 +6,20 @@ sits at the top.
 
 ---
 
+## v1.0.12 — 2026-05-02
+
+**Release Notes Browser**
+
+- Admin → Settings → System Update has a new **Release Notes Browser**
+  card. Pick any past version from the dropdown to see its notes —
+  not just the latest one. Defaults to the version you're currently
+  running.
+- Server-side: new `GET /api/admin/system/release-tags` and
+  `GET /api/admin/system/release-notes?tag=vX.Y.Z` endpoints, both
+  admin-only.
+
+---
+
 ## v1.0.11 — 2026-05-02
 
 **System Notifications panel**
