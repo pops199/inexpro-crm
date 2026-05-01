@@ -8,10 +8,19 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function _dashboardModeToggle(current) {
+  const btn = (mode, label, href) => {
+    const active = current === mode;
+    return `<a href="${href}" class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
+              style="border-radius:0;min-width:110px;text-align:center;${active ? '' : 'box-shadow:none;'}">${label}</a>`;
+  };
   const opt = (mode, label, href) => `
     <option value="${href}" ${current === mode ? 'selected' : ''}>${label}</option>`;
   return `
-    <select class="dashboard-mode-toggle form-control" id="dashboard-mode-select"
+    <div class="dashboard-mode-toggle mobile-hide" style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--border,#dee2e6);">
+      ${btn('main', 'Main Dashboard', '#/dashboard')}
+      ${btn('tcf',  'TCF Dashboard',  '#/dashboard/tcf')}
+    </div>
+    <select class="dashboard-mode-select form-control mobile-only" id="dashboard-mode-select"
       style="height:30px;padding:.15rem .55rem;font-size:.85rem;max-width:200px;">
       ${opt('main', 'Main Dashboard', '#/dashboard')}
       ${opt('tcf',  'TCF Dashboard',  '#/dashboard/tcf')}

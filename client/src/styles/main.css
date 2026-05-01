@@ -2991,6 +2991,10 @@ body.no-delete .doc-del-btn {
   display: none !important;
 }
 
+/* Mobile-only utility: hidden on desktop, revealed inside the
+   @media (max-width: 767px) block below via .mobile-block override. */
+.mobile-only { display: none; }
+
 /* ════════════════════════════════════════════════════════════════════════
    MOBILE RESPONSIVE OVERRIDES (≤ 767px)
    Single block for all mobile fixes so the whole responsive surface
@@ -3092,9 +3096,11 @@ body.no-delete .doc-del-btn {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  /* Dashboard switcher dropdown: full-width on mobile so it doesn't
-     overlap surrounding header widgets. */
-  select.dashboard-mode-toggle {
+  /* Dashboard switcher: hide the desktop button-pair (handled by the
+     generic .mobile-hide rule). Reveal the mobile <select> dropdown
+     and let it fill the available header center slot. */
+  .mobile-only { display: block !important; }
+  select.dashboard-mode-select {
     max-width: 100% !important;
     width: 100%;
   }

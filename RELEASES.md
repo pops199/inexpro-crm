@@ -6,6 +6,17 @@ sits at the top.
 
 ---
 
+## v1.0.15 — 2026-05-02
+
+**Dashboard switcher: buttons on desktop, dropdown on mobile**
+
+- The Main / TCF dashboard switcher is now the original button pair
+  on full-size browser windows, and only collapses to the dropdown
+  on mobile (≤767px). v1.0.13 had reduced both to a dropdown
+  unconditionally.
+
+---
+
 ## v1.0.14 — 2026-05-02
 
 **Release Notes Browser fix**
