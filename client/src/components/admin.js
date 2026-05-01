@@ -10,7 +10,7 @@ const Admin = (() => {
       <div class="tab-bar" style="margin-bottom:1.5rem;">
         ${isFullAdmin ? '<button class="tab-btn" id="tab-audit" onclick="Admin.auditLog()">Audit Log</button>' : ''}
         <button class="tab-btn" id="tab-settings" onclick="Admin.settings()">Settings</button>
-        <button class="tab-btn" id="tab-broker-profiles" onclick="Admin.brokerFitness()">Broker Fitness</button>
+        <button class="tab-btn" id="tab-broker-profiles" onclick="Admin.brokerFitness()">Broker Profiles</button>
         ${isFullAdmin ? '<button class="tab-btn" id="tab-products" onclick="Admin.productsTab()">Product Library</button>' : ''}
         ${isFullAdmin ? '<button class="tab-btn" id="tab-data-breaches" onclick="Admin.dataBreachesTab()">Data Breach Log</button>' : ''}
       </div>
@@ -38,8 +38,8 @@ const Admin = (() => {
 
   async function brokerFitness() {
     _ensureChrome();
-    setPageTitle('Broker Fitness');
-    setBreadcrumb(['Admin', 'Broker Fitness']);
+    setPageTitle('Broker Profiles');
+    setBreadcrumb(['Admin', 'Broker Profiles']);
     _activateTab('tab-broker-profiles');
     if (window.BrokerProfiles?.list) {
       await window.BrokerProfiles.list({ embedded: true });

@@ -1748,7 +1748,10 @@
                           if (cp && cp !== 'pending-upload') return `<span title="${esc(cp)}">📎 file</span>`;
                           return '—';
                         })()}</td>
-                        <td><button class="btn btn-xs btn-danger cpd-del" data-id="${c.id}">Delete</button></td>
+                        <td style="white-space:nowrap;">
+                          <button class="btn btn-xs btn-secondary cpd-edit" data-id="${c.id}">Edit</button>
+                          <button class="btn btn-xs btn-danger cpd-del" data-id="${c.id}">Delete</button>
+                        </td>
                       </tr>`).join('') || '<tr><td colspan="8" class="table-empty">No CPD activities logged yet.</td></tr>'}
                   </tbody>
                 </table>
@@ -1784,6 +1787,18 @@
         newCpdBtn.addEventListener('click', () => this._openCpdModal(id, opts.adminUsers || []));
       }
 
+      document.querySelectorAll('.cpd-edit').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cpdId = parseInt(btn.dataset.id, 10);
+          try {
+            const list = await Api.brokerProfiles.cpdList(id);
+            const existing = (list || []).find(c => c.id === cpdId);
+            if (!existing) { toast('CPD activity not found', 'error'); return; }
+            this._openCpdModal(id, opts.adminUsers || [], existing);
+          } catch (e) { toast(e.message, 'error'); }
+        });
+      });
+
       document.querySelectorAll('.cpd-del').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('Delete this CPD activity?')) return;
@@ -1795,7 +1810,8 @@
       });
     },
 
-    _openCpdModal(profileId, adminUsers = []) {
+    _openCpdModal(profileId, adminUsers = [], existing = null) {
+      const isEdit = !!existing;
       const today = new Date().toISOString().slice(0, 10);
       const activityTypes = [
         'Accredited training',
@@ -1805,6 +1821,24 @@
         'Structured reading',
         'Other accredited',
       ];
+      const initial = {
+        date:       isEdit ? (existing.activity_date || today) : today,
+        type:       isEdit ? (existing.activity_type     || '') : '',
+        provider:   isEdit ? (existing.activity_provider || '') : '',
+        title:      isEdit ? (existing.activity_title    || '') : '',
+        points:     isEdit ? (existing.points_awarded != null ? existing.points_awarded : '') : '',
+        approverId: isEdit ? (existing.approved_by_id   || '') : '',
+        certPath:   isEdit ? (existing.certificate_path || '') : '',
+      };
+      const certDocMatch = /^doc:(\d+)$/.exec(initial.certPath);
+      const existingCertHtml = isEdit
+        ? (certDocMatch
+            ? `<small style="color:#666;display:block;margin-top:.25rem;">Current: <a href="/api/documents/${esc(certDocMatch[1])}/view" target="_blank">View existing certificate</a> — leave file empty to keep, or pick a new file to replace it.</small>`
+            : (initial.certPath && initial.certPath !== 'pending-upload'
+              ? `<small style="color:#666;display:block;margin-top:.25rem;">Current: <span title="${esc(initial.certPath)}">📎 ${esc(initial.certPath)}</span> — leave empty to keep, or pick a new file to replace it.</small>`
+              : `<small style="color:#666;display:block;margin-top:.25rem;">No certificate on file — pick one to attach.</small>`))
+        : '';
+
       const container = document.createElement('div');
       container.id = 'cpd-modal-container';
       container.innerHTML = `
@@ -1812,7 +1846,7 @@
              style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
           <div class="modal" style="background:#fff;border-radius:8px;width:720px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
-              <h3 style="margin:0;">Log CPD Activity</h3>
+              <h3 style="margin:0;">${isEdit ? 'Edit CPD Activity' : 'Log CPD Activity'}</h3>
               <button type="button" id="cpd-modal-close"
                       style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
             </div>
@@ -1821,45 +1855,46 @@
               <div class="form-grid form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="form-group">
                   <label class="form-label required">Activity date</label>
-                  <input type="date" id="cpd-date" class="form-control" value="${today}" required>
+                  <input type="date" id="cpd-date" class="form-control" value="${esc(initial.date)}" required>
                 </div>
                 <div class="form-group">
                   <label class="form-label required">Points awarded</label>
-                  <input type="number" id="cpd-points" class="form-control" step="0.5" min="0" placeholder="e.g. 2" required>
+                  <input type="number" id="cpd-points" class="form-control" step="0.5" min="0" placeholder="e.g. 2" value="${esc(initial.points)}" required>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label required">Activity type</label>
                 <select id="cpd-type" class="form-control" required>
                   <option value="">— Select —</option>
-                  ${activityTypes.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+                  ${activityTypes.map(t => `<option value="${esc(t)}" ${initial.type === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label required">Provider</label>
-                <input type="text" id="cpd-provider" class="form-control" placeholder="Accredited provider" required>
+                <input type="text" id="cpd-provider" class="form-control" placeholder="Accredited provider" value="${esc(initial.provider)}" required>
               </div>
               <div class="form-group">
                 <label class="form-label">Activity title</label>
-                <input type="text" id="cpd-title" class="form-control" placeholder="Optional — e.g. COFI Workshop 2026">
+                <input type="text" id="cpd-title" class="form-control" placeholder="Optional — e.g. COFI Workshop 2026" value="${esc(initial.title)}">
               </div>
               <div class="form-group">
                 <label class="form-label required">Approved by (compliance officer / KI)</label>
                 <select id="cpd-approver" class="form-control" required>
                   <option value="">— Select admin user —</option>
-                  ${adminUsers.map(u => `<option value="${esc(u.id)}">${esc(u.full_name)}</option>`).join('')}
+                  ${adminUsers.map(u => `<option value="${esc(u.id)}" ${String(initial.approverId) === String(u.id) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label required">Certificate / evidence</label>
+                <label class="form-label ${isEdit ? '' : 'required'}">Certificate / evidence</label>
                 <input type="file" id="cpd-certificate" class="form-control"
-                       accept=".pdf,.jpg,.jpeg,.png,.docx" required>
-                <small style="color:#666;">PDF, JPG, PNG or DOCX. Max 20 MB. Mandatory.</small>
+                       accept=".pdf,.jpg,.jpeg,.png,.docx" ${isEdit ? '' : 'required'}>
+                <small style="color:#666;">PDF, JPG, PNG or DOCX. Max 20 MB.${isEdit ? '' : ' Mandatory.'}</small>
+                ${existingCertHtml}
               </div>
             </div>
             <div class="modal-footer" style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:.5rem;">
               <button type="button" class="btn btn-secondary" id="cpd-modal-cancel">Cancel</button>
-              <button type="button" class="btn btn-primary" id="cpd-modal-save">Log Activity</button>
+              <button type="button" class="btn btn-primary" id="cpd-modal-save">${isEdit ? 'Save Changes' : 'Log Activity'}</button>
             </div>
           </div>
         </div>`;
@@ -1893,7 +1928,8 @@
           errEl.style.display = 'block';
           return;
         }
-        if (!fileInput.files || !fileInput.files[0]) {
+        const newFile = fileInput.files && fileInput.files[0];
+        if (!isEdit && !newFile) {
           errEl.textContent = 'A certificate / proof of completion is required.';
           errEl.style.display = 'block';
           return;
@@ -1904,9 +1940,39 @@
         saveBtn.textContent = 'Saving…';
 
         try {
-          // Step 1 — create the CPD activity with a placeholder certificate path,
-          // then upload the file linked to that activity, then patch the path.
-          // We pass a placeholder so server-side required check passes; replaced after upload.
+          if (isEdit) {
+            // Edit flow: optionally upload a replacement file, then PUT the record.
+            let certPath = initial.certPath;
+            if (newFile) {
+              const fd = new FormData();
+              fd.append('file', newFile);
+              fd.append('module', 'cpd-activities');
+              fd.append('record_id', String(existing.id));
+              fd.append('description', `CPD certificate — ${title || type}`);
+              const uploadResp = await fetch('/api/documents/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
+              if (!uploadResp.ok) {
+                const e = await uploadResp.json().catch(() => ({}));
+                throw new Error(e.error || 'Certificate upload failed');
+              }
+              const doc = await uploadResp.json();
+              certPath = `doc:${doc.id}`;
+            }
+            await Api.brokerProfiles.cpdUpdate(existing.id, {
+              activity_date:     date,
+              activity_type:     type,
+              activity_provider: provider,
+              activity_title:    title,
+              points_awarded:    pts,
+              approved_by_id:    parseInt(approverId, 10),
+              certificate_path:  certPath,
+            });
+            close();
+            toast('CPD activity updated', 'success');
+            this.detail(profileId);
+            return;
+          }
+
+          // Create flow: placeholder → upload → patch.
           const created = await Api.brokerProfiles.cpdCreate(profileId, {
             activity_date:     date,
             activity_type:     type,
@@ -1917,9 +1983,8 @@
             certificate_path:  'pending-upload',
           });
 
-          // Step 2 — upload the certificate against the new CPD record
           const fd = new FormData();
-          fd.append('file', fileInput.files[0]);
+          fd.append('file', newFile);
           fd.append('module', 'cpd-activities');
           fd.append('record_id', String(created.id));
           fd.append('description', `CPD certificate — ${title || type}`);
@@ -1930,7 +1995,6 @@
           }
           const doc = await uploadResp.json();
 
-          // Step 3 — patch the CPD activity with the real certificate path "doc:<id>"
           await Api.brokerProfiles.cpdUpdate(created.id, {
             activity_date:     date,
             activity_type:     type,
@@ -1948,7 +2012,7 @@
           errEl.textContent = err.message || String(err);
           errEl.style.display = 'block';
           saveBtn.disabled = false;
-          saveBtn.textContent = 'Log Activity';
+          saveBtn.textContent = isEdit ? 'Save Changes' : 'Log Activity';
         }
       });
     },
