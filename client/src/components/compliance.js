@@ -2175,6 +2175,8 @@
   let _prodConfig  = null;
 
   const Products = {
+    _filters: { search: '', insurer: '', category: '' },
+
     async list(opts = {}) {
       const embedded = !!opts.embedded;
       const el = document.getElementById(embedded ? 'admin-content' : 'content-area');
@@ -2196,7 +2198,17 @@
         _prodCatalog = prefs.catalog;
         _prodConfig  = prefs.config;
 
-        const rows = await Api.products.list({ sort: _prodConfig.sortBy, dir: _prodConfig.sortDir });
+        const listParams = {
+          sort:     _prodConfig.sortBy,
+          dir:      _prodConfig.sortDir,
+          search:   this._filters.search   || undefined,
+          insurer:  this._filters.insurer  || undefined,
+          category: this._filters.category || undefined,
+        };
+        const [rows, options] = await Promise.all([
+          Api.products.list(listParams),
+          Api.products.options().catch(() => ({ insurers: [], product_category: [] })),
+        ]);
 
         const visibleCols = ViewPrefs.visibleColumns(_prodCatalog, _prodConfig);
         const colCount = visibleCols.length || 1;
@@ -2211,6 +2223,7 @@
 
         el.innerHTML = `
           <div class="list-page">
+            <div class="list-summary">${rows.length} product${rows.length !== 1 ? 's' : ''}${this._filters.search || this._filters.insurer || this._filters.category ? ' (filtered)' : ''}</div>
             <div class="card">
               <div class="table-responsive">
                 <table class="table">
@@ -2224,6 +2237,35 @@
           </div>
         `;
 
+        // Center-header filter strip — mirrors the Contacts module.
+        document.getElementById('products-center-filters')?.remove();
+        const topHeader = document.getElementById('top-header');
+        if (topHeader) {
+          topHeader.style.position = 'relative';
+          const insurers   = Array.isArray(options.insurers)         ? options.insurers         : [];
+          const categories = Array.isArray(options.product_category) ? options.product_category : [];
+          const opt = (val, current) =>
+            `<option value="${esc(val)}" ${current === val ? 'selected' : ''}>${esc(val)}</option>`;
+          const wrap = document.createElement('div');
+          wrap.id = 'products-center-filters';
+          wrap.setAttribute('data-header-widget', '1');
+          wrap.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:.5rem;align-items:center;z-index:2;background:var(--bg);padding:.3rem .55rem;border-radius:6px;';
+          wrap.innerHTML = `
+            <input type="search" id="prod-search" class="form-control" placeholder="Search…"
+              value="${esc(this._filters.search)}"
+              style="${ctrlStyle}width:160px;">
+            <select id="prod-filter-insurer" class="form-control" style="${ctrlStyle}max-width:160px;">
+              <option value="">Insurer</option>
+              ${insurers.map(v => opt(v, this._filters.insurer)).join('')}
+            </select>
+            <select id="prod-filter-category" class="form-control" style="${ctrlStyle}max-width:160px;">
+              <option value="">Category</option>
+              ${categories.map(v => opt(v, this._filters.category)).join('')}
+            </select>
+            <button id="prod-filter-clear" class="btn btn-secondary" style="${ctrlStyle}">Clear</button>`;
+          topHeader.appendChild(wrap);
+        }
+
         ViewPrefs.attachButton({
           moduleKey: 'products',
           catalog:   _prodCatalog,
@@ -2232,6 +2274,40 @@
         });
 
         this._renderTableRows(rows);
+
+        // Wire filter strip
+        let searchTimer;
+        const searchEl = document.getElementById('prod-search');
+        if (searchEl) {
+          searchEl.addEventListener('input', e => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+              this._filters.search = e.target.value;
+              Products.list({ embedded });
+            }, 350);
+          });
+        }
+        const insurerEl  = document.getElementById('prod-filter-insurer');
+        const categoryEl = document.getElementById('prod-filter-category');
+        if (insurerEl) {
+          insurerEl.addEventListener('change', e => {
+            this._filters.insurer = e.target.value;
+            Products.list({ embedded });
+          });
+        }
+        if (categoryEl) {
+          categoryEl.addEventListener('change', e => {
+            this._filters.category = e.target.value;
+            Products.list({ embedded });
+          });
+        }
+        const clearEl = document.getElementById('prod-filter-clear');
+        if (clearEl) {
+          clearEl.addEventListener('click', () => {
+            this._filters = { search: '', insurer: '', category: '' };
+            Products.list({ embedded });
+          });
+        }
 
         el.querySelectorAll('#prod-thead-row th.sortable').forEach(th => {
           th.addEventListener('click', async () => {

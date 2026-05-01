@@ -66,23 +66,29 @@ function toJsonArray(v) {
 
 // Dropdown options
 router.get('/options', (_req, res) => {
+  const db = getDb();
+  const insurers = db.prepare(
+    "SELECT DISTINCT insurer FROM products WHERE insurer IS NOT NULL AND TRIM(insurer) != '' ORDER BY insurer COLLATE NOCASE"
+  ).all().map(r => r.insurer);
   res.json({
     product_category: CATEGORY_OPTS,
     target_client_type: CLIENT_TYPE_OPTS,
     suitable_risk_appetite: RISK_APPETITE_OPTS,
     geographic_scope: GEO_SCOPE_OPTS,
     product_status: STATUS_OPTS,
+    insurers,
   });
 });
 
 // GET / — list
 router.get('/', (req, res) => {
   const db = getDb();
-  const { category, status, search } = req.query;
+  const { category, status, search, insurer } = req.query;
   const conditions = [];
   const params = [];
   if (category) { conditions.push('p.product_category = ?'); params.push(category); }
   if (status)   { conditions.push('p.product_status = ?');   params.push(status); }
+  if (insurer)  { conditions.push('p.insurer = ?');          params.push(insurer); }
   if (search)   {
     conditions.push('(p.product_name LIKE ? OR p.product_code LIKE ? OR p.insurer LIKE ?)');
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
