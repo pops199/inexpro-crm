@@ -47,6 +47,14 @@ const PORT = process.env.PORT || 3000;
 initDb();
 console.log('✅ Database initialised');
 
+// Clear any leftover .update-lock from the previous (now-exited)
+// process. Without this, an in-app update or restore that triggered
+// `process.exit(0)` would leave the UI showing "Update in progress" on
+// the next boot, locking out further updates and rollback.
+try {
+  require('./lib/updater').clearStaleLockAtBoot();
+} catch (_) { /* no-op */ }
+
 // Session store
 const SQLiteStore = require('connect-sqlite3')(session);
 

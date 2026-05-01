@@ -2527,19 +2527,29 @@ const Admin = (() => {
       }
       el.innerHTML = `
         <table class="data-table" style="width:100%;font-size:.8rem;">
-          <thead><tr><th>Snapshot ID</th><th>Created</th><th>From → To</th><th>Size</th></tr></thead>
+          <thead><tr><th>Snapshot ID</th><th>Created</th><th>From → To</th><th>Size</th><th></th></tr></thead>
           <tbody>
-            ${snaps.map(s => `
+            ${snaps.map((s, i) => `
               <tr>
-                <td><code>${esc(s.id)}</code></td>
+                <td><code>${esc(s.id)}</code>${i === 0 ? ' <span style="font-size:.7rem;color:var(--text-muted);">(latest)</span>' : ''}${s.reason === 'pre-restore' ? ' <span style="font-size:.7rem;color:var(--text-muted);">(pre-restore)</span>' : ''}</td>
                 <td>${esc(s.created_at || '—')}</td>
                 <td>${esc((s.from_commit || '').slice(0,7) || '—')} → ${esc(s.to_tag || '—')}</td>
                 <td>${s.db_size_bytes ? (Math.round(s.db_size_bytes / 1024 / 1024 * 10) / 10) + ' MB' : '—'}</td>
+                <td style="text-align:right;">
+                  <button class="btn btn-secondary btn-sm js-snap-restore"
+                    data-snap-id="${esc(s.id)}"
+                    style="font-size:.72rem;padding:.2rem .55rem;">Restore</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       `;
+      el.querySelectorAll('.js-snap-restore').forEach(btn => {
+        btn.addEventListener('click', () => {
+          Admin._systemRollback(btn.dataset.snapId);
+        });
+      });
     } catch (e) {
       el.innerHTML = `<span style="color:var(--danger);">Failed: ${esc(e.message)}</span>`;
     }
@@ -2670,12 +2680,19 @@ const Admin = (() => {
     }, 1500);
   }
 
-  async function _systemRollback() {
-    if (!confirm('Roll back to the most recent database snapshot and matching commit? Any data changes since the snapshot will be lost.')) return;
+  async function _systemRollback(snapshotId) {
+    const which = snapshotId ? `snapshot ${snapshotId}` : 'the most recent snapshot';
+    const msg = `Roll back to ${which}?\n\n` +
+                `• The database will be replaced with the snapshot copy\n` +
+                `• Any data changes since that snapshot will be LOST\n` +
+                `• The commit recorded with the snapshot will be checked out\n` +
+                `• Server will restart\n\n` +
+                `Continue?`;
+    if (!confirm(msg)) return;
     const result = document.getElementById('sys-update-result');
-    if (result) result.textContent = 'Rolling back…';
+    if (result) result.textContent = `Rolling back to ${which}…`;
     try {
-      const r = await Api.admin.systemRollback();
+      const r = await Api.admin.systemRollback(snapshotId || null);
       if (r.error) {
         if (result) result.innerHTML = `<span style="color:var(--danger);">Rollback failed: ${esc(r.error)}</span>`;
         return;

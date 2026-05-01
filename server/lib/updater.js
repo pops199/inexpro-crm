@@ -48,6 +48,25 @@ function readLock() {
   catch (_) { return {}; }
 }
 
+/**
+ * Removes any leftover lock file at server boot. After a successful
+ * update, applyUpdate intentionally leaves the lock in place so the
+ * restarting process can see what just happened — but the *new*
+ * process must clear it on startup, otherwise the UI shows
+ * "Update in progress" forever and Rollback / Apply stay disabled.
+ */
+function clearStaleLockAtBoot() {
+  try {
+    if (fs.existsSync(LOCK_FILE)) {
+      const prev = readLock();
+      fs.unlinkSync(LOCK_FILE);
+      console.log(`[updater] cleared stale .update-lock (started ${prev.started_at || 'unknown'})`);
+    }
+  } catch (err) {
+    console.error('[updater] could not clear stale lock:', err.message);
+  }
+}
+
 function lockedError(msg) {
   const err = new Error(msg);
   err.code = 'UPDATE_LOCKED';
@@ -113,8 +132,14 @@ function parseSemver(tag) {
 
 function workingTreeDirty() {
   // Untracked files are fine (uploads, db sidecars). We only care about
-  // modifications to tracked files, which would block a clean checkout.
-  const status = git(['status', '--porcelain', '--untracked-files=no']);
+  // modifications to tracked file *content*. Force core.fileMode=false
+  // for this check so Docker overlayfs / cross-platform exec-bit drift
+  // doesn't show up as "modified" — those mode-only diffs are noise,
+  // not real edits, and `git checkout` doesn't respect them anyway.
+  const status = git([
+    '-c', 'core.fileMode=false',
+    'status', '--porcelain', '--untracked-files=no',
+  ]);
   return status.length > 0;
 }
 
@@ -530,6 +555,7 @@ module.exports = {
   rollback,
   listSnapshots,
   getChangelog,
+  clearStaleLockAtBoot,
   // Exposed for tests:
   _internals: { parseSemver, semverCompareTag, latestReleaseTag, currentCommit, isGitRepo },
 };
