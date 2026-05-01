@@ -6,6 +6,17 @@ sits at the top.
 
 ---
 
+## v1.0.14 — 2026-05-02
+
+**Release Notes Browser fix**
+
+- Picking a release in the browser no longer fails with `git log:
+  v1.0.X~50..v1.0.X: unknown revision` when the tag has fewer than
+  50 ancestor commits behind it. The fallback now walks back from the
+  tag with `--max-count` instead of using a fixed `~50..` range.
+
+---
+
 ## v1.0.13 — 2026-05-02
 
 **Mobile responsiveness pass**

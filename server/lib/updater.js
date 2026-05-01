@@ -236,25 +236,24 @@ function getChangelog(fromRef, toTag) {
     ]).trim() || null;
 
     // Commit log between the running ref and the new tag. If `fromRef`
-    // is missing or unreachable, fall back to the last 20 commits leading
-    // up to the tag so the UI still shows something useful.
+    // is missing or unreachable, walk back from the tag itself capped
+    // by --max-count — using `<tag>~50..<tag>` would fail in repos
+    // with fewer than 50 ancestor commits behind the tag.
     const MAX = 50;
-    let range = `${toTag}~50..${toTag}`;   // safe default
+    let logArg = toTag;
     if (fromRef) {
       try {
-        // Verify the from-ref exists locally; if not, the `..` range
-        // throws.
         git(['rev-parse', '--verify', `${fromRef}^{commit}`]);
-        range = `${fromRef}..${toTag}`;
+        logArg = `${fromRef}..${toTag}`;
       } catch (_) {
-        // fall through with default range
+        // fall through and walk back from the tag
       }
     }
     const raw = git([
       'log',
       `--max-count=${MAX + 1}`,
       '--pretty=format:%h%x09%cs%x09%s',
-      range,
+      logArg,
     ]);
     const lines = raw.split('\n').filter(Boolean);
     if (lines.length > MAX) {
