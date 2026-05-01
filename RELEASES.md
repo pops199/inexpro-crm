@@ -6,6 +6,22 @@ sits at the top.
 
 ---
 
+## v1.0.11 — 2026-05-02
+
+**System Notifications panel**
+
+- Admin → Settings → Notifications now also shows a **System
+  Notifications** card under the Notification History card. It lists
+  every automated alert the CRM has sent — broker fitness, ROA
+  acknowledgement reminders, commission-gap warnings, seeded onboarding
+  notes, etc. — newest first, grouped by send-second so a single
+  scheduler pass appears as one row.
+- Click any system notification to open the same detail modal used for
+  broadcasts; the modal now also shows the category (e.g. "Broker
+  Fitness", "ROA Reminder").
+
+---
+
 ## v1.0.10 — 2026-05-02
 
 **Release notes, predefined reports layout, notification history**

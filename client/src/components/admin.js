@@ -807,16 +807,31 @@ const Admin = (() => {
                 <div id="notif-send-result" style="margin-top:.5rem;font-size:.82rem;"></div>
               </div>
 
-              <div class="detail-section card">
-                <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
-                  Notification History
-                  <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;height:24px;padding:.1rem .5rem;" onclick="Admin._refreshNotifHistory()">↻ Refresh</button>
+              <div style="display:flex;flex-direction:column;gap:1rem;">
+                <div class="detail-section card">
+                  <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
+                    Notification History
+                    <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;height:24px;padding:.1rem .5rem;" onclick="Admin._refreshNotifHistory()">↻ Refresh</button>
+                  </div>
+                  <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;">
+                    Past admin broadcasts. Click any item to see the full details.
+                  </p>
+                  <div id="notif-history-list" style="max-height:260px;overflow-y:auto;">
+                    <p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>
+                  </div>
                 </div>
-                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;">
-                  Past admin broadcasts. Click any item to see the full details.
-                </p>
-                <div id="notif-history-list" style="max-height:520px;overflow-y:auto;">
-                  <p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>
+
+                <div class="detail-section card">
+                  <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
+                    System Notifications
+                    <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;height:24px;padding:.1rem .5rem;" onclick="Admin._refreshSystemNotifHistory()">↻ Refresh</button>
+                  </div>
+                  <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;">
+                    Automated alerts the CRM has dispatched — broker fitness, ROA reminders, commission gaps, seeded onboarding notes. Click any item to see full details.
+                  </p>
+                  <div id="notif-system-list" style="max-height:300px;overflow-y:auto;">
+                    <p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1144,8 +1159,12 @@ const Admin = (() => {
     }
 
     if (isFullAdmin) {
-      // Notification history (admin only) — fetched once per settings render
+      // Notification history + system notifications (admin only) — fetched
+      // once per settings render. The Notifications pane lazy-mounts both
+      // panels even though the section may be hidden until clicked, so the
+      // panes show data the moment they're revealed.
       Admin._refreshNotifHistory();
+      Admin._refreshSystemNotifHistory();
     }
 
     if (canSendNotifications) {
@@ -1307,6 +1326,69 @@ const Admin = (() => {
 
   // ── Notification history (admin only) ────────────────────────────────
   let _notifHistoryCache = [];
+  let _systemNotifHistoryCache = [];
+
+  const NOTIF_SEV_COLOR = (s) => ({
+    info: '#2980b9', warning: '#b78105', danger: '#c0392b', success: '#1a7a3a',
+  })[s] || '#666';
+
+  // Friendly labels for the automated-notification categories. Anything not
+  // listed falls back to the raw category name.
+  const NOTIF_CATEGORY_LABELS = {
+    broker_fitness:        'Broker Fitness',
+    roa_acknowledgement:   'ROA Reminder',
+    policy_commission:     'Commission Gap',
+    welcome:               'Welcome',
+    fitness_onboarding:    'Fitness Onboarding',
+  };
+
+  async function _refreshSystemNotifHistory() {
+    const list = document.getElementById('notif-system-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">Loading…</p>';
+    try {
+      const res = await Api.notifications.adminSystemHistory();
+      _systemNotifHistoryCache = res.data || res || [];
+    } catch (err) {
+      list.innerHTML = `<p style="color:var(--danger);font-size:.82rem;">Failed to load: ${esc(err.message || 'unknown error')}</p>`;
+      return;
+    }
+    if (!_systemNotifHistoryCache.length) {
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:.82rem;margin:.5rem 0;">No automated notifications yet.</p>';
+      return;
+    }
+    list.innerHTML = _systemNotifHistoryCache.map((r, i) => {
+      const sent = (r.sent_at || '').replace('T', ' ').slice(0, 16);
+      const catLabel = NOTIF_CATEGORY_LABELS[r.category] || r.category || 'system';
+      return `
+        <div class="notif-system-row" data-idx="${i}" style="
+          padding:.55rem .65rem;border:1px solid var(--border);border-radius:6px;
+          margin-bottom:.4rem;cursor:pointer;background:var(--card-bg);
+          transition:background var(--transition);
+        ">
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${NOTIF_SEV_COLOR(r.severity)};"></span>
+            <span style="font-weight:600;font-size:.85rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.title || '(no subject)')}</span>
+            <span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;">${esc(sent)}</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+            <span style="background:var(--surface-secondary,#eef1f5);padding:.05rem .4rem;border-radius:10px;">${esc(catLabel)}</span>
+            <span>${r.recipient_count} recipient${r.recipient_count === 1 ? '' : 's'}</span>
+            ${r.severity && r.severity !== 'info' ? `<span style="color:${NOTIF_SEV_COLOR(r.severity)};">• ${esc(r.severity)}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.notif-system-row').forEach(row => {
+      row.addEventListener('mouseenter', () => { row.style.background = 'var(--hover-bg, #f5f7fa)'; });
+      row.addEventListener('mouseleave', () => { row.style.background = 'var(--card-bg)'; });
+      row.addEventListener('click', () => {
+        const idx = parseInt(row.dataset.idx, 10);
+        const item = _systemNotifHistoryCache[idx];
+        if (item) _openNotifHistoryItem(item);
+      });
+    });
+  }
 
   async function _refreshNotifHistory() {
     const list = document.getElementById('notif-history-list');
@@ -1383,6 +1465,7 @@ const Admin = (() => {
           <div style="font-weight:600;font-size:1rem;margin-bottom:.4rem;">${esc(item.title || '(no subject)')}</div>
           <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.85rem;">
             Sent ${esc(sent)} · severity <strong>${esc(item.severity || 'info')}</strong>
+            ${item.category && item.category !== 'admin_message' ? ` · category <strong>${esc(NOTIF_CATEGORY_LABELS[item.category] || item.category)}</strong>` : ''}
             ${item.source_module ? ` · module <strong>${esc(item.source_module)}</strong>` : ''}
           </div>
           <pre style="white-space:pre-wrap;word-wrap:break-word;margin:0 0 1rem;padding:.75rem .85rem;background:var(--surface-secondary,#f8f9fa);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.85rem;line-height:1.5;">${esc(item.body || '')}</pre>
@@ -2860,7 +2943,7 @@ const Admin = (() => {
   }
 
   return { render, users, auditLog, settings, dashboardDefault, brokerFitness, productsTab, dataBreachesTab, _openUserModal, _saveUser, _deleteUser, _closeModal,
-    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _refreshNotifHistory, _openNotifHistoryItem, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
+    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _refreshNotifHistory, _refreshSystemNotifHistory, _openNotifHistoryItem, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
 })();
 // Expose on window so cross-component callers (e.g. BrokerProfiles in
 // compliance.js) can access Admin._renderBrokerCodes — top-level `const` does
