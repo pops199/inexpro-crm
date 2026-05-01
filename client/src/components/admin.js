@@ -2436,8 +2436,12 @@ const Admin = (() => {
     }
     const cur = s.current_tag || (s.current_commit ? s.current_commit.slice(0,7) : 'unknown');
     const lat = s.latest_tag || '—';
+    // Working-tree drift is informational only — applyUpdate auto-resets
+    // tracked-file changes before checkout, so this never blocks an
+    // update. We surface it as a soft note so admins notice if something
+    // is unexpectedly modifying /app at runtime.
     const dirty = s.working_tree_dirty
-      ? `<span style="color:var(--danger);">⚠ uncommitted local changes</span>` : '';
+      ? `<span style="color:var(--text-muted);font-size:.78rem;">ⓘ Working tree drift detected (will be auto-reset on next update)</span>` : '';
     const pend = s.pending_migrations?.length
       ? ` · ${s.pending_migrations.length} pending DB migration${s.pending_migrations.length === 1 ? '' : 's'}`
       : '';
@@ -2454,7 +2458,10 @@ const Admin = (() => {
       ${lockNote}
     `;
     if (apply) {
-      apply.disabled = !s.update_available || s.locked || s.working_tree_dirty;
+      // Don't disable on working_tree_dirty — applyUpdate auto-resets
+      // drift before fetching. Only a real update-not-available state
+      // or an active lock should block the button.
+      apply.disabled = !s.update_available || s.locked;
     }
     const rb = document.getElementById('sys-update-rollback');
     if (rb) rb.disabled = !(s.snapshots && s.snapshots.length) || s.locked;

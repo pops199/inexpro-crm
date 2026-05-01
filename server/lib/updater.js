@@ -408,8 +408,17 @@ function applyUpdate(db, opts) {
 
   try {
     if (!isGitRepo()) throw new Error('Project is not a git checkout — updates disabled.');
+
+    // Force-clean any drift on tracked files before fetching. In a
+    // server deployment the user never edits /app files directly —
+    // anything "dirty" here is environmental noise (Docker overlayfs
+    // flipping exec bits, a prior `npm install` mutating
+    // package-lock.json, etc.). Resetting to HEAD makes the subsequent
+    // checkout deterministic and removes the "uncommitted local
+    // changes" friction the user hits in normal use.
     if (workingTreeDirty()) {
-      throw new Error('Working tree has uncommitted changes — refusing to update. Commit or stash first.');
+      try { git(['reset', '--hard', 'HEAD']); }
+      catch (err) { console.warn('[updater] pre-fetch reset failed:', err.message); }
     }
 
     fetchTags();
@@ -433,8 +442,16 @@ function applyUpdate(db, opts) {
     git(['checkout', '--detach', result.to_tag]);
 
     // 3. Install dependencies. Skippable in tests.
+    //
+    // `npm ci` (clean install) is preferred over `npm install`: it
+    //   • installs exactly what's locked in package-lock.json
+    //   • never modifies package-lock.json (which would cause
+    //     `git status` to flag the working tree as dirty afterwards)
+    //   • is faster and more deterministic
+    // The `--omit=dev` flag is the modern replacement for the legacy
+    // `--production` switch and works with `npm ci`.
     if (!skipNpm) {
-      execFileSync(npmCmd(), ['install', '--production', '--no-audit', '--no-fund'], {
+      execFileSync(npmCmd(), ['ci', '--omit=dev', '--no-audit', '--no-fund'], {
         cwd: PROJECT_ROOT,
         stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 600_000,
