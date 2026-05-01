@@ -191,7 +191,7 @@ const PolicySchedule = (() => {
     // Header actions
     if (headerActions) {
       headerActions.innerHTML = `
-        <a href="${esc(backHref)}" class="btn btn-secondary no-print">← Back</a>
+        <a href="${esc(backHref)}" class="btn btn-secondary btn-back no-print">← Back</a>
         <button class="btn btn-primary no-print" onclick="PolicySchedule.printSchedule()">🖨 Print / Save as PDF</button>`;
     }
 

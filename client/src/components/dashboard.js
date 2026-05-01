@@ -8,22 +8,28 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function _dashboardModeToggle(current) {
-  const btn = (mode, label, href) => {
-    const active = current === mode;
-    return `<a href="${href}" class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
-              style="border-radius:0;min-width:110px;text-align:center;${active ? '' : 'box-shadow:none;'}">${label}</a>`;
-  };
+  const opt = (mode, label, href) => `
+    <option value="${href}" ${current === mode ? 'selected' : ''}>${label}</option>`;
   return `
-    <div class="dashboard-mode-toggle" style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--border,#dee2e6);">
-      ${btn('main', 'Main Dashboard', '#/dashboard')}
-      ${btn('tcf',  'TCF Dashboard',  '#/dashboard/tcf')}
-    </div>`;
+    <select class="dashboard-mode-toggle form-control" id="dashboard-mode-select"
+      style="height:30px;padding:.15rem .55rem;font-size:.85rem;max-width:200px;">
+      ${opt('main', 'Main Dashboard', '#/dashboard')}
+      ${opt('tcf',  'TCF Dashboard',  '#/dashboard/tcf')}
+    </select>`;
 }
 window._dashboardModeToggle = _dashboardModeToggle;
 
 function _injectDashboardToggle(mode) {
   const el = document.getElementById('header-center');
-  if (el) el.innerHTML = _dashboardModeToggle(mode);
+  if (!el) return;
+  el.innerHTML = _dashboardModeToggle(mode);
+  const sel = document.getElementById('dashboard-mode-select');
+  if (sel) {
+    sel.addEventListener('change', (e) => {
+      const href = e.target.value;
+      if (href) window.location.hash = href;
+    });
+  }
 }
 window._injectDashboardToggle = _injectDashboardToggle;
 

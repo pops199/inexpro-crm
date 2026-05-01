@@ -510,7 +510,7 @@
         <div class="page-wrapper" style="max-width:900px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
             <div>
-              <a href="#/contacts/${contactId}">← Back to Contact</a>
+              <a href="#/contacts/${contactId}" class="btn-back">← Back to Contact</a>
             </div>
             ${badgeForPopia(d.status_badge || 'Red')}
           </div>
@@ -958,7 +958,7 @@
       return `
         <div class="page-wrapper" style="max-width:800px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-            <a href="#/contacts/${contactId}">← Back to Contact</a>
+            <a href="#/contacts/${contactId}" class="btn-back">← Back to Contact</a>
             ${badgeForFica(d.derived_status || 'Not verified')}
           </div>
 
@@ -1541,7 +1541,7 @@
               <div class="alert alert-info">
                 Every active user already has a broker profile. Open an existing profile from the list or create a new user in Admin first.
               </div>
-              <a href="#/broker-profiles" class="btn btn-secondary">← Back</a>
+              <a href="#/broker-profiles" class="btn btn-secondary btn-back">← Back</a>
             </div>`);
           return;
         }
@@ -1708,7 +1708,7 @@
 
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Save changes</button>
-                <a href="#/broker-profiles" class="btn btn-secondary">← Back to Broker Profiles</a>
+                <a href="#/broker-profiles" class="btn btn-secondary btn-back">← Back to Broker Profiles</a>
               </div>
             </form>
           </div>
@@ -2062,7 +2062,7 @@
               <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
                 <h3 class="card-title">Broker Fitness Audit Report — ${esc(p.full_name || '')}</h3>
                 <div style="display:flex;gap:.5rem;">
-                  <a href="#/broker-profiles/${id}" class="btn btn-sm btn-secondary">← Back to profile</a>
+                  <a href="#/broker-profiles/${id}" class="btn btn-sm btn-secondary btn-back">← Back to profile</a>
                   <button class="btn btn-sm btn-secondary" id="ar-print">🖨 Print</button>
                   <button class="btn btn-sm btn-secondary" id="ar-csv">⇩ CSV</button>
                 </div>
@@ -2574,7 +2574,7 @@
 
         renderInto(`
           <div class="page-wrapper" style="max-width:800px;">
-            <a href="#/post-sale-events">← Back</a>
+            <a href="#/post-sale-events" class="btn-back">← Back</a>
             <form id="pse-form" class="card" style="padding:1.25rem;margin-top:.5rem;">
               <div class="form-group">
                 <label class="form-label required">Policy</label>
@@ -2746,7 +2746,7 @@
 
         renderInto(`
           <div class="page-wrapper" style="max-width:700px;">
-            <a href="#/commission-log">← Back</a>
+            <a href="#/commission-log" class="btn-back">← Back</a>
             <form id="cl-form" class="card" style="padding:1.25rem;margin-top:.5rem;">
               <div class="form-group">
                 <label class="form-label required">Policy</label>
@@ -3689,7 +3689,7 @@
                 <div class="detail-field"><span class="detail-label">VAT #</span><span class="detail-value">${esc(data.vat_number || '—')}</span></div>
                 <div class="detail-field"><span class="detail-label">Business type</span><span class="detail-value">${esc(data.business_type || '—')}</span></div>
               </div>
-              <div style="margin-top:.5rem;"><a href="#/accounts/${accountId}" class="btn btn-sm btn-secondary">← Back to account</a></div>
+              <div style="margin-top:.5rem;"><a href="#/accounts/${accountId}" class="btn btn-sm btn-secondary btn-back">← Back to account</a></div>
             </div>
 
             <div class="card">
@@ -4078,7 +4078,7 @@
                 <div class="detail-field"><span class="detail-label">Status</span><span class="detail-value">${badgeForFica(data.derived_status || 'Not verified')}</span></div>
                 <div class="detail-field"><span class="detail-label">5-year expiry</span><span class="detail-value">${esc(data.fica_five_year_expiry || '—')}</span></div>
               </div>
-              <div style="margin-top:.5rem;"><a href="#/accounts/${accountId}" class="btn btn-sm btn-secondary">← Back to account</a></div>
+              <div style="margin-top:.5rem;"><a href="#/accounts/${accountId}" class="btn btn-sm btn-secondary btn-back">← Back to account</a></div>
             </div>
 
             <div class="card">

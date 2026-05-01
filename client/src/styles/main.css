@@ -2990,3 +2990,128 @@ body.no-delete .js-delete,
 body.no-delete .doc-del-btn {
   display: none !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE OVERRIDES (≤ 767px)
+   Single block for all mobile fixes so the whole responsive surface
+   lives in one place. Inline `style="..."` blocks elsewhere in the
+   codebase are overridden here with !important where needed.
+   ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Top sub-tab bars (Admin top tabs, Reports steps, etc.): horizontal
+     scroll instead of wrapping into multiple cramped lines. */
+  .tab-bar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    margin-left: -.25rem;
+    margin-right: -.25rem;
+    padding: 0 .25rem .25rem;
+  }
+  .tab-bar .tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Admin → Settings sub-sidebar: switch from a fixed-width left rail
+     into a horizontal scrolling strip on top of the content. The
+     parent flex container is restyled to stack column-wise so the
+     content pane gets the full screen width. */
+  #settings-subnav {
+    width: 100% !important;
+    position: static !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    gap: .35rem !important;
+    padding: .5rem !important;
+    margin-bottom: .75rem;
+  }
+  #settings-subnav .settings-nav-item {
+    flex: 0 0 auto;
+    width: auto !important;
+    white-space: nowrap;
+    padding: .45rem .7rem !important;
+  }
+  /* Stack the Settings parent flex container vertically so the
+     section pane gets full width below the (now horizontal) nav. */
+  [data-section-pane] ~ #settings-subnav, /* defensive — if order flips */
+  #settings-subnav + div {
+    width: 100%;
+  }
+  /* Generic: any flex container that holds the subnav + pane. */
+  .settings-layout,
+  div:has(> #settings-subnav) {
+    flex-direction: column !important;
+  }
+
+  /* Drop fixed max-widths on inline-styled cards so they fill the
+     viewport instead of leaving wasted gutters. Inline styles must be
+     beaten with !important. */
+  .detail-section.card,
+  .detail-view .card,
+  section .card {
+    max-width: 100% !important;
+  }
+
+  /* Form actions (Save / Cancel / Mark Complete / etc.): stack
+     vertically and full-width so the row never gets cut off and the
+     primary action is always reachable. */
+  .form-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: .5rem !important;
+  }
+  .form-actions > .btn,
+  .form-actions > a.btn,
+  .form-actions > button {
+    width: 100%;
+    text-align: center;
+  }
+  .form-actions > small {
+    margin-left: 0 !important;
+    text-align: center;
+  }
+
+  /* Per-row repeating grids (alternatives considered, vehicle extras,
+     excesses, additional covers, etc.) collapse to a single column. */
+  .alt-row,
+  .vehicle-extra-row,
+  .excess-row,
+  .additional-cover-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Two-column grids inside detail sections (Notifications pane,
+     Company Details pane, etc.) collapse to single column. */
+  [style*="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"],
+  [style*="grid-template-columns: minmax(0,1fr) minmax(0,1fr)"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Dashboard switcher dropdown: full-width on mobile so it doesn't
+     overlap surrounding header widgets. */
+  select.dashboard-mode-toggle {
+    max-width: 100% !important;
+    width: 100%;
+  }
+
+  /* Hide back-buttons everywhere — phones already have a hardware /
+     gesture back. The .btn-back marker class is added on each back
+     anchor/button in the components, and #page-back-btn is the global
+     header-injected back button from utils.js (updateBackButton). */
+  .btn-back,
+  a.btn-back,
+  button.btn-back,
+  #page-back-btn {
+    display: none !important;
+  }
+
+  /* Optional opt-out / opt-in helpers for component-level fine-tuning. */
+  .mobile-hide   { display: none !important; }
+  .mobile-block  { display: block !important; }
+  .mobile-stack  { flex-direction: column !important; }
+}

@@ -6,6 +6,31 @@ sits at the top.
 
 ---
 
+## v1.0.13 — 2026-05-02
+
+**Mobile responsiveness pass**
+
+- Admin module no longer cramps the content pane on a phone: the
+  Settings sub-sidebar now scrolls horizontally above the content
+  instead of stealing 230px of width, and the top tab bar (Audit /
+  Settings / Broker Profiles / Products / Data Breach) wraps into a
+  horizontal scroll strip rather than spilling onto multiple lines.
+- Dashboard switcher (Main / TCF) is now a dropdown instead of a row
+  of buttons, so it stops overlapping the header title on small
+  screens. Works the same way on desktop, just compacter.
+- ROA detail/form action buttons (Save / Mark Complete / Cancel)
+  stack vertically on mobile and each take the full width — no more
+  buttons getting cut off the edge of the screen.
+- Repeating row grids (alternatives, vehicle extras, excesses,
+  additional covers) collapse to a single column on mobile.
+- "← Back" links across Compliance, Workflows and Schedule are now
+  hidden on mobile (the device's hardware/gesture back covers it).
+  In-page wizard step-back buttons (Reports wizard) stay visible.
+- All inline `max-width` on detail-section cards is now overridden on
+  mobile so cards fill the viewport.
+
+---
+
 ## v1.0.12 — 2026-05-02
 
 **Release Notes Browser**

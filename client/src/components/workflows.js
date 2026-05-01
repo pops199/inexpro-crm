@@ -606,7 +606,7 @@ const Workflows = (() => {
 
           <div class="form-actions">
             ${canUserDelete && canUserDelete() ? `<button class="btn btn-danger" id="wf-delete-btn">Delete</button>` : ''}
-            <a href="#/workflows" class="btn btn-secondary">← Back to Workflows</a>
+            <a href="#/workflows" class="btn btn-secondary btn-back">← Back to Workflows</a>
           </div>
         </div>`;
 
