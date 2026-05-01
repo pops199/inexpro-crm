@@ -1,8 +1,18 @@
-version: "3.8"
-
 services:
   app:
-    build: .
+    # ── Build directly from the GitHub repo ────────────────────────────
+    # No local clone required on the server. Compose fetches the named
+    # ref into a temporary build context and runs the Dockerfile.
+    #
+    # `#main` pins to the main branch; change to `#v1.0.1` (or any tag)
+    # to deploy a specific release. The repo is public so no auth is
+    # needed.
+    #
+    # To pull a newer commit / release, run:
+    #   docker compose build --no-cache app && docker compose up -d
+    build:
+      context: https://github.com/pops199/inexpro-crm.git#main
+    image: inexpro-crm:latest
     container_name: inexpro-crm
     restart: unless-stopped
     ports:
@@ -15,31 +25,18 @@ services:
       #   /crm-data/client/uploads         ← user-uploaded documents
       #   /crm-data/client/reports         ← generated PDFs / CSVs
       - /crm-data:/crm-data
-      # Host-mounted signatures folder. Drop PNG/JPG files here to make
-      # them selectable as per-user email signatures without rebuilding.
-      - ./signatures:/app/signatures
-      # ── In-app self-update support ──────────────────────────────
-      # Bind-mounting the project root makes `git pull` inside the
-      # container persist across restarts. Without this, the in-app
-      # update button cannot upgrade a Docker deployment because the
-      # image filesystem is reset on every restart.
-      #
-      # The named volume `app_node_modules` is layered on top of the
-      # bind-mount so the image's Alpine-compatible node_modules are NOT
-      # shadowed by the (empty) host tree — that shadowing is what causes
-      # `502 Bad Gateway` errors right after enabling the bind-mount.
-      #
-      # Steps to enable on the server:
-      #   1. `git clone https://github.com/pops199/inexpro-crm.git ~/docker/inexpro-crm`
-      #   2. Uncomment the two lines below
-      #   3. `cd ~/docker/inexpro-crm && docker compose up -d --build`
-      # - .:/app
-      # - app_node_modules:/app/node_modules
+      # Optional: host-side signatures folder. Drop PNG/JPG files here
+      # to make them selectable as per-user email signatures without
+      # rebuilding. Comment out if you don't need it; the image ships
+      # with a (possibly empty) /app/signatures already.
+      # - /opt/inexpro-signatures:/app/signatures
     environment:
       - NODE_ENV=production
       - TZ=Africa/Johannesburg
       - PORT=3000
       - SESSION_SECRET=${SESSION_SECRET:-change-this-to-a-long-random-string}
+      - DOCUMENT_ENCRYPTION_KEY=${DOCUMENT_ENCRYPTION_KEY:-change-this-to-a-separate-long-random-string}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - DB_PATH=/crm-data/server/db/inexpro.db
       - UPLOAD_PATH=/crm-data/client/uploads
       - REPORTS_PATH=/crm-data/client/reports
@@ -62,9 +59,3 @@ services:
   #     - ./certs:/etc/nginx/certs:ro
   #   depends_on:
   #     - app
-
-# Named volume that holds /app/node_modules so the bind-mounted host
-# tree doesn't shadow the image's pre-built (Alpine-native) modules.
-# Only used when the self-update bind-mount above is enabled.
-volumes:
-  app_node_modules:

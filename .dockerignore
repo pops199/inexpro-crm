@@ -1,18 +1,39 @@
+# What NOT to send into the Docker build context.
+#
+# .git is intentionally NOT excluded — the in-app updater needs it
+# inside the runtime image so `git fetch` / `git checkout` work.
+
 node_modules
 npm-debug.log
+
+# Secrets and live data
 .env
-.git
-.gitignore
-.claude/
-.planning/
-*.md
-*.jpg
-*.csv
-uploads/
-reports/
+*.db
+*.db-shm
+*.db-wal
+*.bak
+*.bak.*
 server/db/*.db
 server/db/*.db-shm
 server/db/*.db-wal
 server/db/sessions.db
 server.log
+*.log
 certs/
+
+# Local working notes / Claude OS state — not for the image
+.claude/
+.planning/
+.update-snapshots/
+.update-lock
+
+# Client-data folders (POPIA — never bake into image)
+uploads/
+reports/
+signatures/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
