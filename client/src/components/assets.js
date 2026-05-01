@@ -980,10 +980,10 @@ const Assets = (() => {
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label">Policy Section
+                    <label class="form-label required">Policy Section
                       <span style="font-size:.72rem;color:var(--text-muted);font-weight:normal;margin-left:.3rem;">filtered by asset type</span>
                     </label>
-                    <select name="asset_section" class="form-control">
+                    <select name="asset_section" id="ast-section-select" class="form-control" required>
                       ${(() => {
                         const allowed = SECTIONS_BY_TYPE[d.asset_type] || [];
                         const placeholder = d.asset_type
@@ -1697,6 +1697,16 @@ const Assets = (() => {
             }
             return;
           }
+          // Policy Section gate — every asset must be classified under a section.
+          const sectionSelect = document.getElementById('ast-section-select');
+          if (!sectionSelect || !(sectionSelect.value || '').trim()) {
+            if (sectionSelect) {
+              sectionSelect.style.borderColor = '#c0392b';
+              sectionSelect.focus();
+            }
+            showToast('Select a Policy Section before saving the asset.', 'error');
+            return;
+          }
           if (btn) btn.disabled = true;
           const data = serializeForm(formEl);
           // Serialize vehicle extras as JSON
@@ -1962,7 +1972,17 @@ const Assets = (() => {
           <!-- Address (Building / Risk) -->
           ${(d.address || d.city) ? `
           <div class="detail-section card">
-            <div class="detail-section-title">${['Motor','Goods in Transit','Marine','Aviation'].includes(d.asset_type) ? 'Risk Address' : 'Building Address'}</div>
+            <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
+              ${['Motor','Goods in Transit','Marine','Aviation'].includes(d.asset_type) ? 'Risk Address' : 'Building Address'}
+              ${(() => {
+                const addrParts = [d.address, d.complex_building, d.suburb, d.city, d.province, d.postal_code, d.country].filter(Boolean);
+                const addrUrl = addrParts.length ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addrParts.join(', '))}` : null;
+                const gpsUrl  = (d.gps_lat && d.gps_lng) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.gps_lat + ',' + d.gps_lng)}` : null;
+                return `
+                  ${addrUrl ? `<a href="${addrUrl}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.75rem;">📍 Open in Google Maps</a>` : ''}
+                  ${gpsUrl  ? `<a href="${gpsUrl}"  target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="${addrUrl ? '' : 'margin-left:auto;'}font-size:.75rem;">🌐 Open GPS</a>` : ''}`;
+              })()}
+            </div>
             <div class="detail-grid">
               ${field('Street Address', esc(d.address || '—'))}
               ${field('Complex / Building', esc(d.complex_building || '—'))}

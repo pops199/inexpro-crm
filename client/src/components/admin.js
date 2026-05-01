@@ -532,7 +532,7 @@ const Admin = (() => {
     // Sidebar items: Export sits at the bottom. Hidden for non-full-admin users.
     const sections = [
       { id: 'appearance',        label: 'Appearance',            icon: '◐', show: true,        bottom: false },
-      { id: 'company',           label: 'Company Details',       icon: '◫', show: isFullAdmin, bottom: false },
+      { id: 'company',           label: 'Company Details',       icon: '◫', show: true,        bottom: false },
       { id: 'users',             label: 'User Management',       icon: '●', show: isFullAdmin, bottom: false },
       { id: 'broker-fitness',    label: 'Broker Fitness Alerts', icon: '⚑', show: isFullAdmin, bottom: false },
       { id: 'email',             label: 'Email Settings',        icon: '✉', show: isFullAdmin, bottom: false },
@@ -1688,11 +1688,13 @@ const Admin = (() => {
     _companyPaneInited = true;
     const target = document.getElementById('company-pane-container');
     if (!target) return;
+    const canEdit = window.currentUser?.role === 'admin' || window.currentUser?.role === 'admin_only';
+    const ro = canEdit ? '' : 'readonly disabled';
     let data = {};
     try { data = await Api.settings.companyGet(); } catch (_) { data = {}; }
     target.innerHTML = `
       <div class="detail-section card" style="max-width:920px;">
-        <div class="detail-section-title">Company Details</div>
+        <div class="detail-section-title">Company Details${canEdit ? '' : ' <span style="font-size:.72rem;color:var(--text-muted);font-weight:normal;margin-left:.4rem;">(view only — admin to edit)</span>'}</div>
         <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .85rem;">
           These details appear on letterheads, ROAs, schedules and other generated
           documents. Anything left blank is simply omitted from the output.
@@ -1701,39 +1703,39 @@ const Admin = (() => {
           <div class="form-grid form-grid-2">
             <div class="form-group">
               <label class="form-label">Legal entity name</label>
-              <input class="form-control" name="legal_name" value="${esc(data.legal_name || '')}">
+              <input class="form-control" name="legal_name" value="${esc(data.legal_name || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Trading as</label>
-              <input class="form-control" name="trading_name" value="${esc(data.trading_name || '')}">
+              <input class="form-control" name="trading_name" value="${esc(data.trading_name || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">CIPC / Registration #</label>
-              <input class="form-control" name="cipc_number" value="${esc(data.cipc_number || '')}">
+              <input class="form-control" name="cipc_number" value="${esc(data.cipc_number || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">VAT number</label>
-              <input class="form-control" name="vat_number" value="${esc(data.vat_number || '')}">
+              <input class="form-control" name="vat_number" value="${esc(data.vat_number || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">FSP licence number</label>
-              <input class="form-control" name="fsp_number" value="${esc(data.fsp_number || '')}">
+              <input class="form-control" name="fsp_number" value="${esc(data.fsp_number || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Tax / Income tax #</label>
-              <input class="form-control" name="tax_number" value="${esc(data.tax_number || '')}">
+              <input class="form-control" name="tax_number" value="${esc(data.tax_number || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Phone</label>
-              <input class="form-control" name="phone" value="${esc(data.phone || '')}">
+              <input class="form-control" name="phone" value="${esc(data.phone || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Email</label>
-              <input class="form-control" type="email" name="email" value="${esc(data.email || '')}">
+              <input class="form-control" type="email" name="email" value="${esc(data.email || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Website</label>
-              <input class="form-control" name="website" value="${esc(data.website || '')}">
+              <input class="form-control" name="website" value="${esc(data.website || '')}" ${ro}>
             </div>
           </div>
 
@@ -1741,27 +1743,27 @@ const Admin = (() => {
           <div class="form-grid form-grid-2">
             <div class="form-group form-grid-span-2">
               <label class="form-label">Street address</label>
-              <input class="form-control" name="address_street" value="${esc(data.address_street || '')}">
+              <input class="form-control" name="address_street" value="${esc(data.address_street || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Suburb</label>
-              <input class="form-control" name="address_suburb" value="${esc(data.address_suburb || '')}">
+              <input class="form-control" name="address_suburb" value="${esc(data.address_suburb || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">City</label>
-              <input class="form-control" name="address_city" value="${esc(data.address_city || '')}">
+              <input class="form-control" name="address_city" value="${esc(data.address_city || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Province</label>
-              <input class="form-control" name="address_province" value="${esc(data.address_province || '')}">
+              <input class="form-control" name="address_province" value="${esc(data.address_province || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Postal code</label>
-              <input class="form-control" name="address_postal_code" value="${esc(data.address_postal_code || '')}">
+              <input class="form-control" name="address_postal_code" value="${esc(data.address_postal_code || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Country</label>
-              <input class="form-control" name="address_country" value="${esc(data.address_country || 'South Africa')}">
+              <input class="form-control" name="address_country" value="${esc(data.address_country || 'South Africa')}" ${ro}>
             </div>
           </div>
 
@@ -1769,28 +1771,29 @@ const Admin = (() => {
           <div class="form-grid form-grid-2">
             <div class="form-group form-grid-span-2">
               <label class="form-label">Postal line 1</label>
-              <input class="form-control" name="postal_line1" value="${esc(data.postal_line1 || '')}">
+              <input class="form-control" name="postal_line1" value="${esc(data.postal_line1 || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Postal line 2</label>
-              <input class="form-control" name="postal_line2" value="${esc(data.postal_line2 || '')}">
+              <input class="form-control" name="postal_line2" value="${esc(data.postal_line2 || '')}" ${ro}>
             </div>
             <div class="form-group">
               <label class="form-label">Postal code</label>
-              <input class="form-control" name="postal_code" value="${esc(data.postal_code || '')}">
+              <input class="form-control" name="postal_code" value="${esc(data.postal_code || '')}" ${ro}>
             </div>
           </div>
 
           <div class="detail-section-title" style="margin-top:1rem;display:flex;align-items:center;gap:.5rem;">
             Contact Persons
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.75rem;" onclick="Admin._addCompanyContact()">+ Add</button>
+            ${canEdit ? '<button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.75rem;" onclick="Admin._addCompanyContact()">+ Add</button>' : ''}
           </div>
           <div id="company-contacts"></div>
 
+          ${canEdit ? `
           <div style="display:flex;gap:.5rem;margin-top:1rem;align-items:center;">
             <button type="submit" class="btn btn-primary">Save Company Details</button>
             <span id="company-save-result" style="font-size:.85rem;"></span>
-          </div>
+          </div>` : ''}
         </form>
       </div>
 
@@ -1800,65 +1803,70 @@ const Admin = (() => {
           <span style="font-size:.78rem;color:var(--text-muted);font-weight:400;">(uploads/company/)</span>
         </div>
         <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .85rem;">
-          Upload registration certificates, FSP authorisation letters, BBBEE certificates,
-          insurer agreements, letterhead PDFs etc. — kept separate from client documents.
+          ${canEdit
+            ? 'Upload registration certificates, FSP authorisation letters, BBBEE certificates, insurer agreements, letterhead PDFs etc. — kept separate from client documents.'
+            : 'Company-level reference documents — registration certificates, FSP authorisation, BBBEE certificates, etc. View access only.'}
         </p>
+        ${canEdit ? `
         <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;align-items:center;">
           <input id="company-doc-file" type="file" class="form-control" style="flex:1;min-width:200px;">
           <button class="btn btn-primary" onclick="Admin._uploadCompanyDoc()">Upload</button>
-        </div>
+        </div>` : ''}
         <div id="company-doc-list"></div>
       </div>
     `;
 
     // Render contact-person rows
-    _renderCompanyContacts(Array.isArray(data.contacts) ? data.contacts : []);
+    _renderCompanyContacts(Array.isArray(data.contacts) ? data.contacts : [], canEdit);
 
-    // Wire submit
-    document.getElementById('company-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      const payload = {};
-      for (const [k, v] of fd.entries()) {
-        if (k === 'contact_name' || k === 'contact_role' || k === 'contact_email' || k === 'contact_phone') continue;
-        payload[k] = (v || '').trim() || null;
-      }
-      payload.contacts = _collectCompanyContacts();
-      const result = document.getElementById('company-save-result');
-      try {
-        await Api.settings.companySave(payload);
-        if (result) result.innerHTML = '<span style="color:var(--success);">✓ Saved</span>';
-      } catch (err) {
-        if (result) result.innerHTML = `<span style="color:var(--danger);">${esc(err.message || 'Save failed')}</span>`;
-      }
-    });
+    // Wire submit (admins only — no submit button rendered for non-admins)
+    if (canEdit) {
+      document.getElementById('company-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const payload = {};
+        for (const [k, v] of fd.entries()) {
+          if (k === 'contact_name' || k === 'contact_role' || k === 'contact_email' || k === 'contact_phone') continue;
+          payload[k] = (v || '').trim() || null;
+        }
+        payload.contacts = _collectCompanyContacts();
+        const result = document.getElementById('company-save-result');
+        try {
+          await Api.settings.companySave(payload);
+          if (result) result.innerHTML = '<span style="color:var(--success);">✓ Saved</span>';
+        } catch (err) {
+          if (result) result.innerHTML = `<span style="color:var(--danger);">${esc(err.message || 'Save failed')}</span>`;
+        }
+      });
+    }
 
-    _refreshCompanyDocs();
+    _refreshCompanyDocs(canEdit);
   }
 
-  function _renderCompanyContacts(rows) {
+  function _renderCompanyContacts(rows, canEdit = true) {
     const host = document.getElementById('company-contacts');
     if (!host) return;
     if (!rows.length) {
       host.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;margin:.25rem 0;">No contact persons added.</p>';
       return;
     }
-    host.innerHTML = rows.map((c, i) => _companyContactRowHtml(c, i)).join('');
+    host.innerHTML = rows.map((c, i) => _companyContactRowHtml(c, i, canEdit)).join('');
   }
 
-  function _companyContactRowHtml(c, i) {
+  function _companyContactRowHtml(c, i, canEdit = true) {
+    const ro = canEdit ? '' : 'readonly disabled';
     return `
       <div class="company-contact-row" data-idx="${i}"
            style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;align-items:center;">
         <input type="text" class="form-control cc-name"  placeholder="Name"
-               value="${esc(c.name || '')}"  style="flex:2;min-width:140px;">
+               value="${esc(c.name || '')}"  style="flex:2;min-width:140px;" ${ro}>
         <input type="text" class="form-control cc-role"  placeholder="Role / Title"
-               value="${esc(c.role || '')}"  style="flex:2;min-width:120px;">
+               value="${esc(c.role || '')}"  style="flex:2;min-width:120px;" ${ro}>
         <input type="email" class="form-control cc-email" placeholder="Email"
-               value="${esc(c.email || '')}" style="flex:2;min-width:160px;">
+               value="${esc(c.email || '')}" style="flex:2;min-width:160px;" ${ro}>
         <input type="text" class="form-control cc-phone" placeholder="Phone"
-               value="${esc(c.phone || '')}" style="flex:1.5;min-width:120px;">
-        <button type="button" class="btn btn-sm btn-danger" onclick="Admin._removeCompanyContact(${i})">✕</button>
+               value="${esc(c.phone || '')}" style="flex:1.5;min-width:120px;" ${ro}>
+        ${canEdit ? `<button type="button" class="btn btn-sm btn-danger" onclick="Admin._removeCompanyContact(${i})">✕</button>` : ''}
       </div>`;
   }
 
@@ -1898,7 +1906,7 @@ const Admin = (() => {
     _renderCompanyContacts(raw);
   }
 
-  async function _refreshCompanyDocs() {
+  async function _refreshCompanyDocs(canEdit = true) {
     const list = document.getElementById('company-doc-list');
     if (!list) return;
     try {
@@ -1926,7 +1934,7 @@ const Admin = (() => {
               <td>${esc(fmtDate(f.uploaded_at))}</td>
               <td>
                 <a href="${esc(f.view_url || (f.url + '/view'))}" class="btn btn-xs btn-secondary" target="_blank" rel="noopener">View</a>
-                <button class="btn btn-xs btn-danger" onclick="Admin._deleteCompanyDoc('${esc(f.filename)}')">Delete</button>
+                ${canEdit ? `<button class="btn btn-xs btn-danger" onclick="Admin._deleteCompanyDoc('${esc(f.filename)}')">Delete</button>` : ''}
               </td>
             </tr>`).join('')}
         </tbody>

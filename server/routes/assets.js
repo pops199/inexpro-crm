@@ -263,8 +263,8 @@ router.post('/', (req, res) => {
     if (!b.contact_id && !b.account_id) {
       return res.status(400).json({ error: 'Select a Contact or an Account before saving the asset.' });
     }
-    // A policy section must be selected when the asset is linked to a policy.
-    if (b.policy_id && !b.policy_section_id && !(b.asset_section && String(b.asset_section).trim())) {
+    // A policy section is mandatory for every asset.
+    if (!b.policy_section_id && !(b.asset_section && String(b.asset_section).trim())) {
       return res.status(422).json({ error: 'Select a Policy Section before saving the asset.' });
     }
     const addrErr = validateBuildingAddress(b);
@@ -342,11 +342,10 @@ router.put('/:id', (req, res) => {
     const addrErr = validateBuildingAddress(merged);
     if (addrErr) return res.status(422).json({ error: addrErr });
 
-    // Policy section is required when the asset is linked to a policy.
-    const mergedPolicyId        = b.policy_id         !== undefined ? b.policy_id         : existing.policy_id;
+    // Policy section is mandatory for every asset.
     const mergedPolicySectionId = b.policy_section_id !== undefined ? b.policy_section_id : existing.policy_section_id;
     const mergedAssetSection    = b.asset_section     !== undefined ? b.asset_section     : existing.asset_section;
-    if (mergedPolicyId && !mergedPolicySectionId && !(mergedAssetSection && String(mergedAssetSection).trim())) {
+    if (!mergedPolicySectionId && !(mergedAssetSection && String(mergedAssetSection).trim())) {
       return res.status(422).json({ error: 'Select a Policy Section before saving the asset.' });
     }
 

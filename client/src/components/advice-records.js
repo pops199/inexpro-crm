@@ -1223,7 +1223,6 @@ const AdviceRecords = (() => {
                 <p><strong>Name:</strong> ${contactName}</p>
                 ${contact && contact.email        ? `<p><strong>Email:</strong> ${contact.email}</p>` : ''}
                 ${contact && contact.mobile       ? `<p><strong>Mobile:</strong> ${contact.mobile}</p>` : ''}
-                ${contact && contact.sa_id_number ? `<p><strong>ID Number:</strong> ${contact.sa_id_number}</p>` : ''}
               </td>
               <td>
                 <h3>Adviser Details</h3>

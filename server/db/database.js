@@ -1288,6 +1288,22 @@ function initDb() {
     database.prepare('CREATE INDEX IF NOT EXISTS idx_bfas_profile ON broker_fitness_alerts_sent(broker_profile_id)').run();
   } catch (_) {}
 
+  // ── Migration: ROA acknowledgement reminder dispatch tracking ────────
+  try {
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS roa_acknowledgement_reminders_sent (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        advice_record_id INTEGER NOT NULL REFERENCES advice_records(id) ON DELETE CASCADE,
+        reminder_stage INTEGER NOT NULL,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(advice_record_id, reminder_stage)
+      )
+    `).run();
+    database.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_roa_ack_reminders_record ON roa_acknowledgement_reminders_sent(advice_record_id)'
+    ).run();
+  } catch (_) {}
+
   // ── Migration: in-app notifications ──────────────────────────────────
   try {
     database.prepare(`

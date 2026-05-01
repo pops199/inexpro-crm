@@ -896,7 +896,6 @@ router.post('/:id/send-roa', requireAuth, async (req, res) => {
       c.first_name || ' ' || c.last_name AS contact_name,
       c.email   AS contact_email,
       c.mobile  AS contact_mobile,
-      c.sa_id_number AS contact_id_number,
       b.full_name  AS broker_name,
       ce.disclosure_timestamp  AS engagement_disclosure_ts,
       dsc.full_name            AS engagement_disclosing_broker
@@ -1070,7 +1069,6 @@ router.post('/:id/send-roa', requireAuth, async (req, res) => {
       lY = colField('Name',      d.contact_name,      col1X, lY);
       if (d.contact_email)     lY = colField('Email',     d.contact_email,     col1X, lY);
       if (d.contact_mobile)    lY = colField('Mobile',    d.contact_mobile,    col1X, lY);
-      if (d.contact_id_number) lY = colField('ID Number', d.contact_id_number, col1X, lY);
 
       // ── Right column ──────────────────────────────────────────
       pdfDoc.font('Helvetica-Bold').fontSize(BODY_SZ).fillColor(PRIMARY)

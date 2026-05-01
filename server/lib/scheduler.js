@@ -15,6 +15,7 @@
 const { getDb } = require('../db/database');
 const { sendMail } = require('./mailer');
 const fitness = require('./broker-fitness-alerts');
+const roaAck = require('./roa-acknowledgement-reminders');
 const { notify } = require('./notifications');
 
 let _scanTimer        = null;
@@ -85,6 +86,12 @@ function runScan(reason) {
     console.log(`[commission-scan] ${reason} — policies=${cs.policies || 0} notifications_created=${cs.notifications_created || 0}`);
   } catch (err) {
     console.error('[commission-scan] error:', err.message);
+  }
+  try {
+    const r = roaAck.processRoaReminders();
+    console.log(`[roa-ack-reminder] ${reason} — fired=${r.fired} suppressed=${r.suppressed} candidates=${r.evaluated}`);
+  } catch (err) {
+    console.error('[roa-ack-reminder] error:', err.message);
   }
 }
 

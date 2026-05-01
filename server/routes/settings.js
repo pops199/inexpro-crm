@@ -180,8 +180,8 @@ function sendCompanyDocument(req, res, disposition) {
   return res.send(fileBuffer);
 }
 
-// GET /api/settings/company — company details object (admin or admin_only)
-router.get('/company', requireAuth, requireAdminAny, (req, res) => {
+// GET /api/settings/company — company details object (any authenticated user can view)
+router.get('/company', requireAuth, (req, res) => {
   const db = getDb();
   const row = db.prepare("SELECT value FROM system_settings WHERE key = 'company_details'").get();
   let value = {};
@@ -208,8 +208,8 @@ router.put('/company', requireAuth, requireAdminAny, (req, res) => {
   res.json({ message: 'Company details saved' });
 });
 
-// GET /api/settings/company/documents — list uploaded company files
-router.get('/company/documents', requireAuth, requireAdminAny, (_req, res) => {
+// GET /api/settings/company/documents — list uploaded company files (any authenticated user)
+router.get('/company/documents', requireAuth, (_req, res) => {
   try {
     if (!fsMod.existsSync(COMPANY_UPLOAD_DIR)) return res.json([]);
     const files = fsMod.readdirSync(COMPANY_UPLOAD_DIR)
@@ -262,12 +262,12 @@ router.post('/company/documents', requireAuth, requireAdminAny,
   }
 );
 
-// GET /api/settings/company/documents/:name — download
-router.get('/company/documents/:name/view', requireAuth, requireAdminAny, (req, res) => {
+// GET /api/settings/company/documents/:name — download / view (any authenticated user)
+router.get('/company/documents/:name/view', requireAuth, (req, res) => {
   return sendCompanyDocument(req, res, 'inline');
 });
 
-router.get('/company/documents/:name', requireAuth, requireAdminAny, (req, res) => {
+router.get('/company/documents/:name', requireAuth, (req, res) => {
   return sendCompanyDocument(req, res, 'attachment');
 });
 
