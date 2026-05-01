@@ -12,6 +12,14 @@ services:
     #   docker compose build --no-cache app && docker compose up -d
     build:
       context: https://github.com/pops199/inexpro-crm.git#main
+      args:
+        # BuildKit drops the .git directory from a remote-Git context by
+        # default. The in-app updater (Admin → Settings → System Update)
+        # needs .git inside the runtime image so it can `git fetch` /
+        # `git checkout` against tagged releases. This flag tells BuildKit
+        # to keep .git in the build context so the Dockerfile's `COPY .git/`
+        # actually finds something.
+        BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
     image: inexpro-crm:latest
     container_name: inexpro-crm
     restart: unless-stopped

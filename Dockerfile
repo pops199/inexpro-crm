@@ -76,7 +76,17 @@ ENV NODE_ENV=production \
 
 EXPOSE 3000
 
+# Healthcheck: hit the SPA shell at `/` rather than an authed API endpoint.
+# `/api/auth/me` returns 401 when unauthenticated, and busybox `wget`
+# treats 4xx as a non-zero exit, so the container would thrash-loop as
+# "unhealthy". `/` always returns 200 (the index.html SPA bootstrap)
+# whenever the server is alive.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/auth/me || exit 1
+  CMD wget -qO- http://localhost:3000/ >/dev/null || exit 1
 
-CMD ["node", "server/app.js"]
+# CMD: ensure the persistent data dirs exist before opening the SQLite
+# DB. The /crm-data bind mount on a fresh server is empty, masking the
+# `RUN mkdir` performed during the image build, so we recreate the tree
+# at runtime against the (now-mounted) volume. Then exec node so PID 1
+# is the server process and signals propagate cleanly.
+CMD ["sh", "-c", "mkdir -p \"$(dirname \"$DB_PATH\")\" \"$UPLOAD_PATH\" \"$REPORTS_PATH\" && exec node server/app.js"]
