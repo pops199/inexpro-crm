@@ -93,9 +93,9 @@ const Contacts = (() => {
     created_at:        c => c.created_at ? Utils.formatDate(c.created_at) : '—',
     updated_at:        c => c.updated_at ? Utils.formatDate(c.updated_at) : '—',
     actions:           c => `
-      <a href="#/contacts/${c.id}"          class="btn btn-xs btn-outline">View</a>
-      <a href="#/contacts/${c.id}/edit"     class="btn btn-xs btn-primary">Edit</a>
-      <button class="btn btn-xs btn-danger js-delete" data-id="${c.id}" data-name="${Utils.esc(`${c.last_name || ''}, ${c.first_name || ''}`)}">Delete</button>`,
+      <a href="#/contacts/${c.id}"          class="btn btn-sm btn-secondary">View</a>
+      <a href="#/contacts/${c.id}/edit"     class="btn btn-sm btn-primary">Edit</a>
+      <button class="btn btn-sm btn-danger js-delete" data-id="${c.id}" data-name="${Utils.esc(`${c.last_name || ''}, ${c.first_name || ''}`)}">Delete</button>`,
   };
 
   let _catalog = null;

@@ -371,9 +371,9 @@ const Assets = (() => {
     updated_at:          a => a.updated_at ? formatDate(a.updated_at) : '—',
     actions:             a => `
       <div style="display:flex;gap:.25rem;flex-wrap:nowrap;white-space:nowrap;">
-        <a href="#/assets/${a.id}" class="btn btn-xs btn-secondary">View</a>
-        <a href="#/assets/${a.id}/edit" class="btn btn-xs btn-primary">Edit</a>
-        <button class="btn btn-xs btn-danger" data-delete-id="${a.id}" data-delete-name="${esc(a.asset_name || '')}">Delete</button>
+        <a href="#/assets/${a.id}" class="btn btn-sm btn-secondary">View</a>
+        <a href="#/assets/${a.id}/edit" class="btn btn-sm btn-primary">Edit</a>
+        <button class="btn btn-sm btn-danger" data-delete-id="${a.id}" data-delete-name="${esc(a.asset_name || '')}">Delete</button>
       </div>`,
   };
 

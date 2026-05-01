@@ -89,9 +89,9 @@ const Accounts = (() => {
     created_at:           a => a.created_at ? Utils.formatDate(a.created_at) : '—',
     updated_at:           a => a.updated_at ? Utils.formatDate(a.updated_at) : '—',
     actions:              a => `
-      <a href="#/accounts/${a.id}"        class="btn btn-xs btn-outline">View</a>
-      <a href="#/accounts/${a.id}/edit"   class="btn btn-xs btn-primary">Edit</a>
-      <button class="btn btn-xs btn-danger js-delete" data-id="${a.id}" data-name="${Utils.esc(a.account_name || '')}">Delete</button>`,
+      <a href="#/accounts/${a.id}"        class="btn btn-sm btn-secondary">View</a>
+      <a href="#/accounts/${a.id}/edit"   class="btn btn-sm btn-primary">Edit</a>
+      <button class="btn btn-sm btn-danger js-delete" data-id="${a.id}" data-name="${Utils.esc(a.account_name || '')}">Delete</button>`,
   };
 
   let _acctCatalog = null;
