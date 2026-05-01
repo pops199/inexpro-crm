@@ -713,6 +713,15 @@ const Api = {
     systemApplyUpdate(opts)    { return apiFetch('POST', '/api/admin/system/apply', opts || {}); },
     systemRollback(snapshotId) { return apiFetch('POST', '/api/admin/system/rollback', snapshotId ? { snapshotId } : {}); },
     systemSnapshots()          { return apiFetch('GET',  '/api/admin/system/snapshots'); },
+    /** Triggers a browser download of a fresh DB snapshot. Not a JSON call. */
+    systemBackupUrl()          { return '/api/admin/system/backup'; },
+    /** Uploads a .db file to replace the live database. The current DB
+     *  is snapshotted first so the restore can be rolled back. */
+    systemRestore(file) {
+      const fd = new FormData();
+      fd.append('dbfile', file);
+      return apiFetch('POST', '/api/admin/system/restore', fd, { isFormData: true });
+    },
   },
 
   // ── POPIA ─────────────────────────────────────────────────────

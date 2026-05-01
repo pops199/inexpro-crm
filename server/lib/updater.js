@@ -118,6 +118,92 @@ function workingTreeDirty() {
   return status.length > 0;
 }
 
+/**
+ * Returns release notes for `toTag` plus the commit log between the
+ * running version and `toTag`. Used by the admin UI to show users what
+ * an update will actually contain *before* they click Apply.
+ *
+ *   {
+ *     to_tag: 'v1.0.1',
+ *     to_tag_date: '2026-05-01',
+ *     to_tag_message: '<annotated tag body, plain text>',
+ *     from_ref: 'v1.0.0' | <commit sha> | null,
+ *     commits: [
+ *       { sha: 'abcd123', subject: 'fix: …', date: '2026-05-01' },
+ *       …
+ *     ],
+ *     truncated: false,    // true if there are >50 commits and we capped the list
+ *   }
+ *
+ * Errors are caught and surfaced as { error } so the UI degrades
+ * gracefully — a missing changelog should never block the update flow.
+ */
+function getChangelog(fromRef, toTag) {
+  const result = {
+    to_tag: toTag,
+    to_tag_date: null,
+    to_tag_message: null,
+    from_ref: fromRef || null,
+    commits: [],
+    truncated: false,
+    error: null,
+  };
+  if (!toTag) {
+    result.error = 'No release tag to summarise.';
+    return result;
+  }
+  try {
+    // Annotated tag message — strip the leading "tag <name>" / signature
+    // headers `git cat-file` would include. `git for-each-ref` with
+    // `%(contents:body)` returns just the user-supplied annotation.
+    const ref = `refs/tags/${toTag}`;
+    result.to_tag_message = git([
+      'for-each-ref',
+      '--format=%(contents:subject)%0a%0a%(contents:body)',
+      ref,
+    ]).trim() || null;
+    result.to_tag_date = git([
+      'for-each-ref',
+      '--format=%(taggerdate:short)',
+      ref,
+    ]).trim() || null;
+
+    // Commit log between the running ref and the new tag. If `fromRef`
+    // is missing or unreachable, fall back to the last 20 commits leading
+    // up to the tag so the UI still shows something useful.
+    const MAX = 50;
+    let range = `${toTag}~50..${toTag}`;   // safe default
+    if (fromRef) {
+      try {
+        // Verify the from-ref exists locally; if not, the `..` range
+        // throws.
+        git(['rev-parse', '--verify', `${fromRef}^{commit}`]);
+        range = `${fromRef}..${toTag}`;
+      } catch (_) {
+        // fall through with default range
+      }
+    }
+    const raw = git([
+      'log',
+      `--max-count=${MAX + 1}`,
+      '--pretty=format:%h%x09%cs%x09%s',
+      range,
+    ]);
+    const lines = raw.split('\n').filter(Boolean);
+    if (lines.length > MAX) {
+      result.truncated = true;
+      lines.length = MAX;
+    }
+    result.commits = lines.map(line => {
+      const [sha, date, ...rest] = line.split('\t');
+      return { sha, date, subject: rest.join('\t') };
+    });
+  } catch (err) {
+    result.error = err.message;
+  }
+  return result;
+}
+
 // ── Snapshot helpers ────────────────────────────────────────────────────
 
 function ensureSnapshotDir() {
@@ -211,6 +297,7 @@ function getStatus(db, { runMigrationsModule }) {
     locked: fs.existsSync(LOCK_FILE),
     lock_info: fs.existsSync(LOCK_FILE) ? readLock() : null,
     snapshots: listSnapshots(),
+    changelog: null,
     error: null,
   };
   if (!status.is_git_repo) {
@@ -228,6 +315,13 @@ function getStatus(db, { runMigrationsModule }) {
                                   semverCompareTag(status.current_tag, status.latest_tag) < 0);
     if (runMigrationsModule && typeof runMigrationsModule.pendingMigrations === 'function') {
       status.pending_migrations = runMigrationsModule.pendingMigrations(db);
+    }
+    // Surface the changelog whenever we have a target tag — even when
+    // the user is already up-to-date, since they may want to read the
+    // notes for the release they're running.
+    if (status.latest_tag) {
+      const fromRef = status.current_tag || status.current_commit || null;
+      status.changelog = getChangelog(fromRef, status.latest_tag);
     }
   } catch (err) {
     status.error = err.message;
@@ -435,6 +529,7 @@ module.exports = {
   applyUpdate,
   rollback,
   listSnapshots,
+  getChangelog,
   // Exposed for tests:
   _internals: { parseSemver, semverCompareTag, latestReleaseTag, currentCommit, isGitRepo },
 };

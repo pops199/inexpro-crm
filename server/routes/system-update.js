@@ -10,10 +10,37 @@
  * trail discoverable in the existing audit module without a new schema.
  */
 const express = require('express');
+const fs   = require('fs');
+const os   = require('os');
+const path = require('path');
+const multer = require('multer');
+const Database = require('better-sqlite3');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const updater = require('../lib/updater');
 const migrate = require('../db/migrate');
+
+// Restore upload — accepts a single .db file up to 500 MB. Held in
+// memory rather than streamed to disk so we control exactly when (and
+// where) the bytes hit the filesystem; this avoids a half-uploaded file
+// being interpreted as a valid restore source.
+const restoreUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+  fileFilter: (_req, file, cb) => {
+    // Accept any extension — we validate the SQLite magic header below
+    // before doing anything destructive.
+    cb(null, true);
+  },
+});
+
+// SQLite file format: every database starts with the literal bytes
+// "SQLite format 3\0" (16 bytes). Anything else and we refuse to
+// touch the live DB.
+const SQLITE_MAGIC = Buffer.concat([Buffer.from('SQLite format 3','utf8'), Buffer.from([0x00])]);
+function looksLikeSqliteDb(buf) {
+  return Buffer.isBuffer(buf) && buf.length >= 100 && buf.slice(0, 16).equals(SQLITE_MAGIC);
+}
 
 const router = express.Router();
 
@@ -111,6 +138,225 @@ router.post('/rollback', (req, res) => {
 // ── GET /snapshots — list all DB snapshots ─────────────────────────────
 router.get('/snapshots', (req, res) => {
   res.json({ data: updater.listSnapshots() });
+});
+
+// ── GET /backup — download a consistent copy of the live DB ────────────
+//
+// Uses SQLite's `VACUUM INTO` to write a clean snapshot to a temp file
+// (same approach the in-app updater uses), then streams it to the
+// caller as an attachment. The temp file is deleted after the download
+// completes — successful or not.
+//
+// Audit-logged so the trail records *who* downloaded the DB and *when*
+// (POPIA: the live DB contains client PII; downloads are a controlled
+// admin action).
+router.get('/backup', (req, res) => {
+  const db = getDb();
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const filename = `inexpro-backup-${stamp}.db`;
+  const tmpPath = path.join(os.tmpdir(), filename);
+  const safePath = tmpPath.replace(/\\/g, '/').replace(/'/g, "''");
+
+  try {
+    db.prepare(`VACUUM INTO '${safePath}'`).run();
+  } catch (err) {
+    res.locals.logAudit({
+      action: 'BACKUP_FAILED',
+      module: 'system_update',
+      description: `Backup snapshot failed: ${err.message}`,
+    });
+    return res.status(500).json({ error: err.message });
+  }
+
+  const sizeBytes = (() => {
+    try { return fs.statSync(tmpPath).size; } catch (_) { return null; }
+  })();
+
+  res.locals.logAudit({
+    action: 'BACKUP_DOWNLOADED',
+    module: 'system_update',
+    newValue: { filename, size_bytes: sizeBytes },
+    description: `Downloaded DB backup ${filename}${sizeBytes ? ` (${Math.round(sizeBytes/1024/1024 * 10)/10} MB)` : ''}`,
+  });
+
+  res.download(tmpPath, filename, (err) => {
+    // Always clean up — successful download or aborted transfer.
+    fs.unlink(tmpPath, () => {});
+    if (err && !res.headersSent) {
+      console.error('Backup download error:', err.message);
+    }
+  });
+});
+
+// ── POST /restore — replace the live DB with an uploaded .db file ──────
+//
+// Validation chain:
+//   1. file present, magic header looks like SQLite
+//   2. open the upload as a sqlite db, run integrity_check (catches
+//      corruption / truncation)
+//   3. confirm the upload contains the `users` table — minimal sanity
+//      check that this is an Inexpro DB and not some random sqlite file
+//   4. snapshot the CURRENT live DB to .update-snapshots/ so this
+//      operation is reversible via the Rollback button
+//   5. close the live connection, swap files, remove WAL/SHM
+//   6. schedule a restart so the new DB is opened cleanly and migrations
+//      run against it
+//
+// Audit trail records who restored, source filename, source size, and
+// the snapshot id used as the pre-restore safety net.
+router.post('/restore', restoreUpload.single('dbfile'), (req, res) => {
+  if (!req.file || !req.file.buffer) {
+    return res.status(400).json({ error: 'No file uploaded (expected field "dbfile").' });
+  }
+
+  const buf = req.file.buffer;
+  const sourceName = req.file.originalname || 'unnamed';
+  const sourceSize = buf.length;
+
+  // 1. Magic header check — refuse anything that's not a SQLite file
+  if (!looksLikeSqliteDb(buf)) {
+    res.locals.logAudit({
+      action: 'RESTORE_FAILED', module: 'system_update',
+      description: `Restore rejected — file ${sourceName} is not a SQLite database`,
+    });
+    return res.status(400).json({ error: 'File is not a SQLite database (wrong magic header).' });
+  }
+
+  // Acquire the same lock used by updates so two admins can't race a
+  // restore against an update.
+  let locked = false;
+  try {
+    updater.applyUpdate; // ensure module loaded
+    if (fs.existsSync(path.join(path.resolve(__dirname, '..', '..'), '.update-lock'))) {
+      return res.status(409).json({ error: 'An update or restore is already in progress.' });
+    }
+    fs.writeFileSync(path.join(path.resolve(__dirname, '..', '..'), '.update-lock'),
+      JSON.stringify({ started_at: new Date().toISOString(), pid: process.pid, reason: `restore by user ${req.session?.userId}` }, null, 2));
+    locked = true;
+  } catch (err) {
+    return res.status(500).json({ error: `Could not acquire restore lock: ${err.message}` });
+  }
+
+  // Write the upload to a temp file so we can open it with better-sqlite3
+  // for validation — better-sqlite3 doesn't accept buffers, only paths.
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inexpro-restore-'));
+  const tmpUpload = path.join(tmpDir, 'upload.db');
+  fs.writeFileSync(tmpUpload, buf);
+
+  const result = {
+    started_at: new Date().toISOString(),
+    source_filename: sourceName,
+    source_size_bytes: sourceSize,
+    snapshot_id: null,
+    will_restart: false,
+    needs_manual_restart: false,
+    error: null,
+  };
+
+  const cleanup = () => {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    if (locked) {
+      try { fs.unlinkSync(path.join(path.resolve(__dirname, '..', '..'), '.update-lock')); } catch (_) {}
+      locked = false;
+    }
+  };
+
+  try {
+    // 2. integrity_check
+    const probe = new Database(tmpUpload, { readonly: true, fileMustExist: true });
+    let integrityOk = false;
+    let hasUsersTable = false;
+    try {
+      const ic = probe.pragma('integrity_check', { simple: true });
+      integrityOk = ic === 'ok';
+      // 3. sanity-check the schema
+      hasUsersTable = !!probe.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"
+      ).get();
+    } finally {
+      probe.close();
+    }
+    if (!integrityOk) throw new Error('Uploaded database failed SQLite integrity_check.');
+    if (!hasUsersTable) {
+      throw new Error('Uploaded database does not contain the expected `users` table — refusing to restore.');
+    }
+
+    // 4. Snapshot the current live DB so this restore is reversible.
+    //    Reuse the updater's snapshot dir + format so the same Rollback
+    //    UI catches it.
+    const liveDb = getDb();
+    const snapshots = updater.listSnapshots();
+    const before = snapshots.length;
+    // We piggy-back on the updater's snapshotDb logic by calling its
+    // applyUpdate-style snapshot helper indirectly: there's no public
+    // wrapper, so we reach in via the module's exported listSnapshots
+    // and create the snapshot manually here.
+    const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+    const SNAPSHOT_DIR = path.join(PROJECT_ROOT, '.update-snapshots');
+    if (!fs.existsSync(SNAPSHOT_DIR)) fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const snapId = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const snapDir = path.join(SNAPSHOT_DIR, snapId);
+    fs.mkdirSync(snapDir, { recursive: true });
+    const snapDbPath = path.join(snapDir, 'inexpro.db').replace(/\\/g, '/');
+    liveDb.prepare(`VACUUM INTO '${snapDbPath.replace(/'/g, "''")}'`).run();
+    fs.writeFileSync(path.join(snapDir, 'meta.json'), JSON.stringify({
+      id: snapId,
+      created_at: new Date().toISOString(),
+      reason: 'pre-restore',
+      restored_from: { filename: sourceName, size_bytes: sourceSize },
+      db_size_bytes: fs.statSync(snapDbPath).size,
+    }, null, 2));
+    result.snapshot_id = snapId;
+
+    // 5. Swap the live DB file. Close the connection first so the file
+    //    handle is released (Windows can't replace open files).
+    try { liveDb.close(); } catch (_) {}
+    const dbPath = path.resolve(process.env.DB_PATH || './server/db/inexpro.db');
+    for (const ext of ['', '-wal', '-shm']) {
+      const p = dbPath + ext;
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    fs.copyFileSync(tmpUpload, dbPath);
+  } catch (err) {
+    result.error = err.message;
+    res.locals.logAudit({
+      action: 'RESTORE_FAILED', module: 'system_update',
+      newValue: { source_filename: sourceName, snapshot_id: result.snapshot_id },
+      description: `Restore aborted: ${err.message}`,
+    });
+    cleanup();
+    return res.status(400).json(result);
+  }
+
+  // 6. Restart so the new DB is opened cleanly and any pending
+  //    migrations run against it on init. Lock will be released by the
+  //    new process. Clean up the temp upload but NOT the lock file
+  //    (scheduleRestart's exit will overwrite/remove it).
+  try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+
+  result.will_restart = true;
+  result.needs_manual_restart = !(process.env.DOCKER === '1' || process.env.PM2_HOME || process.env.NODEMON);
+
+  res.locals.logAudit({
+    action: 'RESTORE_APPLIED', module: 'system_update',
+    newValue: {
+      source_filename: sourceName, source_size_bytes: sourceSize,
+      snapshot_id: result.snapshot_id,
+    },
+    description: `Restored DB from upload ${sourceName} (${Math.round(sourceSize/1024/1024 * 10)/10} MB) — pre-restore snapshot ${result.snapshot_id}`,
+  });
+
+  res.json(result);
+
+  // Schedule restart after the response has been flushed.
+  setTimeout(() => {
+    console.log('[restore] restarting process to open the restored DB…');
+    process.exit(0);
+  }, 1500);
 });
 
 module.exports = router;

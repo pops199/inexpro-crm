@@ -540,6 +540,7 @@ const Admin = (() => {
       { id: 'security',          label: 'Security',              icon: '⚿', show: isFullAdmin, bottom: false },
       { id: 'dashboard-default', label: 'Dashboard Default',     icon: '▣', show: isFullAdmin, bottom: false },
       { id: 'system-update',     label: 'System Update',         icon: '⟳', show: isFullAdmin, bottom: true  },
+      { id: 'backup',            label: 'Backup & Restore',      icon: '⛁', show: isFullAdmin, bottom: true  },
       { id: 'export',            label: 'Export',                icon: '↧', show: isFullAdmin, bottom: true  },
     ].filter(s => s.show);
 
@@ -561,13 +562,17 @@ const Admin = (() => {
     const bottomItems = sections.filter(s =>  s.bottom);
 
     el.innerHTML = `
-      <div style="display:flex;gap:1.25rem;align-items:stretch;min-height:520px;">
+      <div style="display:flex;gap:1.25rem;align-items:flex-start;min-height:520px;">
 
-        <!-- Sub-sidebar -->
+        <!-- Sub-sidebar — sized by its own contents, sticky so it stays
+             visible when the active pane is taller than the viewport.
+             align-items:flex-start on the flex parent stops it from
+             stretching to match the pane height. -->
         <nav id="settings-subnav" style="
           width:230px;flex:none;background:var(--card-bg);
           border:1px solid var(--border);border-radius:var(--border-radius);
           padding:.75rem;display:flex;flex-direction:column;gap:.25rem;
+          position:sticky;top:1rem;align-self:flex-start;
         ">
           ${topItems.map((s, i) => sidebarItem(s, i === 0)).join('')}
           ${bottomItems.length ? `
@@ -905,6 +910,7 @@ const Admin = (() => {
               <div id="sys-update-status" style="font-size:.85rem;color:var(--text-muted);margin-bottom:.75rem;">
                 Loading status…
               </div>
+              <div id="sys-update-changelog" style="margin-bottom:.75rem;"></div>
               <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
                 <button class="btn btn-secondary btn-sm" id="sys-update-check"
                   onclick="Admin._systemCheckUpdates()">Check for Updates</button>
@@ -922,6 +928,57 @@ const Admin = (() => {
                 are retained automatically.
               </p>
               <div id="sys-update-snapshots" style="font-size:.82rem;">Loading…</div>
+            </div>
+          </section>
+
+          <!-- Backup & Restore -->
+          <section data-section-pane="backup" style="display:none;">
+            <div class="detail-section card" style="max-width:640px;">
+              <div class="detail-section-title">Backup</div>
+              <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .75rem;">
+                Download a consistent point-in-time copy of the live database
+                to your computer. The server keeps no copy of the file. Use
+                this before large data imports, or as a periodic offline
+                safety net — separate from the automatic snapshots taken on
+                each system update.
+              </p>
+              <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .75rem;">
+                <strong>POPIA reminder:</strong> the downloaded file contains
+                client PII (names, IDs, contact details, claims). Store it
+                encrypted, transfer it via secure channels only, and delete
+                local copies once they're no longer needed.
+              </p>
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" id="sys-backup-btn"
+                  onclick="Admin._systemDownloadBackup()">↧ Download Database Backup</button>
+                <span id="sys-backup-result" style="font-size:.8rem;color:var(--text-muted);"></span>
+              </div>
+            </div>
+
+            <div class="detail-section card" style="max-width:640px;margin-top:1.25rem;border-color:var(--danger,#c0392b);">
+              <div class="detail-section-title" style="color:var(--danger,#c0392b);">Restore from Backup</div>
+              <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;">
+                Replace the live database with a previously downloaded
+                <code>.db</code> file. <strong>This wipes any data added or
+                changed since that backup was taken.</strong>
+              </p>
+              <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .75rem;">
+                Before any swap, the current database is snapshotted to the
+                update-snapshots store, so you can undo a restore via
+                <em>System Update → Rollback</em> if you change your mind.
+                The server restarts automatically once the restore is
+                applied.
+              </p>
+              <div class="form-group">
+                <label class="form-label">Select <code>.db</code> file</label>
+                <input type="file" id="sys-restore-file" accept=".db,.sqlite,.sqlite3,application/x-sqlite3,application/vnd.sqlite3"
+                  class="form-control" style="padding:.4rem;">
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-danger btn-sm" id="sys-restore-btn"
+                  onclick="Admin._systemRestore()">⟲ Restore Database</button>
+                <span id="sys-restore-result" style="font-size:.8rem;"></span>
+              </div>
             </div>
           </section>
 
@@ -2371,6 +2428,7 @@ const Admin = (() => {
     const el = document.getElementById('sys-update-status');
     const apply = document.getElementById('sys-update-apply');
     if (!el) return;
+    _systemRenderChangelog(s);
     if (s.error) {
       el.innerHTML = `<span style="color:var(--danger);">${esc(s.error)}</span>`;
       if (apply) apply.disabled = true;
@@ -2400,6 +2458,51 @@ const Admin = (() => {
     }
     const rb = document.getElementById('sys-update-rollback');
     if (rb) rb.disabled = !(s.snapshots && s.snapshots.length) || s.locked;
+  }
+
+  function _systemRenderChangelog(s) {
+    const wrap = document.getElementById('sys-update-changelog');
+    if (!wrap) return;
+    const cl = s && s.changelog;
+    if (!cl || (!cl.to_tag_message && (!cl.commits || !cl.commits.length))) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const isUpdate = !!s.update_available;
+    const headerLabel = isUpdate
+      ? `What's in ${esc(cl.to_tag)}`
+      : `Release notes — ${esc(cl.to_tag)}`;
+    const dateBit = cl.to_tag_date ? ` <span style="color:var(--text-muted);font-weight:400;">· ${esc(cl.to_tag_date)}</span>` : '';
+    const messageBlock = cl.to_tag_message
+      ? `<pre style="white-space:pre-wrap;word-wrap:break-word;margin:.4rem 0 .6rem;padding:.6rem .8rem;background:var(--surface-secondary,#f8f9fa);border:1px solid var(--border,#dee2e6);border-radius:6px;font-family:inherit;font-size:.82rem;line-height:1.45;">${esc(cl.to_tag_message)}</pre>`
+      : '';
+    const commitsBlock = (cl.commits && cl.commits.length)
+      ? `<details style="margin-top:.4rem;">
+           <summary style="cursor:pointer;font-size:.82rem;color:var(--text-muted);">
+             ${cl.commits.length}${cl.truncated ? '+' : ''} commit${cl.commits.length === 1 ? '' : 's'}${isUpdate && cl.from_ref ? ` since ${esc(cl.from_ref.slice ? cl.from_ref.slice(0,7) : cl.from_ref)}` : ''}
+           </summary>
+           <ul style="margin:.4rem 0 0 .25rem;padding-left:1.1rem;font-size:.8rem;line-height:1.45;">
+             ${cl.commits.map(c => `
+               <li>
+                 <code style="color:var(--text-muted);">${esc((c.sha||'').slice(0,7))}</code>
+                 <span style="color:var(--text-muted);margin:0 .3rem;">${esc(c.date || '')}</span>
+                 ${esc(c.subject || '')}
+               </li>`).join('')}
+           </ul>
+           ${cl.truncated ? `<p style="color:var(--text-muted);font-size:.78rem;margin:.3rem 0 0;">List capped — older commits not shown.</p>` : ''}
+         </details>`
+      : '';
+    const errBlock = cl.error
+      ? `<div style="color:var(--danger);font-size:.78rem;margin-top:.3rem;">Changelog unavailable: ${esc(cl.error)}</div>`
+      : '';
+    wrap.innerHTML = `
+      <div style="border-left:3px solid ${isUpdate ? 'var(--warning, #f39c12)' : 'var(--border, #dee2e6)'};padding:.4rem 0 .4rem .85rem;">
+        <div style="font-weight:600;font-size:.88rem;">${headerLabel}${dateBit}</div>
+        ${messageBlock}
+        ${commitsBlock}
+        ${errBlock}
+      </div>
+    `;
   }
 
   async function _systemRefresh() {
@@ -2503,6 +2606,70 @@ const Admin = (() => {
     }
   }
 
+  async function _systemRestore() {
+    const input = document.getElementById('sys-restore-file');
+    const result = document.getElementById('sys-restore-result');
+    const btn = document.getElementById('sys-restore-btn');
+    if (!input || !input.files || !input.files.length) {
+      if (result) result.innerHTML = `<span style="color:var(--danger);">Choose a .db file first.</span>`;
+      return;
+    }
+    const file = input.files[0];
+    const sizeMb = Math.round(file.size / 1024 / 1024 * 10) / 10;
+    const msg = `Restore from "${file.name}" (${sizeMb} MB)?\n\n` +
+                `• Current database will be snapshotted first (revert via System Update → Rollback)\n` +
+                `• All data added or changed since the backup was taken will be REPLACED\n` +
+                `• Server will restart\n\n` +
+                `Continue?`;
+    if (!confirm(msg)) return;
+    if (btn) btn.disabled = true;
+    if (result) result.innerHTML = `<span style="color:var(--text-muted);">Uploading and validating ${esc(file.name)}…</span>`;
+    try {
+      const r = await Api.admin.systemRestore(file);
+      if (r.error) {
+        if (result) result.innerHTML = `<span style="color:var(--danger);">Restore failed: ${esc(r.error)}</span>`;
+        if (btn) btn.disabled = false;
+        return;
+      }
+      const restartNote = r.needs_manual_restart
+        ? '<br><strong>Restart the server manually</strong> for the restored DB to load.'
+        : '<br>Server is restarting — this page will reload in a few seconds.';
+      if (result) {
+        result.innerHTML = `
+          <span style="color:var(--success);">
+            ✅ Restored from ${esc(r.source_filename)}.
+            Pre-restore snapshot: <code>${esc(r.snapshot_id)}</code>${restartNote}
+          </span>`;
+      }
+      if (r.will_restart && !r.needs_manual_restart) {
+        setTimeout(() => window.location.reload(), 6000);
+      }
+    } catch (e) {
+      if (result) result.innerHTML = `<span style="color:var(--danger);">Restore request failed: ${esc(e.message)}</span>`;
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function _systemDownloadBackup() {
+    // Streams a freshly VACUUM-INTO'd copy of the DB. The browser
+    // handles the file save dialog. The server audit-logs the download.
+    const result = document.getElementById('sys-backup-result');
+    if (result) result.textContent = 'Preparing snapshot…';
+    // Using a hidden iframe avoids navigating away from the admin page
+    // when the response is a binary download. Works the same as a
+    // direct link click for download responses.
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = Api.admin.systemBackupUrl();
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      if (result) result.textContent = 'Download started — check your browser.';
+      // Clean up the iframe a bit later; the download will already have
+      // been initiated by the browser.
+      setTimeout(() => iframe.remove(), 60_000);
+    }, 1500);
+  }
+
   async function _systemRollback() {
     if (!confirm('Roll back to the most recent database snapshot and matching commit? Any data changes since the snapshot will be lost.')) return;
     const result = document.getElementById('sys-update-result');
@@ -2539,7 +2706,7 @@ const Admin = (() => {
   }
 
   return { render, users, auditLog, settings, dashboardDefault, brokerFitness, productsTab, dataBreachesTab, _openUserModal, _saveUser, _deleteUser, _closeModal,
-    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback };
+    _addBrokerCode, _updateBrokerCode, _deleteBrokerCode, _renderBrokerCodes, _saveSmtp, _testSmtp, _refreshTemplateList, _selectTemplate, _addTemplate, _saveTemplate, _deleteTemplate, _addFromRow, _removeFromRow, _saveFromList, _saveDashDefault, _exportModule, _sendNotification, _saveAlertCadence, _runAlertScanNow, _runDigestNow, _initSecurityPane, _initDashboardDefaultPane, _initUsersPane, _initCompanyPane, _addCompanyContact, _removeCompanyContact, _uploadCompanyDoc, _deleteCompanyDoc, _generateOtp, _copyOtp, _refreshOtps, _revokeOtp, _open2faModal, _enable2fa, _verify2faEnroll, _disable2fa, _viewRecoveryCodes, _regen2faCodes, _copy2faCodes, _initSystemUpdatePane, _systemCheckUpdates, _systemApplyUpdate, _systemRollback, _systemDownloadBackup, _systemRestore };
 })();
 // Expose on window so cross-component callers (e.g. BrokerProfiles in
 // compliance.js) can access Admin._renderBrokerCodes — top-level `const` does
