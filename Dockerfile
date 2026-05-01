@@ -5,6 +5,12 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
+# Build better-sqlite3 from source (instead of accepting whatever
+# prebuilt blob `prebuild-install` would download). On ARM64 hosts the
+# prebuild lookup sometimes resolves to an x64 musl binary, producing
+# `Exec format error` at runtime. Building from source guarantees the
+# native module matches the actual CPU + libc of this layer.
+ENV npm_config_build_from_source=true
 RUN npm ci --omit=dev
 
 # ── Production stage ──
@@ -54,4 +60,14 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/auth/me || exit 1
 
-CMD ["node", "server/app.js"]
+# Bootstrap-then-run.
+#   When the host project root is bind-mounted (`.:/app` in
+#   docker-compose.yml) and node_modules is on a named volume layered on
+#   top, Docker can't seed the volume from the image because the bind-mount
+#   already shadowed /app — the volume sees an empty node_modules and
+#   stays empty. This wrapper detects an empty/missing node_modules on
+#   start and runs `npm install --production` once. Subsequent starts
+#   skip the install. Without this, the container crashes with
+#   "Cannot find module 'dotenv'" (or any other dep) the first time the
+#   bind-mount is enabled.
+CMD ["sh", "-c", "if [ ! -d node_modules/dotenv ] || [ ! -d node_modules/express ]; then echo '[bootstrap] node_modules missing — running npm install (one-time)…'; npm install --production --no-audit --no-fund --prefer-offline; fi; exec node server/app.js"]

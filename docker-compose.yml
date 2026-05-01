@@ -24,16 +24,17 @@ services:
       # update button cannot upgrade a Docker deployment because the
       # image filesystem is reset on every restart.
       #
-      # Steps to enable on the server:
-      #   1. `git clone https://github.com/pops199/inexpro-crm /opt/inexpro-crm`
-      #   2. Uncomment the line below
-      #   3. `cd /opt/inexpro-crm && docker compose up -d`
+      # The named volume `app_node_modules` is layered on top of the
+      # bind-mount so the image's Alpine-compatible node_modules are NOT
+      # shadowed by the (empty) host tree — that shadowing is what causes
+      # `502 Bad Gateway` errors right after enabling the bind-mount.
       #
-      # node_modules is excluded so the host's tree (which is built for
-      # the host OS) doesn't shadow the Alpine-compatible modules baked
-      # into the image. The first time the in-app updater runs npm
-      # install, it will populate node_modules inside the bind-mount.
-      # - /opt/inexpro-crm:/app
+      # Steps to enable on the server:
+      #   1. `git clone https://github.com/pops199/inexpro-crm.git ~/docker/inexpro-crm`
+      #   2. Uncomment the two lines below
+      #   3. `cd ~/docker/inexpro-crm && docker compose up -d --build`
+      # - .:/app
+      # - app_node_modules:/app/node_modules
     environment:
       - NODE_ENV=production
       - TZ=Africa/Johannesburg
@@ -62,3 +63,8 @@ services:
   #   depends_on:
   #     - app
 
+# Named volume that holds /app/node_modules so the bind-mounted host
+# tree doesn't shadow the image's pre-built (Alpine-native) modules.
+# Only used when the self-update bind-mount above is enabled.
+volumes:
+  app_node_modules:
