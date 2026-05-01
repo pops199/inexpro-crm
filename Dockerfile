@@ -58,9 +58,18 @@ COPY .git/ ./.git/
 # `safe.directory` avoids "dubious ownership" rejections when /app is
 # owned by root inside the container; the user/email are placeholders so
 # any internal git operations have an identity.
+# `core.fileMode false` stops git from treating Linux exec-bit
+# differences (introduced when Docker COPY normalizes file modes) as
+# modifications — without it, every working file shows as "dirty" inside
+# the container and the in-app updater refuses to apply updates.
+# `git reset --hard HEAD` resyncs the index against the checked-out tree
+# so `git status --porcelain` is genuinely empty at first boot.
 RUN git config --global --add safe.directory /app \
  && git config --global user.email "container@inexpro.local" \
- && git config --global user.name  "Inexpro CRM Container"
+ && git config --global user.name  "Inexpro CRM Container" \
+ && cd /app && git config core.fileMode false \
+ && git update-index --refresh >/dev/null 2>&1 || true \
+ && git reset --hard HEAD >/dev/null 2>&1 || true
 # Per-user email signature images live here. The folder is gitignored
 # (signatures may contain PII), so we just create an empty dir in the
 # image. Mount your own at runtime via docker-compose if you have
