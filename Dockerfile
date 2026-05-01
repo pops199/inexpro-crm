@@ -1,17 +1,22 @@
 # ── Build stage: compile native modules (better-sqlite3) ──
 FROM node:18-alpine AS builder
 
-RUN apk add --no-cache python3 make g++
+# python3 + py3-setuptools — node-gyp imports `distutils`, which Python
+# 3.12 dropped from the stdlib; setuptools provides a compat shim.
+# make/g++ — required to compile any node-gyp project.
+# linux-headers — needed by some C addons on musl ARM64.
+RUN apk add --no-cache python3 py3-setuptools make g++ linux-headers
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# Build better-sqlite3 from source (instead of accepting whatever
-# prebuilt blob `prebuild-install` would download). On ARM64 hosts the
-# prebuild lookup sometimes resolves to an x64 musl binary, producing
-# `Exec format error` at runtime. Building from source guarantees the
-# native module matches the actual CPU + libc of this layer.
-ENV npm_config_build_from_source=true
-RUN npm ci --omit=dev
+# Install everything using prebuilt binaries where available (fast,
+# avoids node-gyp/distutils issues for transitive deps like sqlite3).
+# Then *targeted* rebuild of better-sqlite3 from source so its native
+# binding always matches the build host's CPU + libc — defends against
+# the rare case where prebuild-install resolves to a wrong-arch tarball
+# (e.g. x64 musl on ARM64 hosts → "Exec format error" at runtime).
+RUN npm ci --omit=dev \
+ && npm rebuild better-sqlite3 --build-from-source
 
 # ── Production stage ──
 FROM node:18-alpine
@@ -22,12 +27,14 @@ RUN apk add --no-cache libstdc++ tzdata git \
  && cp /usr/share/zoneinfo/Africa/Johannesburg /etc/localtime \
  && echo "Africa/Johannesburg" > /etc/timezone
 
-# python/make/g++ are kept in the runtime image so the in-app updater
-# (Admin → Settings → System Update) can run `npm install --production`
-# after pulling a new tagged release without needing a separate build
-# stage. They add ~80 MB to the image; remove if you never use in-app
-# updates and only deploy via `docker compose build`.
-RUN apk add --no-cache python3 make g++
+# python3/py3-setuptools/make/g++/linux-headers are kept in the runtime
+# image so the in-app updater (Admin → Settings → System Update) can run
+# `npm install --production` after pulling a new tagged release without
+# needing a separate build stage. py3-setuptools is the distutils compat
+# shim required by node-gyp on Python 3.12+. Adds ~120 MB to the image;
+# remove if you never use in-app updates and only deploy via
+# `docker compose build`.
+RUN apk add --no-cache python3 py3-setuptools make g++ linux-headers
 
 WORKDIR /app
 
