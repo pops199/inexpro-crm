@@ -2975,6 +2975,29 @@ body.dark-mode {
 /* Modal close button hover: red tint that reads in both themes. */
 body.dark-mode .modal-close:hover { background: rgba(192, 57, 43, 0.18); }
 
+/* Alert variants — dial down the pastel backgrounds and bump the text
+   so they read on dark-mode modal bodies. */
+body.dark-mode .alert-info {
+  background: rgba(41, 128, 185, 0.15);
+  border-color: rgba(41, 128, 185, 0.45);
+  color: #b6e2ff;
+}
+body.dark-mode .alert-warning {
+  background: rgba(243, 156, 18, 0.15);
+  border-color: rgba(243, 156, 18, 0.45);
+  color: #ffd68a;
+}
+body.dark-mode .alert-danger {
+  background: rgba(192, 57, 43, 0.18);
+  border-color: rgba(192, 57, 43, 0.45);
+  color: #ffb3aa;
+}
+body.dark-mode .alert-success {
+  background: rgba(39, 174, 96, 0.16);
+  border-color: rgba(39, 174, 96, 0.45);
+  color: #b6efc8;
+}
+
 /* Buttons: .btn-secondary base style is `background: #fff` which
    makes View / ⚙ Columns / Clear / Cancel buttons unreadable on a
    dark background. Override to a card-tinted fill with light text. */

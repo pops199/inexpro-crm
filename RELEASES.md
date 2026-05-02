@@ -6,6 +6,22 @@ sits at the top.
 
 ---
 
+## v1.0.19 — 2026-05-02
+
+**Dark mode polish — round 4**
+
+- "Log new data subject request" modal had the same hard-coded white
+  frame and dotted-grey dividers as the data-breach modal in the
+  previous round. All replaced with theme-aware vars.
+- Inner per-right blocks (Right to Access / Correction / Erasure /
+  Object / Withdraw) and their helper text now read on dark.
+- Alert boxes (`.alert-info`, `.alert-warning`, `.alert-danger`,
+  `.alert-success`) get translucent backgrounds with light-tinted
+  text on dark mode, so the POPIA s5 reminder and similar in-modal
+  notes are legible.
+
+---
+
 ## v1.0.18 — 2026-05-02
 
 **Dark mode polish — round 3**

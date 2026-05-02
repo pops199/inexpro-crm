@@ -680,8 +680,8 @@
       container.innerHTML = `
         <div class="modal-overlay" id="dsr-modal"
              style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
-          <div class="modal" style="background:#fff;border-radius:8px;width:600px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <div class="modal" style="background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;width:600px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data subject request</h3>
               <button type="button" id="dsr-modal-close"
                       style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
@@ -707,9 +707,9 @@
               </div>
 
               <!-- Right-specific blocks (toggled by request type) -->
-              <div id="dsr-block-access" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-block-access" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Access (DSAR)</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">System will generate a data export within 30 days. Record delivery once sent.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">System will generate a data export within 30 days. Record delivery once sent.</p>
                 <div class="form-grid form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                   <div class="form-group">
                     <label class="form-label">Export format</label>
@@ -728,9 +728,9 @@
                 </div>
               </div>
 
-              <div id="dsr-block-correction" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-block-correction" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Correction</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Record what was corrected and notify the client.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Record what was corrected and notify the client.</p>
                 <div class="form-group">
                   <label class="form-label">Fields to be corrected (comma-separated)</label>
                   <input type="text" id="dsr-corrected-fields" class="form-control" placeholder="e.g. email, mobile, sa_id_number">
@@ -741,9 +741,9 @@
                 </div>
               </div>
 
-              <div id="dsr-block-erasure" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-block-erasure" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Erasure</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Assess legal basis for retention. If no override, anonymise or delete.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Assess legal basis for retention. If no override, anonymise or delete.</p>
                 <div class="form-group">
                   <label class="form-label">Legal basis assessment</label>
                   <textarea id="dsr-legal-basis" class="form-control" rows="2" placeholder="Describe whether any legal/regulatory basis requires retention (FAIS, FICA, tax, etc.)"></textarea>
@@ -761,14 +761,14 @@
                 </div>
               </div>
 
-              <div id="dsr-block-object" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-block-object" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Object</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Logging will <strong>suspend processing</strong> on this objection until resolved. Document the resolution in outcome notes.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Logging will <strong>suspend processing</strong> on this objection until resolved. Document the resolution in outcome notes.</p>
               </div>
 
-              <div id="dsr-block-withdraw" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-block-withdraw" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Withdraw Consent</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Saving will <strong>immediately clear</strong> the contact's marketing consent flag.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Saving will <strong>immediately clear</strong> the contact's marketing consent flag.</p>
                 <div class="form-group">
                   <label class="form-label">Withdrawal date</label>
                   <input type="date" id="dsr-consent-withdrawn" class="form-control" value="${today}">
@@ -779,7 +779,7 @@
                 POPIA s5: Data subject requests must be completed within 30 calendar days.
               </div>
             </div>
-            <div class="modal-footer" style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:.5rem;">
+            <div class="modal-footer" style="padding:1rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
               <button type="button" class="btn btn-secondary" id="dsr-modal-cancel">Cancel</button>
               <button type="button" class="btn btn-primary" id="dsr-modal-save">Log request</button>
             </div>
@@ -3481,8 +3481,8 @@
       container.innerHTML = `
         <div class="modal-overlay" id="dsr-acct-modal"
              style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
-          <div class="modal" style="background:#fff;border-radius:8px;width:600px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <div class="modal" style="background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;width:600px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data subject request</h3>
               <button type="button" id="dsr-acct-close"
                       style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
@@ -3507,9 +3507,9 @@
                 <textarea id="dsr-acct-details" class="form-control" rows="3" placeholder="Optional — context, scope, deadline..."></textarea>
               </div>
 
-              <div id="dsr-acct-block-access" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-acct-block-access" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Access (DSAR)</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">System will generate a data export within 30 days. Record delivery once sent.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">System will generate a data export within 30 days. Record delivery once sent.</p>
                 <div class="form-grid form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                   <div class="form-group">
                     <label class="form-label">Export format</label>
@@ -3528,9 +3528,9 @@
                 </div>
               </div>
 
-              <div id="dsr-acct-block-correction" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-acct-block-correction" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Correction</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Record what was corrected and notify the client.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Record what was corrected and notify the client.</p>
                 <div class="form-group">
                   <label class="form-label">Fields to be corrected (comma-separated)</label>
                   <input type="text" id="dsr-acct-corrected-fields" class="form-control" placeholder="e.g. registration_number, vat_number, address">
@@ -3541,9 +3541,9 @@
                 </div>
               </div>
 
-              <div id="dsr-acct-block-erasure" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-acct-block-erasure" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Erasure</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Assess legal basis for retention. If no override, anonymise or delete.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Assess legal basis for retention. If no override, anonymise or delete.</p>
                 <div class="form-group">
                   <label class="form-label">Legal basis assessment</label>
                   <textarea id="dsr-acct-legal-basis" class="form-control" rows="2" placeholder="Describe whether any legal/regulatory basis requires retention (FAIS, FICA, tax, etc.)"></textarea>
@@ -3560,14 +3560,14 @@
                 </div>
               </div>
 
-              <div id="dsr-acct-block-object" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-acct-block-object" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Object</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Logging will <strong>suspend processing</strong> on this objection until resolved. Document the resolution in outcome notes.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Logging will <strong>suspend processing</strong> on this objection until resolved. Document the resolution in outcome notes.</p>
               </div>
 
-              <div id="dsr-acct-block-withdraw" style="display:none;border-top:1px dashed #dee2e6;padding-top:.75rem;margin-top:.25rem;">
+              <div id="dsr-acct-block-withdraw" style="display:none;border-top:1px dashed var(--border);padding-top:.75rem;margin-top:.25rem;">
                 <strong>Right to Withdraw Consent</strong>
-                <p style="font-size:.8rem;color:#666;margin:.25rem 0;">Saving will <strong>immediately clear</strong> the account's marketing consent flag.</p>
+                <p style="font-size:.8rem;color:var(--text-light);margin:.25rem 0;">Saving will <strong>immediately clear</strong> the account's marketing consent flag.</p>
                 <div class="form-group">
                   <label class="form-label">Withdrawal date</label>
                   <input type="date" id="dsr-acct-consent-withdrawn" class="form-control" value="${today}">
