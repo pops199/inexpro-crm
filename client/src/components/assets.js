@@ -1016,7 +1016,7 @@ const Assets = (() => {
                       <span style="font-size:.75rem;color:var(--text-muted);font-weight:normal;margin-left:.3rem;">auto-calculated</span>
                     </label>
                     <input type="number" name="asset_value" id="asset-value-auto" class="form-control" min="0" step="0.01"
-                      placeholder="0.00" readonly style="background:var(--bg-alt,#f4f5f7);"
+                      placeholder="0.00" readonly style="background:var(--bg-alt,#f4f5f7);color:var(--text-light);"
                       value="${esc(d.asset_value != null ? d.asset_value : '')}" />
                   </div>
 
@@ -1025,7 +1025,7 @@ const Assets = (() => {
                       <span style="font-size:.75rem;color:var(--text-muted);font-weight:normal;margin-left:.3rem;">auto-calculated — per asset under this policy</span>
                     </label>
                     <input type="number" name="premium" id="asset-premium-auto" class="form-control" min="0" step="0.01"
-                      placeholder="0.00" readonly style="background:var(--bg-alt,#f4f5f7);"
+                      placeholder="0.00" readonly style="background:var(--bg-alt,#f4f5f7);color:var(--text-light);"
                       value="${esc(d.premium != null ? d.premium : '')}" />
                   </div>
 

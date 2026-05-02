@@ -6,6 +6,25 @@ sits at the top.
 
 ---
 
+## v1.0.18 — 2026-05-02
+
+**Dark mode polish — round 3**
+
+- Modal footers (Edit User, etc.) no longer render as a glaring white
+  strip below the body — they now use a subtle dark-tinted surface
+  via the new `--bg-alt` variable.
+- "Log new data breach" modal had hard-coded white background, light
+  borders and grey text. All replaced with theme-aware vars so the
+  popup matches the rest of dark mode.
+- "Categories of advice authorised" checkbox card on the broker
+  profile form had a hard-coded white container that hid the labels.
+  Now uses `var(--card-bg)`.
+- Asset Value / Premium auto-calculated readonly inputs no longer
+  show a near-white background when in dark mode — they pick up the
+  `--bg-alt` dark surface and a muted text colour.
+
+---
+
 ## v1.0.17 — 2026-05-02
 
 **Dark mode polish — admin password modals**

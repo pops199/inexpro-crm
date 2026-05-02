@@ -1319,7 +1319,7 @@
             </div>
             <div class="form-group">
               <label class="form-label required">Categories of advice authorised</label>
-              <div style="display:flex;flex-direction:column;gap:.25rem;padding:.4rem .55rem;border:1px solid var(--border,#ccd);border-radius:4px;background:#fff;">
+              <div style="display:flex;flex-direction:column;gap:.25rem;padding:.4rem .55rem;border:1px solid var(--border,#ccd);border-radius:4px;background:var(--card-bg);">
                 ${this._CATEGORIES.map(c => `
                   <label style="display:flex;align-items:center;gap:.5rem;font-weight:normal;">
                     <input type="checkbox" name="categories_authorised" value="${esc(c)}"
@@ -3003,8 +3003,8 @@
       container.innerHTML = `
         <div class="modal-overlay" id="db-breach-modal"
              style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
-          <div class="modal" style="background:#fff;border-radius:8px;width:720px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <div class="modal" style="background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;width:720px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data breach</h3>
               <button type="button" class="btn-close" id="db-modal-close"
                       style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
@@ -3041,8 +3041,8 @@
                   <option value="Resolved">Resolved</option>
                 </select>
               </div>
-              <fieldset style="border:1px solid #e5e7eb;border-radius:6px;padding:.75rem 1rem;margin-top:.5rem;">
-                <legend style="font-size:.8rem;color:#555;padding:0 .35rem;">Affected recipients</legend>
+              <fieldset style="border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;margin-top:.5rem;">
+                <legend style="font-size:.8rem;color:var(--text-light);padding:0 .35rem;">Affected recipients</legend>
                 <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;margin-bottom:.5rem;">
                   <input type="checkbox" id="db-notify-recipients" checked>
                   Email selected recipients when the breach is logged
@@ -3055,14 +3055,14 @@
                 <div id="db-bulk-summary" style="margin-bottom:.45rem;"></div>
                 <input type="search" id="db-recipient-search" class="form-control" placeholder="Search contacts, accounts or users by name or email">
                 <div id="db-recipient-results" style="margin-top:.35rem;"></div>
-                <div style="margin-top:.5rem;font-size:.8rem;color:#555;">Individual recipients</div>
+                <div style="margin-top:.5rem;font-size:.8rem;color:var(--text-light);">Individual recipients</div>
                 <div id="db-selected-recipients" style="margin-top:.2rem;"></div>
               </fieldset>
               <div class="alert alert-info" style="margin-top:.5rem;font-size:.82rem;">
                 POPIA s22: the Information Regulator must be notified immediately after discovering a breach.
               </div>
             </div>
-            <div class="modal-footer" style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:.5rem;">
+            <div class="modal-footer" style="padding:1rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
               <button type="button" class="btn btn-secondary" id="db-modal-cancel">Cancel</button>
               <button type="button" class="btn btn-primary" id="db-modal-save">Log breach</button>
             </div>

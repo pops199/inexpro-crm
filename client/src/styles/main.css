@@ -1539,7 +1539,7 @@ fieldset legend {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-  background: #fafbfc;
+  background: var(--bg-alt, #fafbfc);
 }
 
 /* ── 20. Tabs ──────────────────────────────────────────────────────────── */
@@ -2962,13 +2962,18 @@ body.dark-mode .modal {
   background: var(--card-bg);
 }
 
-/* Surface fallback so anything referencing var(--surface-secondary)
-   gets a dark-mode-appropriate background instead of falling through
-   to its hard-coded `#fafafa` default. */
+/* Surface fallback so anything referencing var(--surface-secondary),
+   var(--bg-alt) or var(--hover-bg) gets a dark-mode-appropriate
+   background instead of falling through to its hard-coded near-white
+   default. */
 body.dark-mode {
   --surface-secondary: #16202d;
-  --hover-bg: rgba(41, 128, 185, 0.12);
+  --bg-alt:            #16202d;
+  --hover-bg:          rgba(41, 128, 185, 0.12);
 }
+
+/* Modal close button hover: red tint that reads in both themes. */
+body.dark-mode .modal-close:hover { background: rgba(192, 57, 43, 0.18); }
 
 /* Buttons: .btn-secondary base style is `background: #fff` which
    makes View / ⚙ Columns / Clear / Cancel buttons unreadable on a
