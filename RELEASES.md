@@ -6,6 +6,18 @@ sits at the top.
 
 ---
 
+## v1.0.17 — 2026-05-02
+
+**Dark mode polish — admin password modals**
+
+- The two admin-password / authorisation prompts (the encrypted-field
+  reveal modal and the locked-record edit-unlock modal) had a
+  hard-coded white background and grey body text. Both now read
+  their colours from the active theme — dark surface, light text,
+  themed border — so they no longer flash white in dark mode.
+
+---
+
 ## v1.0.16 — 2026-05-02
 
 **Dark mode polish**

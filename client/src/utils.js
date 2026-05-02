@@ -1301,10 +1301,11 @@ const EncryptedField = (() => {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);' +
       'display:flex;align-items:center;justify-content:center;z-index:9999;';
     overlay.innerHTML = `
-      <div class="modal" style="background:#fff;padding:1.4rem 1.5rem;border-radius:8px;
+      <div class="modal" style="background:var(--card-bg);color:var(--text);padding:1.4rem 1.5rem;
+                                border:1px solid var(--border);border-radius:8px;
                                 box-shadow:0 14px 40px rgba(0,0,0,.25);width:380px;max-width:92vw;">
-        <h3 style="margin:0 0 .35rem 0;font-size:1.05rem;">Admin password required</h3>
-        <p style="margin:0 0 .85rem 0;color:#666;font-size:.85rem;">
+        <h3 style="margin:0 0 .35rem 0;font-size:1.05rem;color:var(--text);">Admin password required</h3>
+        <p style="margin:0 0 .85rem 0;color:var(--text-light);font-size:.85rem;">
           Reveal <strong>${_esc(wrap.dataset.field)}</strong> on
           <strong>${_esc(wrap.dataset.module)}</strong> record #${_esc(wrap.dataset.recordId)}.
           Enter your admin password to confirm — every reveal is audit-logged.
@@ -1313,9 +1314,9 @@ const EncryptedField = (() => {
                placeholder="Admin password"
                style="width:100%;margin-bottom:.6rem;" />
         <div id="encrypted-reveal-err"
-             style="display:none;color:#a71d2a;font-size:.8rem;margin-bottom:.6rem;"></div>
+             style="display:none;color:var(--danger,#a71d2a);font-size:.8rem;margin-bottom:.6rem;"></div>
         <div style="display:flex;justify-content:flex-end;gap:.5rem;">
-          <button type="button" class="btn btn-sm btn-outline" id="encrypted-reveal-cancel">Cancel</button>
+          <button type="button" class="btn btn-sm btn-secondary" id="encrypted-reveal-cancel">Cancel</button>
           <button type="button" class="btn btn-sm btn-primary" id="encrypted-reveal-submit">Reveal</button>
         </div>
       </div>`;
@@ -1478,10 +1479,11 @@ const EditLock = (() => {
         : `<strong>${_esc(module)}</strong> record #${_esc(recordId)}`;
       const verb = intent || 'edit';
       overlay.innerHTML = `
-        <div style="background:#fff;padding:1.4rem 1.5rem;border-radius:10px;
+        <div class="modal" style="background:var(--card-bg);color:var(--text);padding:1.4rem 1.5rem;
+                    border:1px solid var(--border);border-radius:10px;
                     box-shadow:0 14px 40px rgba(0,0,0,.25);width:420px;max-width:92vw;">
-          <h3 style="margin:0 0 .4rem 0;font-size:1.05rem;">🔒 Authorisation required</h3>
-          <p style="margin:0 0 .85rem 0;color:#555;font-size:.85rem;line-height:1.4;">
+          <h3 style="margin:0 0 .4rem 0;font-size:1.05rem;color:var(--text);">🔒 Authorisation required</h3>
+          <p style="margin:0 0 .85rem 0;color:var(--text-light);font-size:.85rem;line-height:1.4;">
             This record is locked. Enter an admin password <strong>or</strong> a 6-digit
             one-time PIN to ${_esc(verb)} ${subjectLine}.
             Every attempt is audit-logged.
@@ -1490,10 +1492,10 @@ const EditLock = (() => {
                  placeholder="Admin password or 6-digit PIN"
                  style="width:100%;margin-bottom:.6rem;" />
           <div id="edit-lock-err"
-               style="display:none;color:#a71d2a;font-size:.8rem;margin-bottom:.6rem;"></div>
+               style="display:none;color:var(--danger,#a71d2a);font-size:.8rem;margin-bottom:.6rem;"></div>
           <div style="display:flex;justify-content:flex-end;gap:.5rem;align-items:center;">
-            <span id="edit-lock-spin" style="display:none;font-size:.8rem;color:#888;margin-right:auto;">Verifying…</span>
-            <button type="button" class="btn btn-sm btn-outline" id="edit-lock-cancel">Cancel</button>
+            <span id="edit-lock-spin" style="display:none;font-size:.8rem;color:var(--text-muted);margin-right:auto;">Verifying…</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="edit-lock-cancel">Cancel</button>
             <button type="button" class="btn btn-sm btn-primary" id="edit-lock-submit">Unlock</button>
           </div>
         </div>`;
