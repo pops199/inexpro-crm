@@ -365,8 +365,7 @@ const Admin = (() => {
           <strong style="font-size:.95rem;">${esc(r.module)}</strong>
           <span style="color:#888;font-size:.8rem;">record #${esc(r.record_id || '—')}</span>
           <span style="margin-left:auto;color:#888;font-size:.8rem;">${esc(formatDateTime(r.timestamp))} · ${esc(r.user_full_name || r.user_id || 'System')}</span>
-          <button id="audit-detail-close"
-                  style="margin-left:.5rem;background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#666;line-height:1;">×</button>
+          <button id="audit-detail-close" class="modal-close" type="button" style="margin-left:.5rem;">×</button>
         </div>
         ${r.description ? `<div style="padding:.75rem 1.2rem;background:#fafbfc;color:#333;font-size:.85rem;border-bottom:1px solid #eee;">${esc(r.description)}</div>` : ''}
         <div style="padding:1rem 1.2rem;overflow:auto;">
@@ -1478,7 +1477,7 @@ const Admin = (() => {
       <div style="background:var(--card-bg);border-radius:8px;width:640px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
           <h3 style="margin:0;font-size:1rem;">Broadcast detail</h3>
-          <button type="button" id="notif-history-close" style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+          <button type="button" id="notif-history-close" class="modal-close">×</button>
         </div>
         <div style="padding:1rem 1.25rem;font-size:.88rem;line-height:1.5;">
           <div style="font-weight:600;font-size:1rem;margin-bottom:.4rem;">${esc(item.title || '(no subject)')}</div>
@@ -2238,14 +2237,14 @@ const Admin = (() => {
       'display:flex;align-items:center;justify-content:center;';
     const enrolled = !!status.enrolled;
     overlay.innerHTML = `
-      <div style="background:#fff;border-radius:10px;width:560px;max-width:94vw;max-height:90vh;overflow:auto;
+      <div class="modal" style="background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:10px;width:560px;max-width:94vw;max-height:90vh;overflow:auto;
                   box-shadow:0 18px 48px rgba(0,0,0,.3);">
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid #eee;display:flex;align-items:center;gap:.75rem;">
+        <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem;">
           <strong style="font-size:1rem;">2FA — ${esc(userLabel)}</strong>
           <span style="margin-left:auto;">
             ${enrolled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-secondary">Disabled</span>'}
           </span>
-          <button id="twofa-close" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#666;">×</button>
+          <button id="twofa-close" class="modal-close" type="button">×</button>
         </div>
         <div id="twofa-body" style="padding:1.1rem 1.25rem;"></div>
       </div>`;
@@ -2263,7 +2262,7 @@ const Admin = (() => {
     if (!body) return;
     if (status.enrolled) {
       body.innerHTML = `
-        <p style="font-size:.85rem;color:#555;line-height:1.4;">
+        <p style="font-size:.85rem;color:var(--text-light);line-height:1.4;">
           2FA is <strong>enabled</strong> for this user. They will be prompted for
           a 6-digit code from their authenticator app every time they sign in.
         </p>
@@ -2277,7 +2276,7 @@ const Admin = (() => {
       `;
     } else {
       body.innerHTML = `
-        <p style="font-size:.85rem;color:#555;line-height:1.4;">
+        <p style="font-size:.85rem;color:var(--text-light);line-height:1.4;">
           Enabling 2FA will require this user to enter a 6-digit code from an
           authenticator app (Google Authenticator, Authy, 1Password, Microsoft
           Authenticator, etc.) on every sign-in.
@@ -2296,7 +2295,7 @@ const Admin = (() => {
     try {
       const r = await Api.admin.twoFaEnroll(userId);
       body.innerHTML = `
-        <p style="font-size:.85rem;color:#555;line-height:1.4;">
+        <p style="font-size:.85rem;color:var(--text-light);line-height:1.4;">
           Scan this QR code with the authenticator app, <em>or</em> enter the
           secret manually. Once a 6-digit code appears, type it below to
           confirm — that activates 2FA and reveals the recovery codes.
@@ -2304,10 +2303,10 @@ const Admin = (() => {
         <div style="display:flex;gap:1.2rem;align-items:flex-start;flex-wrap:wrap;margin:.85rem 0;">
           <div id="twofa-qr"></div>
           <div style="flex:1;min-width:200px;">
-            <div style="font-size:.78rem;color:#666;margin-bottom:.25rem;">Manual secret</div>
-            <code style="display:block;background:#f4f6f8;padding:.55rem .65rem;border-radius:6px;
+            <div style="font-size:.78rem;color:var(--text-light);margin-bottom:.25rem;">Manual secret</div>
+            <code style="display:block;background:var(--bg-alt,#f4f6f8);color:var(--text);border:1px solid var(--border);padding:.55rem .65rem;border-radius:6px;
                          font-size:.85rem;word-break:break-all;letter-spacing:.05em;">${esc(r.secret)}</code>
-            <div style="font-size:.72rem;color:#888;margin-top:.4rem;">Account: ${esc(r.account)} · Issuer: ${esc(r.issuer)}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem;">Account: ${esc(r.account)} · Issuer: ${esc(r.issuer)}</div>
           </div>
         </div>
         <div class="form-group">

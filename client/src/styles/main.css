@@ -1509,7 +1509,8 @@ fieldset legend {
   color: var(--text);
 }
 
-.modal-close {
+.modal-close,
+.btn-close {
   background: transparent;
   border: none;
   font-size: 1.3rem;
@@ -1517,10 +1518,12 @@ fieldset legend {
   line-height: 1;
   padding: .15rem .4rem;
   border-radius: var(--border-radius-sm);
+  cursor: pointer;
   transition: color var(--transition), background var(--transition);
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.btn-close:hover {
   color: var(--danger);
   background: #fdf3f3;
 }
@@ -2973,7 +2976,8 @@ body.dark-mode {
 }
 
 /* Modal close button hover: red tint that reads in both themes. */
-body.dark-mode .modal-close:hover { background: rgba(192, 57, 43, 0.18); }
+body.dark-mode .modal-close:hover,
+body.dark-mode .btn-close:hover { background: rgba(192, 57, 43, 0.18); }
 
 /* Alert variants — dial down the pastel backgrounds and bump the text
    so they read on dark-mode modal bodies. */

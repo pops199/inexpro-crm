@@ -6,6 +6,27 @@ sits at the top.
 
 ---
 
+## v1.0.20 — 2026-05-02
+
+**Dark mode polish — round 5 (modal close buttons + 2FA modal)**
+
+- Every modal close ✕ button across the app now uses the same
+  `.modal-close` style (matching the Edit Dashboard / Columns
+  picker close button). Previously some modals had inline-styled
+  buttons with hard-coded `color:#666` that washed out in dark mode.
+- Two-Factor Authentication setup modal had a hard-coded white
+  background, light grey divider and grey body text. All replaced
+  with theme vars so the QR code panel and the rest of the modal
+  match dark mode.
+- `.btn-close` (used by the legacy Edit User / mail / amendment
+  modals) is now styled identically to `.modal-close`, so visual
+  treatment is consistent regardless of which class a modal uses.
+- 2FA "Manual secret" code block also re-themed — was a near-white
+  pill in dark mode, now uses the dark `--bg-alt` surface with a
+  themed border.
+
+---
+
 ## v1.0.19 — 2026-05-02
 
 **Dark mode polish — round 4**

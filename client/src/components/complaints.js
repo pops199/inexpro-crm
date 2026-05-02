@@ -289,8 +289,7 @@ const Complaints = (() => {
         <div class="modal" style="background:#fff;border-radius:8px;width:480px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.2);">
           <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
             <h3 style="margin:0;">Withdraw complaint ${esc(complaintName)}</h3>
-            <button type="button" id="withdraw-modal-close"
-                    style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+            <button type="button" id="withdraw-modal-close" class="modal-close">×</button>
           </div>
           <div class="modal-body" style="padding:1.25rem;">
             <div id="withdraw-modal-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>

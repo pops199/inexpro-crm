@@ -146,9 +146,9 @@ const Profile = (() => {
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="modal" style="width:560px;max-width:94vw;max-height:90vh;overflow:auto;">
-        <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #eee;display:flex;align-items:center;gap:.75rem;">
+        <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem;">
           <strong style="font-size:1rem;">Two-Factor Authentication</strong>
-          <button id="prof-2fa-close" style="margin-left:auto;background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#666;">×</button>
+          <button id="prof-2fa-close" class="modal-close" type="button" style="margin-left:auto;">×</button>
         </div>
         <div id="prof-2fa-body" style="padding:1.1rem 1.25rem;">${html}</div>
       </div>`;
@@ -168,7 +168,7 @@ const Profile = (() => {
       const body = document.getElementById('prof-2fa-body');
       if (!body) return;
       body.innerHTML = `
-        <p style="font-size:.85rem;color:#555;line-height:1.4;margin:0 0 .85rem;">
+        <p style="font-size:.85rem;color:var(--text-light);line-height:1.4;margin:0 0 .85rem;">
           Scan the QR code with your authenticator app, <em>or</em> enter the
           secret manually. Once a 6-digit code appears, type it below to
           activate 2FA — that reveals your one-time recovery codes.
@@ -176,10 +176,10 @@ const Profile = (() => {
         <div style="display:flex;gap:1.2rem;align-items:flex-start;flex-wrap:wrap;">
           <div id="prof-2fa-qr"></div>
           <div style="flex:1;min-width:200px;">
-            <div style="font-size:.78rem;color:#666;margin-bottom:.25rem;">Manual secret</div>
-            <code style="display:block;background:#f4f6f8;padding:.55rem .65rem;border-radius:6px;
+            <div style="font-size:.78rem;color:var(--text-light);margin-bottom:.25rem;">Manual secret</div>
+            <code style="display:block;background:var(--bg-alt,#f4f6f8);color:var(--text);border:1px solid var(--border);padding:.55rem .65rem;border-radius:6px;
                          font-size:.85rem;word-break:break-all;letter-spacing:.05em;">${esc(r.secret)}</code>
-            <div style="font-size:.72rem;color:#888;margin-top:.4rem;">Account: ${esc(r.account)} · Issuer: ${esc(r.issuer)}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem;">Account: ${esc(r.account)} · Issuer: ${esc(r.issuer)}</div>
           </div>
         </div>
         <div class="form-group" style="margin-top:1rem;">
@@ -222,7 +222,7 @@ const Profile = (() => {
             ✓ 2FA is now active. Save these recovery codes somewhere safe — each
             can be used once if you lose access to your authenticator app.
           </div>
-          <div style="background:#f4f6f8;padding:.75rem;border-radius:6px;font-family:Menlo,Consolas,monospace;font-size:.95rem;">
+          <div style="background:var(--bg-alt,#f4f6f8);color:var(--text);border:1px solid var(--border);padding:.75rem;border-radius:6px;font-family:Menlo,Consolas,monospace;font-size:.95rem;">
             ${codes.map(c => esc(c)).join('<br>')}
           </div>
           <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem;">

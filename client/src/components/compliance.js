@@ -684,7 +684,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data subject request</h3>
               <button type="button" id="dsr-modal-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="dsr-modal-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -864,7 +864,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Update data subject request</h3>
               <button type="button" id="dsr-update-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="dsr-update-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -1848,7 +1848,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">${isEdit ? 'Edit CPD Activity' : 'Log CPD Activity'}</h3>
               <button type="button" id="cpd-modal-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="cpd-modal-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -3007,7 +3007,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data breach</h3>
               <button type="button" class="btn-close" id="db-modal-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="db-modal-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -3159,7 +3159,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Data breach #${esc(String(id))}</h3>
               <button type="button" class="btn-close" id="db-edit-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="db-edit-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -3408,7 +3408,7 @@
               <div style="display:flex;gap:.5rem;align-items:center;">
                 <a id="popia-report-pdf" class="btn btn-primary btn-sm" href="/api/popia/compliance-report.pdf">💾 Save PDF</a>
                 <button type="button" id="popia-report-close"
-                        style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                        class="modal-close">×</button>
               </div>
             </div>
             <div class="modal-body" id="popia-report-body" style="padding:1.25rem;">
@@ -3485,7 +3485,7 @@
             <div class="modal-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
               <h3 style="margin:0;">Log new data subject request</h3>
               <button type="button" id="dsr-acct-close"
-                      style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                      class="modal-close">×</button>
             </div>
             <div class="modal-body" style="padding:1.25rem;">
               <div id="dsr-acct-error" class="alert alert-danger" style="display:none;margin-bottom:.75rem;"></div>
@@ -3959,7 +3959,7 @@
               <div style="display:flex;gap:.5rem;align-items:center;">
                 <button type="button" id="fica-report-print" class="btn btn-secondary btn-sm">🖨 Print</button>
                 <button type="button" id="fica-report-close"
-                        style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;">×</button>
+                        class="modal-close">×</button>
               </div>
             </div>
             <div class="modal-body" id="fica-report-body" style="padding:1.25rem;">
