@@ -6,6 +6,27 @@ sits at the top.
 
 ---
 
+## v1.0.16 — 2026-05-02
+
+**Dark mode polish**
+
+- Table row separators no longer render as glaring near-white lines
+  in dark mode — they now use the same dark-grey border colour as
+  the rest of the dark UI.
+- View / ⚙ Columns / Clear / Cancel and other secondary buttons are
+  now readable in dark mode (dark fill with light text instead of
+  white-on-near-white).
+- Outline buttons (pagination ← Prev etc.) get a matching dark-mode
+  treatment.
+- Dashboard charts (bar, doughnut, line) read tick/legend/grid
+  colours from the active theme — labels are no longer mid-grey on
+  near-black, and grid lines tone down to a faint white tint.
+- The "Customise dashboard" / "⚙ Columns" modal panels are no
+  longer flashing white inside the dark modal — the column-picker
+  and visible-list panels now use a dark surface tint.
+
+---
+
 ## v1.0.15 — 2026-05-02
 
 **Dashboard switcher: buttons on desktop, dropdown on mobile**

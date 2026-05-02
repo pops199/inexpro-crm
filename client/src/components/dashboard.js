@@ -86,6 +86,17 @@ const Dashboard = (() => {
     return STATUS_MAP[label] || PALETTE[idx % PALETTE.length];
   }
 
+  // Theme-aware chart palette. Read at chart-build time so re-rendering
+  // after a theme switch picks up the right grid / tick colours.
+  function _chartTheme() {
+    const dark = document.body.classList.contains('dark-mode');
+    return {
+      tick: dark ? '#c8d4e0' : '#666',
+      grid: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
+      legend: dark ? '#d4e0ea' : '#444',
+    };
+  }
+
   /* ─────── Chart builders ─────── */
 
   function makeBar(canvasId, data, title) {
@@ -94,6 +105,7 @@ const Dashboard = (() => {
     const labels = data.map(r => r.label);
     const counts = data.map(r => r.count);
     const colors = labels.map((l, i) => colorFor(l, i));
+    const theme  = _chartTheme();
     if (_charts[canvasId]) _charts[canvasId].destroy();
     _charts[canvasId] = new Chart(ctx, {
       type: 'bar',
@@ -107,8 +119,8 @@ const Dashboard = (() => {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: '#f0f0f0' } },
-          x: { ticks: { font: { size: 9 }, maxRotation: 35 }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, color: theme.tick }, grid: { color: theme.grid } },
+          x: { ticks: { font: { size: 9 }, maxRotation: 35, color: theme.tick }, grid: { display: false } },
         },
       },
     });
@@ -120,6 +132,7 @@ const Dashboard = (() => {
     const labels = data.map(r => r.label);
     const counts = data.map(r => r.count);
     const colors = labels.map((l, i) => colorFor(l, i));
+    const theme  = _chartTheme();
     if (_charts[canvasId]) _charts[canvasId].destroy();
     _charts[canvasId] = new Chart(ctx, {
       type: 'doughnut',
@@ -131,7 +144,7 @@ const Dashboard = (() => {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 9 }, boxWidth: 10, padding: 6 } } },
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 9 }, boxWidth: 10, padding: 6, color: theme.legend } } },
         cutout: '58%',
       },
     });
@@ -142,6 +155,7 @@ const Dashboard = (() => {
     if (!ctx || !data || !data.length || typeof Chart === 'undefined') return;
     const labels = data.map(r => r.label);
     const counts = data.map(r => r.count);
+    const theme  = _chartTheme();
     if (_charts[canvasId]) _charts[canvasId].destroy();
     _charts[canvasId] = new Chart(ctx, {
       type: 'line',
@@ -156,8 +170,8 @@ const Dashboard = (() => {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: '#f0f0f0' } },
-          x: { ticks: { font: { size: 9 }, maxRotation: 35 }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, color: theme.tick }, grid: { color: theme.grid } },
+          x: { ticks: { font: { size: 9 }, maxRotation: 35, color: theme.tick }, grid: { display: false } },
         },
       },
     });

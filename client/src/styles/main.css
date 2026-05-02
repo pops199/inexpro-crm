@@ -2962,6 +2962,58 @@ body.dark-mode .modal {
   background: var(--card-bg);
 }
 
+/* Surface fallback so anything referencing var(--surface-secondary)
+   gets a dark-mode-appropriate background instead of falling through
+   to its hard-coded `#fafafa` default. */
+body.dark-mode {
+  --surface-secondary: #16202d;
+  --hover-bg: rgba(41, 128, 185, 0.12);
+}
+
+/* Buttons: .btn-secondary base style is `background: #fff` which
+   makes View / ⚙ Columns / Clear / Cancel buttons unreadable on a
+   dark background. Override to a card-tinted fill with light text. */
+body.dark-mode .btn-secondary {
+  background: var(--card-bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+body.dark-mode .btn-secondary:hover {
+  background: #21314a;
+  border-color: #3a4d65;
+}
+
+/* Outline buttons (used in pagination and a few utility spots). */
+body.dark-mode .btn-outline {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+body.dark-mode .btn-outline:hover {
+  background: rgba(41, 128, 185, 0.18);
+  border-color: var(--primary-light);
+  color: #fff;
+}
+
+/* Table row separators were hard-coded to a near-white #f0f2f5,
+   which looks like a glaring white line in dark mode. Use the
+   normal dark-grey border instead. Header row gets a tinted
+   background to match. */
+body.dark-mode .table thead tr {
+  background: #15202e;
+  border-bottom-color: var(--border);
+}
+body.dark-mode .table tbody tr {
+  border-bottom-color: var(--border);
+}
+
+/* Dashboard customise modal: `.dash-edit-col` had a hard-coded white
+   panel background. Re-tint it so it sits on top of the dark modal
+   without flashing white. */
+body.dark-mode .dash-edit-col {
+  background: var(--surface-secondary);
+}
+
 /* ── Utility helpers ───────────────────────────────────────────────────── */
 .form-grid-1 {
   grid-template-columns: 1fr;
