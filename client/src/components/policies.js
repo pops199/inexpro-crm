@@ -1604,8 +1604,15 @@ const Policies = (() => {
           </div>
 
           <!-- Financial & Dates -->
-          <div class="detail-section card">
-            <div class="detail-section-title">Financial &amp; Dates</div>
+          <div class="detail-section card" id="pol-fin-card">
+            <div class="detail-section-title" style="display:flex;align-items:center;gap:.75rem;">
+              <span>Financial &amp; Dates</span>
+              <span style="flex:1;"></span>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:400;color:var(--text-muted);cursor:pointer;">
+                <input type="checkbox" id="pol-fin-breakdown-cb" ${Assets.getBreakdownPref('policy') ? 'checked' : ''} />
+                Show premium breakdown
+              </label>
+            </div>
             <div class="detail-grid">
               ${field('Total Premium', (d.total_premium != null ? formatCurrency(d.total_premium) : (d.premium ? formatCurrency(d.premium) : '—')))}
               ${field('Inception Date', d.inception_date ? formatDate(d.inception_date) : '—')}
@@ -1615,6 +1622,15 @@ const Policies = (() => {
               ${field('Amendment Count', esc(d.amendment_count != null ? String(d.amendment_count) : '0'))}
               ${field('Claims Count', esc(d.claims_count != null ? String(d.claims_count) : '0'))}
               ${field('Disclosure Completed', bool(d.disclosure_completed))}
+            </div>
+            <div id="pol-fin-breakdown" style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border-color,#dee2e6);${Assets.getBreakdownPref('policy') ? '' : 'display:none;'}">
+              <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:.4rem;">
+                Premium &amp; Sum Insured Breakdown
+                <span style="font-weight:normal;text-transform:none;letter-spacing:0;">— aggregated across all linked assets</span>
+              </div>
+              <div id="pol-fin-breakdown-body">
+                <div class="loading-spinner-wrapper" style="padding:.75rem;"><div class="loading-spinner"></div></div>
+              </div>
             </div>
           </div>
 
@@ -1743,6 +1759,40 @@ const Policies = (() => {
         });
       });
 
+      // Premium breakdown toggle (Financial & Dates card)
+      (function wirePolicyFinBreakdown() {
+        const cb       = document.getElementById('pol-fin-breakdown-cb');
+        const panel    = document.getElementById('pol-fin-breakdown');
+        const bodyEl   = document.getElementById('pol-fin-breakdown-body');
+        if (!cb || !panel || !bodyEl) return;
+        const polSym   = currencySymbol(d.currency || 'ZAR');
+        const fmtCur   = (v) => v != null
+          ? polSym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : '—';
+        let loaded = false;
+
+        async function loadBreakdown() {
+          if (loaded) return;
+          loaded = true;
+          try {
+            const res = await Api.assets.list({ policy_id: id, limit: 500 });
+            const assets = (res.data || res || []).filter(a =>
+              !['Sold', 'Decommissioned', 'Inactive', 'Cancelled'].includes(a.asset_status));
+            const agg = Assets.calcAggregateBreakdown(assets);
+            bodyEl.innerHTML = Assets.renderAggregateBreakdownHtml(agg, fmtCur);
+          } catch (err) {
+            bodyEl.innerHTML = `<p class="text-danger" style="padding:.5rem;">Could not load breakdown: ${esc(err.message || String(err))}</p>`;
+          }
+        }
+
+        cb.addEventListener('change', () => {
+          Assets.setBreakdownPref('policy', cb.checked);
+          panel.style.display = cb.checked ? '' : 'none';
+          if (cb.checked) loadBreakdown();
+        });
+        if (cb.checked) loadBreakdown();
+      })();
+
       // Commission-missing banner deep-link → switch to the commission tab.
       document.getElementById('banner-go-commission')?.addEventListener('click', () => {
         const header = document.getElementById('pol-tabs-header');
@@ -1764,79 +1814,119 @@ const Policies = (() => {
     if (!tabEl) return;
 
     const sAssets = allAssets.filter(a => (a.asset_section || '') === sectionType);
+    const polCurrency = (sAssets[0] && sAssets[0].currency) || 'ZAR';
+    const sym = currencySymbol(polCurrency);
+    const fmtCur = (v) => v != null
+      ? sym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '—';
     const cur = (v, code) => v != null && v !== '' && v !== 0
-      ? currencySymbol(code || 'ZAR') + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      ? currencySymbol(code || polCurrency) + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : null;
 
-    const totalVal  = sAssets.reduce((t, a) => t + (Number(a.asset_value) || 0), 0);
-    const totalPrem = sAssets.reduce((t, a) => t + (Number(a.premium)     || 0), 0);
-    const totalSas  = sAssets.reduce((t, a) => t + (Number(a.sasria)      || 0), 0);
-    const totalExc  = sAssets.reduce((t, a) => t + (Number(a.excess)      || 0), 0);
-
-    // encode section type for URL
-    const secParam = encodeURIComponent(sectionType);
+    const agg = Assets.calcAggregateBreakdown(sAssets);
+    const initialBreakdown = Assets.getBreakdownPref('section-assets');
 
     tabEl.innerHTML = `
-      <div style="margin-bottom:.75rem;display:flex;gap:.5rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+      <div style="margin-bottom:.75rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary" id="sec-back-btn">← Back to Sections</button>
-        <button type="button" class="btn btn-sm btn-primary pol-add-asset-choice">+ Add Asset to Section</button>
+        <span style="flex:1;"></span>
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" id="sec-breakdown-cb" ${initialBreakdown ? 'checked' : ''} /> Show breakdown
+        </label>
       </div>
 
-      <div class="detail-section card" style="margin-bottom:.75rem;">
+      <div class="detail-section card" style="margin-bottom:.75rem;" id="sec-totals-card">
         <div class="detail-section-title">${esc(sectionType || 'Uncategorised')}</div>
-        <div class="detail-grid">
-          <div class="detail-field"><span class="detail-label">Total Assets</span><span class="detail-value">${sAssets.length}</span></div>
-          <div class="detail-field"><span class="detail-label">Total Insured Value</span><span class="detail-value">${cur(totalVal) || '—'}</span></div>
-          <div class="detail-field"><span class="detail-label">Total Premium</span><span class="detail-value">${cur(totalPrem) || '—'}</span></div>
-          ${totalSas ? `<div class="detail-field"><span class="detail-label">Total SASRIA</span><span class="detail-value">${cur(totalSas)}</span></div>` : ''}
-          ${totalExc ? `<div class="detail-field"><span class="detail-label">Total Excess</span><span class="detail-value">${cur(totalExc)}</span></div>` : ''}
-        </div>
+        <div id="sec-totals-body"></div>
       </div>
 
       <div class="card">
-        <div class="card-header"><h3 class="card-title">Assets in this Section</h3></div>
-        <div class="table-responsive">
-          <table class="table">
-            <thead><tr>
-              <th>Asset Name</th><th>Type</th><th>Make / Model / Year</th>
-              <th style="text-align:right;">Value</th>
-              <th style="text-align:right;">Premium</th>
-              <th style="text-align:right;">SASRIA</th>
-              <th style="text-align:right;">Excess</th>
-              <th></th>
-            </tr></thead>
-            <tbody>
-              ${sAssets.length ? sAssets.map(a => `
-                <tr>
-                  <td><a href="#/assets/${a.id}">${esc(a.asset_name || '—')}</a></td>
-                  <td style="font-size:.8rem;">${esc(a.asset_type || '—')}</td>
-                  <td>${[a.make, a.model, a.year].filter(Boolean).map(esc).join(' ') || '—'}</td>
-                  <td style="text-align:right;">${a.asset_value != null ? (cur(a.asset_value) || '—') : '—'}</td>
-                  <td style="text-align:right;">${a.premium     != null ? (cur(a.premium)     || '—') : '—'}</td>
-                  <td style="text-align:right;">${a.sasria      != null ? (cur(a.sasria)      || '—') : '—'}</td>
-                  <td style="text-align:right;">${a.excess      != null ? (cur(a.excess)      || '—') : '—'}</td>
-                  <td><a href="#/assets/${a.id}/edit" class="btn btn-xs btn-outline">Edit</a></td>
-                </tr>`).join('')
-              : '<tr><td colspan="8" class="table-empty">No assets in this section.</td></tr>'}
-            </tbody>
-            ${sAssets.length ? `<tfoot>
-              <tr style="font-weight:600;background:var(--surface-secondary,#f8f9fa);">
-                <td colspan="3">Totals</td>
-                <td style="text-align:right;">${cur(totalVal) || '—'}</td>
-                <td style="text-align:right;">${cur(totalPrem) || '—'}</td>
-                <td style="text-align:right;">${totalSas ? (cur(totalSas) || '—') : '—'}</td>
-                <td style="text-align:right;">${totalExc ? (cur(totalExc) || '—') : '—'}</td>
-                <td></td>
-              </tr>
-            </tfoot>` : ''}
-          </table>
+        <div class="card-header" style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <h3 class="card-title" style="margin:0;">Assets in this Section</h3>
+          <span style="flex:1;"></span>
+          <input type="text" id="sec-asset-search" class="form-control"
+            placeholder="Search by name, registration, make, model…"
+            style="max-width:320px;font-size:.85rem;" />
         </div>
+        <div id="sec-assets-table-host"></div>
       </div>`;
 
     document.getElementById('sec-back-btn')?.addEventListener('click', () => loadPolicyTab(policyId, 'sections'));
-    tabEl.querySelectorAll('.pol-add-asset-choice').forEach(btn => {
-      btn.addEventListener('click', () => openAssetChoiceModal(policyId));
-    });
+
+    const host         = document.getElementById('sec-assets-table-host');
+    const searchEl     = document.getElementById('sec-asset-search');
+    const totalsBody   = document.getElementById('sec-totals-body');
+    const breakdownCb  = document.getElementById('sec-breakdown-cb');
+
+    function drawTotals() {
+      if (!totalsBody) return;
+      const showBreakdown = breakdownCb ? breakdownCb.checked : false;
+      if (!showBreakdown) {
+        totalsBody.innerHTML = `
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-label">Total Assets</span><span class="detail-value">${sAssets.length}</span></div>
+            <div class="detail-field"><span class="detail-label">Total Insured Value</span><span class="detail-value">${cur(agg.assetValue) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-label">Total Premium</span><span class="detail-value">${cur(agg.premium) || '—'}</span></div>
+            ${agg.sasria ? `<div class="detail-field"><span class="detail-label">Total SASRIA</span><span class="detail-value">${cur(agg.sasria)}</span></div>` : ''}
+            ${agg.excess ? `<div class="detail-field"><span class="detail-label">Total Excess</span><span class="detail-value">${cur(agg.excess)}</span></div>` : ''}
+          </div>`;
+      } else {
+        totalsBody.innerHTML = `
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-label">Total Assets</span><span class="detail-value">${sAssets.length}</span></div>
+            <div class="detail-field"><span class="detail-label">Sum Insured</span><span class="detail-value">${fmtCur(agg.sumInsured)}</span></div>
+            ${agg.additionalCoversAmount ? `<div class="detail-field"><span class="detail-label">Add'l Covers Amount</span><span class="detail-value">${fmtCur(agg.additionalCoversAmount)}</span></div>` : ''}
+            ${agg.extrasAmount           ? `<div class="detail-field"><span class="detail-label">Vehicle Extras Amount</span><span class="detail-value">${fmtCur(agg.extrasAmount)}</span></div>` : ''}
+            <div class="detail-field" style="font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;"><span class="detail-label">Total Asset Value</span><span class="detail-value">${fmtCur(agg.assetValue)}</span></div>
+            <div class="detail-field"><span class="detail-label">Sum Insured Premium</span><span class="detail-value">${fmtCur(agg.sumInsuredPremium)}</span></div>
+            ${agg.extrasPremium           ? `<div class="detail-field"><span class="detail-label">Vehicle Extras Premium</span><span class="detail-value">${fmtCur(agg.extrasPremium)}</span></div>` : ''}
+            ${agg.additionalCoversPremium ? `<div class="detail-field"><span class="detail-label">Add'l Covers Premium</span><span class="detail-value">${fmtCur(agg.additionalCoversPremium)}</span></div>` : ''}
+            ${agg.excessesPremium         ? `<div class="detail-field"><span class="detail-label">Excesses Premium</span><span class="detail-value">${fmtCur(agg.excessesPremium)}</span></div>` : ''}
+            <div class="detail-field"><span class="detail-label">SASRIA</span><span class="detail-value">${fmtCur(agg.sasria)}</span></div>
+            <div class="detail-field" style="font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;"><span class="detail-label">Total Premium</span><span class="detail-value">${fmtCur(agg.premium)}</span></div>
+            ${agg.excess ? `<div class="detail-field"><span class="detail-label">Total Basic Excess</span><span class="detail-value">${fmtCur(agg.excess)}</span></div>` : ''}
+          </div>`;
+      }
+    }
+
+    function filterRows(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) return sAssets;
+      return sAssets.filter(a =>
+        (a.asset_name          || '').toLowerCase().includes(q) ||
+        (a.asset_type          || '').toLowerCase().includes(q) ||
+        (a.registration_number || '').toLowerCase().includes(q) ||
+        (a.make                || '').toLowerCase().includes(q) ||
+        (a.model               || '').toLowerCase().includes(q) ||
+        (a.serial_number       || '').toLowerCase().includes(q) ||
+        (a.vin_number          || '').toLowerCase().includes(q) ||
+        (a.contact_name        || '').toLowerCase().includes(q) ||
+        (a.account_name        || '').toLowerCase().includes(q) ||
+        String(a.year || '').toLowerCase().includes(q)
+      );
+    }
+
+    function drawTable(query) {
+      const rows = filterRows(query);
+      Assets.renderAssetsTab(host, rows, {
+        addLabel:  '+ Add Asset to Section',
+        onAddClick: () => openAssetChoiceModal(policyId),
+        emptyMsg:  query ? 'No assets match your search.' : 'No assets in this section.',
+      });
+    }
+
+    drawTotals();
+    drawTable('');
+    if (breakdownCb) {
+      breakdownCb.addEventListener('change', () => {
+        Assets.setBreakdownPref('section-assets', breakdownCb.checked);
+        drawTotals();
+      });
+    }
+    if (searchEl) {
+      const onSearch = debounce(() => drawTable(searchEl.value), 250);
+      searchEl.addEventListener('input', onSearch);
+    }
   }
 
   async function loadPolicyTab(policyId, tab) {
@@ -1855,7 +1945,7 @@ const Policies = (() => {
           const cur = (v) => v != null && Number(v) !== 0
             ? polSym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '—';
 
-          function renderSectionsTab(showInactive) {
+          function renderSectionsTab(showInactive, showBreakdown) {
             const allAssets = showInactive ? _allSectionAssets : _allSectionAssets.filter(a => !SECTION_INACTIVE.includes(a.asset_status));
             const sectionMap = new Map();
             allAssets.forEach(a => {
@@ -1868,70 +1958,149 @@ const Policies = (() => {
               if (a && !b) return -1;
               return a.localeCompare(b);
             });
-            const grandVal  = allAssets.reduce((s, a) => s + (Number(a.asset_value) || 0), 0);
-            const grandPrem = allAssets.reduce((s, a) => s + (Number(a.premium)     || 0), 0);
-            const grandSas  = allAssets.reduce((s, a) => s + (Number(a.sasria)      || 0), 0);
-            const grandExc  = allAssets.reduce((s, a) => s + (Number(a.excess)      || 0), 0);
+            const grandAgg = Assets.calcAggregateBreakdown(allAssets);
+
+            const summaryHtml = showBreakdown
+              ? `<div style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
+                   <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
+                   <span>Sum Insured: <strong>${cur(grandAgg.sumInsured)}</strong></span>
+                   ${grandAgg.additionalCoversAmount ? `<span>Add'l Covers Amount: <strong>${cur(grandAgg.additionalCoversAmount)}</strong></span>` : ''}
+                   ${grandAgg.extrasAmount ? `<span>Extras Amount: <strong>${cur(grandAgg.extrasAmount)}</strong></span>` : ''}
+                   <span>Total Asset Value: <strong>${cur(grandAgg.assetValue)}</strong></span>
+                   <span>Sum Insured Premium: <strong>${cur(grandAgg.sumInsuredPremium)}</strong></span>
+                   ${grandAgg.extrasPremium           ? `<span>Extras Premium: <strong>${cur(grandAgg.extrasPremium)}</strong></span>` : ''}
+                   ${grandAgg.additionalCoversPremium ? `<span>Add'l Covers Premium: <strong>${cur(grandAgg.additionalCoversPremium)}</strong></span>` : ''}
+                   ${grandAgg.excessesPremium         ? `<span>Excesses Premium: <strong>${cur(grandAgg.excessesPremium)}</strong></span>` : ''}
+                   <span>SASRIA: <strong>${cur(grandAgg.sasria)}</strong></span>
+                   <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
+                 </div>`
+              : `<div style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
+                   <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
+                   <span>Total Value: <strong>${cur(grandAgg.assetValue)}</strong></span>
+                   <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
+                   ${grandAgg.sasria ? `<span>SASRIA: <strong>${cur(grandAgg.sasria)}</strong></span>` : ''}
+                 </div>`;
+
+            const tableHtml = showBreakdown
+              ? `<div class="table-responsive"><table class="table">
+                  <thead><tr>
+                    <th>Section</th>
+                    <th style="text-align:right;">Assets</th>
+                    <th style="text-align:right;">Sum Insured</th>
+                    <th style="text-align:right;">Add'l Covers</th>
+                    <th style="text-align:right;">Extras Amt</th>
+                    <th style="text-align:right;">Asset Value</th>
+                    <th style="text-align:right;">Sum Ins. Prem</th>
+                    <th style="text-align:right;">Extras Prem</th>
+                    <th style="text-align:right;">Add'l Cov Prem</th>
+                    <th style="text-align:right;">Excesses Prem</th>
+                    <th style="text-align:right;">SASRIA</th>
+                    <th style="text-align:right;">Total Premium</th>
+                    <th style="text-align:right;">Excess</th>
+                  </tr></thead>
+                  <tbody>
+                    ${sectionKeys.map(key => {
+                      const items = sectionMap.get(key);
+                      const sb = Assets.calcAggregateBreakdown(items);
+                      return `<tr>
+                        <td style="font-weight:500;">
+                          <button class="btn-link sec-view-btn" data-section-key="${esc(key)}"
+                            style="background:none;border:none;padding:0;cursor:pointer;color:var(--color-primary,#0066cc);text-decoration:underline;font-weight:500;">
+                            ${esc(key || 'Uncategorised')}
+                          </button>
+                        </td>
+                        <td style="text-align:right;">${items.length}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.sumInsured)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.additionalCoversAmount ? cur(sb.additionalCoversAmount) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.extrasAmount ? cur(sb.extrasAmount) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">${cur(sb.assetValue)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.sumInsuredPremium)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.extrasPremium ? cur(sb.extrasPremium) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.additionalCoversPremium ? cur(sb.additionalCoversPremium) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.excessesPremium ? cur(sb.excessesPremium) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.sasria ? cur(sb.sasria) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">${cur(sb.premium)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.excess ? cur(sb.excess) : '—'}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="font-weight:600;background:var(--surface-secondary,#f8f9fa);">
+                      <td>Totals</td>
+                      <td style="text-align:right;">${allAssets.length}</td>
+                      <td style="text-align:right;">${cur(grandAgg.sumInsured)}</td>
+                      <td style="text-align:right;">${grandAgg.additionalCoversAmount ? cur(grandAgg.additionalCoversAmount) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.extrasAmount ? cur(grandAgg.extrasAmount) : '—'}</td>
+                      <td style="text-align:right;">${cur(grandAgg.assetValue)}</td>
+                      <td style="text-align:right;">${cur(grandAgg.sumInsuredPremium)}</td>
+                      <td style="text-align:right;">${grandAgg.extrasPremium ? cur(grandAgg.extrasPremium) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.additionalCoversPremium ? cur(grandAgg.additionalCoversPremium) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.excessesPremium ? cur(grandAgg.excessesPremium) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.sasria ? cur(grandAgg.sasria) : '—'}</td>
+                      <td style="text-align:right;">${cur(grandAgg.premium)}</td>
+                      <td style="text-align:right;">${grandAgg.excess ? cur(grandAgg.excess) : '—'}</td>
+                    </tr>
+                  </tfoot>
+                </table></div>`
+              : `<div class="table-responsive"><table class="table">
+                  <thead><tr>
+                    <th>Section</th>
+                    <th style="text-align:right;">Assets</th>
+                    <th style="text-align:right;">Total Value</th>
+                    <th style="text-align:right;">Total Premium</th>
+                    <th style="text-align:right;">SASRIA</th>
+                    <th style="text-align:right;">Excess</th>
+                  </tr></thead>
+                  <tbody>
+                    ${sectionKeys.map(key => {
+                      const items = sectionMap.get(key);
+                      const sb = Assets.calcAggregateBreakdown(items);
+                      return `<tr>
+                        <td style="font-weight:500;">
+                          <button class="btn-link sec-view-btn" data-section-key="${esc(key)}"
+                            style="background:none;border:none;padding:0;cursor:pointer;color:var(--color-primary,#0066cc);text-decoration:underline;font-weight:500;">
+                            ${esc(key || 'Uncategorised')}
+                          </button>
+                        </td>
+                        <td style="text-align:right;">${items.length}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.assetValue)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.premium)}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.sasria ? cur(sb.sasria) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.excess ? cur(sb.excess) : '—'}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="font-weight:600;background:var(--surface-secondary,#f8f9fa);">
+                      <td>Totals</td>
+                      <td style="text-align:right;">${allAssets.length}</td>
+                      <td style="text-align:right;">${cur(grandAgg.assetValue)}</td>
+                      <td style="text-align:right;">${cur(grandAgg.premium)}</td>
+                      <td style="text-align:right;">${grandAgg.sasria ? cur(grandAgg.sasria) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.excess ? cur(grandAgg.excess) : '—'}</td>
+                    </tr>
+                  </tfoot>
+                </table></div>`;
 
             tabEl.innerHTML = `
-              <div style="margin-bottom:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              <div style="margin-bottom:.75rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
                 <button type="button" class="btn btn-sm btn-primary pol-add-asset-choice">+ Add Asset</button>
                 ${secHiddenCount > 0 ? `<label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="pol-sec-show-inactive" ${showInactive ? 'checked' : ''} /> Show sold/inactive (${secHiddenCount})</label>` : ''}
-                <span style="font-size:.8rem;color:var(--text-muted);">Assets are grouped by their Section field.</span>
+                <label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--text-muted);cursor:pointer;">
+                  <input type="checkbox" id="pol-sec-breakdown-cb" ${showBreakdown ? 'checked' : ''} /> Show breakdown
+                </label>
+                <span style="font-size:.8rem;color:var(--text-muted);">Assets grouped by their Section field. Totals derived from each asset's parts (sum insured, extras, additional covers, excesses, SASRIA).</span>
               </div>
-              ${sectionKeys.length ? `
-              <div style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;">
-                <span style="font-size:.85rem;color:var(--text-muted);"><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
-                <span style="font-size:.85rem;color:var(--text-muted);">Total Value: <strong>${cur(grandVal)}</strong></span>
-                <span style="font-size:.85rem;color:var(--text-muted);">Total Premium: <strong>${cur(grandPrem)}</strong></span>
-                ${grandSas ? `<span style="font-size:.85rem;color:var(--text-muted);">SASRIA: <strong>${cur(grandSas)}</strong></span>` : ''}
-              </div>
-              <div class="table-responsive"><table class="table">
-                <thead><tr>
-                  <th>Section</th>
-                  <th style="text-align:right;">Assets</th>
-                  <th style="text-align:right;">Total Value</th>
-                  <th style="text-align:right;">Total Premium</th>
-                  <th style="text-align:right;">SASRIA</th>
-                  <th style="text-align:right;">Excess</th>
-                </tr></thead>
-                <tbody>
-                  ${sectionKeys.map(key => {
-                    const items = sectionMap.get(key);
-                    const secVal  = items.reduce((s, a) => s + (Number(a.asset_value) || 0), 0);
-                    const secPrem = items.reduce((s, a) => s + (Number(a.premium)     || 0), 0);
-                    const secSas  = items.reduce((s, a) => s + (Number(a.sasria)      || 0), 0);
-                    const secExc  = items.reduce((s, a) => s + (Number(a.excess)      || 0), 0);
-                    return `<tr>
-                      <td style="font-weight:500;">
-                        <button class="btn-link sec-view-btn" data-section-key="${esc(key)}"
-                          style="background:none;border:none;padding:0;cursor:pointer;color:var(--color-primary,#0066cc);text-decoration:underline;font-weight:500;">
-                          ${esc(key || 'Uncategorised')}
-                        </button>
-                      </td>
-                      <td style="text-align:right;">${items.length}</td>
-                      <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(secVal)}</td>
-                      <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(secPrem)}</td>
-                      <td style="text-align:right;font-variant-numeric:tabular-nums;">${secSas ? cur(secSas) : '—'}</td>
-                      <td style="text-align:right;font-variant-numeric:tabular-nums;">${secExc ? cur(secExc) : '—'}</td>
-                    </tr>`;
-                  }).join('')}
-                </tbody>
-                <tfoot>
-                  <tr style="font-weight:600;background:var(--surface-secondary,#f8f9fa);">
-                    <td>Totals</td>
-                    <td style="text-align:right;">${allAssets.length}</td>
-                    <td style="text-align:right;">${cur(grandVal)}</td>
-                    <td style="text-align:right;">${cur(grandPrem)}</td>
-                    <td style="text-align:right;">${grandSas ? cur(grandSas) : '—'}</td>
-                    <td style="text-align:right;">${grandExc ? cur(grandExc) : '—'}</td>
-                  </tr>
-                </tfoot>
-              </table></div>`
-              : '<p class="tab-empty">No assets found for this policy. Add assets and assign them a Section to see groupings here.</p>'}`;
+              ${sectionKeys.length ? summaryHtml + tableHtml : '<p class="tab-empty">No assets found for this policy. Add assets and assign them a Section to see groupings here.</p>'}`;
 
-            const cb = document.getElementById('pol-sec-show-inactive');
-            if (cb) cb.addEventListener('change', () => renderSectionsTab(cb.checked));
+            const inactiveCb = document.getElementById('pol-sec-show-inactive');
+            if (inactiveCb) inactiveCb.addEventListener('change', () =>
+              renderSectionsTab(inactiveCb.checked, document.getElementById('pol-sec-breakdown-cb')?.checked || false));
+            const breakdownCb = document.getElementById('pol-sec-breakdown-cb');
+            if (breakdownCb) breakdownCb.addEventListener('change', () => {
+              Assets.setBreakdownPref('sections', breakdownCb.checked);
+              renderSectionsTab(document.getElementById('pol-sec-show-inactive')?.checked || false, breakdownCb.checked);
+            });
             tabEl.querySelectorAll('.sec-view-btn').forEach(btn => {
               btn.addEventListener('click', () =>
                 showSectionAssets(policyId, btn.dataset.sectionKey, tabEl, allAssets));
@@ -1940,7 +2109,7 @@ const Policies = (() => {
               btn.addEventListener('click', () => openAssetChoiceModal(policyId));
             });
           }
-          renderSectionsTab(false);
+          renderSectionsTab(false, Assets.getBreakdownPref('sections'));
           break;
         }
         case 'assets': {

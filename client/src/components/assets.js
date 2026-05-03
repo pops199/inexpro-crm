@@ -1636,12 +1636,16 @@ const Assets = (() => {
         const sumInsuredEl        = document.querySelector('[name="sum_insured"]');
         const sumInsuredPremiumEl = document.querySelector('[name="sum_insured_premium"]');
         const sasriaEl            = document.querySelector('[name="sasria"]');
+        const extrasInTotalEl     = document.getElementById('extras-in-total');
+        const includeExtras       = extrasInTotalEl ? extrasInTotalEl.checked : true;
 
-        // Asset Value = vehicle extras amounts + additional covers cover amounts + sum insured
+        // Asset Value = sum_insured + Σ additional_covers[].cover_amount
+        //               + (extras_in_total ? Σ vehicle_extras[].amount : 0)
         const extrasAmountTotal    = sumInputs('#vehicle-extras-rows .extra-amount');
         const additionalCoverTotal = sumInputs('#additional-cover-rows .ac-cover-amount');
         const sumInsured           = parseFloat(sumInsuredEl?.value) || 0;
-        const assetValue           = extrasAmountTotal + additionalCoverTotal + sumInsured;
+        const assetValue           = sumInsured + additionalCoverTotal
+                                   + (includeExtras ? extrasAmountTotal : 0);
 
         // Premium = extras + additional covers + excess premiums + sum insured premium + SASRIA
         const extrasPremTotal      = sumInputs('#vehicle-extras-rows .extra-premium');
@@ -1665,6 +1669,8 @@ const Assets = (() => {
           refreshAssetTotals();
         }
       });
+      // Re-run when "Extras included in total asset value" toggles.
+      document.getElementById('extras-in-total')?.addEventListener('change', refreshAssetTotals);
       // Initial calc on load (picks up prepopulated rows for edits)
       refreshAssetTotals();
 
@@ -1957,16 +1963,16 @@ const Assets = (() => {
           </div>
 
           <!-- Insurance Financials -->
-          <div class="detail-section card">
-            <div class="detail-section-title">Insurance Financials</div>
-            <div class="detail-grid">
-              ${field('Asset Value', cur(d.asset_value) || '—')}
-              ${field('Premium', cur(d.premium) || '—')}
-              ${field('SASRIA', cur(d.sasria) || '—')}
-              ${field('Excess', cur(d.excess) || '—')}
-              ${d.policy_id ? field('Policy', `<a href="#/policies/${d.policy_id}">${esc(d.policy_name || d.policy_number || '—')}</a>`) : ''}
-              ${d.asset_section ? field('Section', esc(d.asset_section)) : ''}
+          <div class="detail-section card" id="asset-fin-card">
+            <div class="detail-section-title" style="display:flex;align-items:center;gap:.75rem;">
+              <span>Insurance Financials</span>
+              <span style="flex:1;"></span>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:400;color:var(--text-muted);cursor:pointer;">
+                <input type="checkbox" id="asset-fin-breakdown-cb" ${getBreakdownPref('asset') ? 'checked' : ''} />
+                Show breakdown
+              </label>
             </div>
+            <div id="asset-fin-body"></div>
           </div>
 
           <!-- Address (Building / Risk) -->
@@ -2241,6 +2247,57 @@ const Assets = (() => {
       `;
 
       loadAssetTab(id, 'timeline');
+
+      // Insurance Financials — combined / breakdown toggle
+      (function wireAssetFinBreakdown() {
+        const body = document.getElementById('asset-fin-body');
+        const cb   = document.getElementById('asset-fin-breakdown-cb');
+        if (!body) return;
+        const breakdown = calcAssetBreakdown(d);
+        function draw() {
+          const showBreakdown = cb ? cb.checked : false;
+          if (!showBreakdown) {
+            body.innerHTML = `
+              <div class="detail-grid">
+                ${field('Asset Value', cur(d.asset_value) || '—')}
+                ${field('Premium',     cur(d.premium)     || '—')}
+                ${field('SASRIA',      cur(d.sasria)      || '—')}
+                ${field('Excess',      cur(d.excess)      || '—')}
+                ${d.policy_id ? field('Policy', `<a href="#/policies/${d.policy_id}">${esc(d.policy_name || d.policy_number || '—')}</a>`) : ''}
+                ${d.asset_section ? field('Section', esc(d.asset_section)) : ''}
+              </div>`;
+          } else {
+            const row = (label, val, opts = {}) => `
+              <div class="detail-field" style="${opts.bold ? 'font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;' : ''}">
+                <span class="detail-label">${label}</span>
+                <span class="detail-value">${val == null ? '—' : (cur(val) || '—')}</span>
+              </div>`;
+            body.innerHTML = `
+              <div class="detail-grid">
+                ${row('Sum Insured',                breakdown.sumInsured)}
+                ${row('Additional Covers Amount',   breakdown.additionalCoversAmount)}
+                ${row(`Vehicle Extras Amount${breakdown.extrasInTotal ? '' : ' <span style="color:var(--text-muted);font-size:.75rem;font-weight:400;">(excluded — Extras-in-total off)</span>'}`, breakdown.extrasAmount)}
+                ${row('Total Asset Value',          breakdown.assetValue, { bold: true })}
+                ${row('Sum Insured Premium',        breakdown.sumInsuredPremium)}
+                ${row('Vehicle Extras Premium',     breakdown.extrasPremium)}
+                ${row('Additional Covers Premium',  breakdown.additionalCoversPremium)}
+                ${row('Excesses Premium',           breakdown.excessesPremium)}
+                ${row('SASRIA',                     breakdown.sasria)}
+                ${row('Total Premium',              breakdown.premium, { bold: true })}
+                ${row('Basic Excess',               parseFloat(d.excess) || 0)}
+                ${d.policy_id ? `<div class="detail-field"><span class="detail-label">Policy</span><span class="detail-value"><a href="#/policies/${d.policy_id}">${esc(d.policy_name || d.policy_number || '—')}</a></span></div>` : ''}
+                ${d.asset_section ? `<div class="detail-field"><span class="detail-label">Section</span><span class="detail-value">${esc(d.asset_section)}</span></div>` : ''}
+              </div>`;
+          }
+        }
+        if (cb) {
+          cb.addEventListener('change', () => {
+            setBreakdownPref('asset', cb.checked);
+            draw();
+          });
+        }
+        draw();
+      })();
 
       document.getElementById('asset-tabs-header').querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2741,6 +2798,120 @@ ${brokerName}`;
     }
   }
 
+  // ── Breakdown helpers (canonical shape consumed by every total display) ───
+  // Single source of truth for "what makes up an asset's Sum Insured / Premium".
+  // Asset Value parts:  sum_insured + Σ additional_covers[].cover_amount
+  //                     + (extras_in_total ? Σ vehicle_extras[].amount : 0)
+  // Premium parts:      sum_insured_premium + sasria
+  //                     + Σ vehicle_extras[].premium
+  //                     + Σ additional_covers[].premium
+  //                     + Σ excesses[].premium
+  function calcAssetBreakdown(asset) {
+    if (!asset) {
+      return {
+        sumInsured: 0, extrasAmount: 0, additionalCoversAmount: 0,
+        extrasInTotal: false, assetValue: 0,
+        sumInsuredPremium: 0, sasria: 0,
+        extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
+        premium: 0,
+      };
+    }
+    const num = (v) => parseFloat(v) || 0;
+
+    let extrasArr = [];
+    let coversArr = [];
+    let excessesArr = [];
+    try { extrasArr   = JSON.parse(asset.vehicle_extras    || '[]') || []; } catch (_) {}
+    try { coversArr   = JSON.parse(asset.additional_covers || '[]') || []; } catch (_) {}
+    try { excessesArr = JSON.parse(asset.excesses          || '[]') || []; } catch (_) {}
+    if (!Array.isArray(extrasArr))   extrasArr   = [];
+    if (!Array.isArray(coversArr))   coversArr   = [];
+    if (!Array.isArray(excessesArr)) excessesArr = [];
+
+    const sumInsured             = num(asset.sum_insured);
+    const extrasAmount           = extrasArr.reduce((s, x) => s + num(x.amount),       0);
+    const additionalCoversAmount = coversArr.reduce((s, x) => s + num(x.cover_amount), 0);
+    const extrasInTotal          = !!asset.extras_in_total;
+    const assetValue             = sumInsured + additionalCoversAmount
+                                 + (extrasInTotal ? extrasAmount : 0);
+
+    const sumInsuredPremium       = num(asset.sum_insured_premium);
+    const sasria                  = num(asset.sasria);
+    const extrasPremium           = extrasArr.reduce((s, x) => s + num(x.premium), 0);
+    const additionalCoversPremium = coversArr.reduce((s, x) => s + num(x.premium), 0);
+    const excessesPremium         = excessesArr.reduce((s, x) => s + num(x.premium), 0);
+    const premium = sumInsuredPremium + sasria
+                  + extrasPremium + additionalCoversPremium + excessesPremium;
+
+    return {
+      sumInsured, extrasAmount, additionalCoversAmount, extrasInTotal, assetValue,
+      sumInsuredPremium, sasria, extrasPremium, additionalCoversPremium, excessesPremium, premium,
+    };
+  }
+
+  function calcAggregateBreakdown(assets) {
+    const init = {
+      sumInsured: 0, extrasAmount: 0, additionalCoversAmount: 0, assetValue: 0,
+      sumInsuredPremium: 0, sasria: 0,
+      extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
+      premium: 0, excess: 0,
+    };
+    if (!Array.isArray(assets)) return init;
+    return assets.reduce((agg, a) => {
+      const b = calcAssetBreakdown(a);
+      return {
+        sumInsured:              agg.sumInsured              + b.sumInsured,
+        extrasAmount:            agg.extrasAmount            + b.extrasAmount,
+        additionalCoversAmount:  agg.additionalCoversAmount  + b.additionalCoversAmount,
+        assetValue:              agg.assetValue              + b.assetValue,
+        sumInsuredPremium:       agg.sumInsuredPremium       + b.sumInsuredPremium,
+        sasria:                  agg.sasria                  + b.sasria,
+        extrasPremium:           agg.extrasPremium           + b.extrasPremium,
+        additionalCoversPremium: agg.additionalCoversPremium + b.additionalCoversPremium,
+        excessesPremium:         agg.excessesPremium         + b.excessesPremium,
+        premium:                 agg.premium                 + b.premium,
+        excess:                  agg.excess                  + (parseFloat(a.excess) || 0),
+      };
+    }, init);
+  }
+
+  // localStorage helpers for the "Show breakdown" UI toggle (display-only)
+  const BREAKDOWN_LS_KEY = 'inexpro:show-breakdown';
+  function getBreakdownPref(scope) {
+    try {
+      const raw = localStorage.getItem(`${BREAKDOWN_LS_KEY}:${scope}`);
+      return raw === '1';
+    } catch (_) { return false; }
+  }
+  function setBreakdownPref(scope, on) {
+    try { localStorage.setItem(`${BREAKDOWN_LS_KEY}:${scope}`, on ? '1' : '0'); } catch (_) {}
+  }
+
+  // Shared HTML renderer for an aggregate breakdown panel (used by policy /
+  // sections / section-assets views). `agg` is the result of
+  // calcAggregateBreakdown. `curFn` formats a number as currency (R xx.xx).
+  function renderAggregateBreakdownHtml(agg, curFn) {
+    const fmt = (v) => v != null ? curFn(v) : '—';
+    const row = (label, val, bold) => `
+      <div class="detail-field" style="${bold ? 'font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;' : ''}">
+        <span class="detail-label">${label}</span>
+        <span class="detail-value">${fmt(val)}</span>
+      </div>`;
+    return `
+      <div class="detail-grid" style="margin-top:.5rem;">
+        ${row('Sum Insured (asset)', agg.sumInsured)}
+        ${agg.additionalCoversAmount ? row('Additional Covers Amount', agg.additionalCoversAmount) : ''}
+        ${agg.extrasAmount ? row('Vehicle Extras Amount', agg.extrasAmount) : ''}
+        ${row('Total Asset Value', agg.assetValue, true)}
+        ${row('Sum Insured Premium', agg.sumInsuredPremium)}
+        ${agg.extrasPremium           ? row('Vehicle Extras Premium', agg.extrasPremium) : ''}
+        ${agg.additionalCoversPremium ? row('Additional Covers Premium', agg.additionalCoversPremium) : ''}
+        ${agg.excessesPremium         ? row('Excesses Premium', agg.excessesPremium) : ''}
+        ${row('SASRIA', agg.sasria)}
+        ${row('Total Premium', agg.premium, true)}
+      </div>`;
+  }
+
   // ── Shared renderer for "Assets" sub-tabs on other modules ────────────────
   // Renders a customizable asset table into `tabEl`, reusing the main module's
   // ViewPrefs catalog + config so column visibility/order are consistent
@@ -2862,6 +3033,9 @@ ${brokerName}`;
 
   return { list, form, detail, _amendmentMail, _sendAmendment,
            _confirmationOfCoverMail, _sendCoverMail, _applyCoverMailTemplate,
-           renderAssetsTab };
+           renderAssetsTab,
+           calcAssetBreakdown, calcAggregateBreakdown,
+           getBreakdownPref, setBreakdownPref,
+           renderAggregateBreakdownHtml };
 
 })();

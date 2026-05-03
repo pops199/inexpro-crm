@@ -6,6 +6,38 @@ sits at the top.
 
 ---
 
+## v1.0.21 — 2026-05-03
+
+**Sum-Insured / Premium breakdown toggles + section-assets customisable columns**
+
+- Policy → Sections tab → opening a section now uses the same
+  customizable column engine as the Assets tab (⚙ Columns + sort).
+- "Assets in this Section" gets a search box (name, registration,
+  make, model, VIN, serial, contact, account, year). Filter is
+  client-side and debounced.
+- New `Assets.calcAssetBreakdown` / `calcAggregateBreakdown` helpers
+  are now the single source of truth for how Asset Value and Premium
+  are composed from the underlying parts. Asset Value =
+  `sum_insured` + Σ `additional_covers[].cover_amount`
+  + (`extras_in_total` ? Σ `vehicle_extras[].amount` : 0). Premium =
+  `sum_insured_premium` + `sasria` + Σ extras / additional-covers /
+  excesses premiums (matches the server's
+  `computePolicyTotalPremium`).
+- Asset form: the existing **Extras included in total asset value**
+  checkbox is now wired into the auto-calculator. Untick it and the
+  asset's Asset Value drops the vehicle-extras amount.
+- New "Show breakdown" toggle in four places, each remembers its
+  state in `localStorage`:
+  - **Asset detail → Insurance Financials** card.
+  - **Policy detail → Financial & Dates** card (lazy-loads the
+    aggregate across all linked active assets).
+  - **Policy → Sections tab** (switches between the 6-column summary
+    and a 13-column per-component breakdown).
+  - **Policy → Sections tab → "Assets in this Section"** (totals
+    card switches between combined and per-part breakdown).
+
+---
+
 ## v1.0.20 — 2026-05-02
 
 **Dark mode polish — round 5 (modal close buttons + 2FA modal)**
