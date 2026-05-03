@@ -6,6 +6,31 @@ sits at the top.
 
 ---
 
+## v1.0.24 — 2026-05-03
+
+**User Manual v3.0 published + in-app notification for every user**
+
+- Inexpro CRM User Manual rebuilt at version 3.0 (PDF + DOCX). Bigger
+  scope than the v1.0 manual — adds a 14-step quick-start guide, full
+  per-module breakdown of every detail-view tab, the edit-lock and
+  admin-OTP flow, full coverage of the new Sections breakdown and
+  per-row "In total" tickboxes on Vehicle Extras + Additional Covers,
+  the customizable column engine, dark mode, 2FA, and the in-app
+  System Update flow. New navy + gold branding throughout — header
+  band, gold underline, Inexpro logo on the cover, FSP licence info
+  in the footer.
+- PDF served as a static asset at `/Inexpro_CRM_User_Manual.pdf`
+  (`client/public/Inexpro_CRM_User_Manual.pdf`).
+- New seeded notification — every active user gets a one-time
+  "New User Manual available" entry in their bell-icon inbox the
+  first time the v1.0.24 server boots. Idempotent (`dedup_key =
+  seed:manual_v3`); re-running the server doesn't dupe.
+- Notification renderer: external / static-asset links (anything
+  that isn't a `#/` hash route) now open in a new tab so the SPA
+  isn't navigated away from when clicking Open on the manual entry.
+
+---
+
 ## v1.0.23 — 2026-05-03
 
 **Per-row "In total" tickbox on Additional Covers + R-prefix layout fix**

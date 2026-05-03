@@ -93,7 +93,13 @@ const Notifications = (() => {
               </div>
               ${n.body ? `<div style="margin-top:.25rem;font-size:.9rem;color:#444;">${esc(n.body)}</div>` : ''}
               <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
-                ${n.link ? `<a href="${esc(n.link)}" class="btn btn-xs btn-primary nf-open" data-id="${n.id}">Open</a>` : ''}
+                ${n.link ? (() => {
+                  // External / static-asset links (anything that isn't a #/ hash route)
+                  // open in a new tab so the SPA isn't navigated away from.
+                  const isExternal = !String(n.link).startsWith('#');
+                  const targetAttr = isExternal ? ' target="_blank" rel="noopener"' : '';
+                  return `<a href="${esc(n.link)}" class="btn btn-xs btn-primary nf-open" data-id="${n.id}"${targetAttr}>Open</a>`;
+                })() : ''}
                 ${isUnread && !n.dismissed_at ? `<button class="btn btn-xs btn-secondary nf-read" data-id="${n.id}">Mark read</button>` : ''}
                 ${!n.dismissed_at ? `<button class="btn btn-xs btn-secondary nf-dismiss" data-id="${n.id}">Dismiss</button>` : ''}
                 <span style="margin-left:auto;font-size:.75rem;color:#888;">${esc(n.category)}</span>

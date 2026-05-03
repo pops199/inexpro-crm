@@ -1348,6 +1348,13 @@ function initDb() {
         ins.run(u.id, 'broker_fitness', 'warning', 'Complete your Broker Fitness profile',
           'Please open Broker Fitness and confirm your ID number, FSCA registration, RE1/RE5 status, NQF qualification and Class of Business training. The compliance team needs this to keep your record FSCA-ready.',
           '#/broker-profiles', 'broker_profiles', null, 'seed:complete_fitness');
+
+        // User manual published — one row per active user, idempotent on
+        // dedup_key. Re-bump the dedup_key (manual_v3 → manual_v4 …) when a
+        // new edition is published so existing users see the new entry.
+        ins.run(u.id, 'system',         'info',    'New User Manual available (Version 3.0)',
+          'Version 3.0 of the Inexpro CRM User Manual has been published. It covers the new Sections breakdown, per-row "In total" tickboxes on Vehicle Extras and Additional Covers, customizable columns, the edit-lock + admin OTP flow, and a 14-step quick-start guide. Click Open to view the PDF (right-click to open in a new tab).',
+          '/Inexpro_CRM_User_Manual.pdf', 'system', null, 'seed:manual_v3');
       }
     } catch (_) {}
   } catch (_) {}

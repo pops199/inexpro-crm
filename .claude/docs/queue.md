@@ -721,3 +721,117 @@ Files changed: 6
 - `server/db/sessions.db`
 Session: fc18185e-d933-456b-ac8b-c8df133c94d8
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 13:13 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `client/src/components/policies.js`
+- `package.json`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 15:10 — auto-detected change
+Files changed: 8
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/build-manual.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-wal`
+- `server/db/manual_demo.db`
+- `server/db/manual_demo.db-shm`
+- `server/db/manual_demo.db-wal`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 15:35 — auto-detected change
+Files changed: 8
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/build-manual.js`
+- `docs/manual/capture.js`
+- `docs/manual/seed-demo.js`
+- `server/db/manual_demo.db`
+- `server/db/manual_demo.db-shm`
+- `server/db/manual_demo.db-wal`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 15:42 — auto-detected change
+Files changed: 28
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/_extracted/[Content_Types].xml`
+- `docs/manual/_extracted/docProps/app.xml`
+- `docs/manual/_extracted/docProps/core.xml`
+- `docs/manual/_extracted/word/_rels/document.xml.rels`
+- `docs/manual/_extracted/word/document.xml`
+- `docs/manual/_extracted/word/endnotes.xml`
+- `docs/manual/_extracted/word/fontTable.xml`
+- `docs/manual/_extracted/word/footer1.xml`
+- `docs/manual/_extracted/word/footer2.xml`
+- `docs/manual/_extracted/word/footer3.xml`
+- `docs/manual/_extracted/word/footnotes.xml`
+- `docs/manual/_extracted/word/header1.xml`
+- `docs/manual/_extracted/word/header2.xml`
+- `docs/manual/_extracted/word/header3.xml`
+- `docs/manual/_extracted/word/numbering.xml`
+- `docs/manual/_extracted/word/settings.xml`
+- `docs/manual/_extracted/word/styles.xml`
+- `docs/manual/_extracted/word/theme/theme1.xml`
+- `docs/manual/_extracted/word/webSettings.xml`
+- `docs/manual/_training-module-extracted.docx`
+- `docs/manual/build-manual.js`
+- `docs/manual/capture.js`
+- `docs/manual/~$raining-module-extracted.docx`
+- `server/db/manual_demo.db`
+- `server/db/manual_demo.db-shm`
+- `server/db/manual_demo.db-wal`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 15:58 — auto-detected change
+Files changed: 25
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/_extracted/[Content_Types].xml (deleted)`
+- `docs/manual/_extracted/docProps/app.xml (deleted)`
+- `docs/manual/_extracted/docProps/core.xml (deleted)`
+- `docs/manual/_extracted/word/_rels/document.xml.rels (deleted)`
+- `docs/manual/_extracted/word/document.xml (deleted)`
+- `docs/manual/_extracted/word/endnotes.xml (deleted)`
+- `docs/manual/_extracted/word/fontTable.xml (deleted)`
+- `docs/manual/_extracted/word/footer1.xml (deleted)`
+- `docs/manual/_extracted/word/footer2.xml (deleted)`
+- `docs/manual/_extracted/word/footer3.xml (deleted)`
+- `docs/manual/_extracted/word/footnotes.xml (deleted)`
+- `docs/manual/_extracted/word/header1.xml (deleted)`
+- `docs/manual/_extracted/word/header2.xml (deleted)`
+- `docs/manual/_extracted/word/header3.xml (deleted)`
+- `docs/manual/_extracted/word/numbering.xml (deleted)`
+- `docs/manual/_extracted/word/settings.xml (deleted)`
+- `docs/manual/_extracted/word/styles.xml (deleted)`
+- `docs/manual/_extracted/word/theme/theme1.xml (deleted)`
+- `docs/manual/_extracted/word/webSettings.xml (deleted)`
+- `docs/manual/capture.js`
+- `server/db/manual_demo.db`
+- `server/db/manual_demo.db-shm`
+- `server/db/manual_demo.db-wal`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 16:02 — auto-detected change
+Files changed: 3
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/build-manual.js`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 16:08 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -281,3 +281,31 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-03 13:06
 - Modified 6 files
 - Files: RELEASES.md, client/public/index.html, client/src/components/assets.js, client/src/components/policies.js, package.json (+1 more)
+
+## 2026-05-03 13:13
+- Modified 6 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/assets.js, client/src/components/policies.js, package.json (+1 more)
+
+## 2026-05-03 15:10
+- Modified 8 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/build-manual.js, server/db/inexpro.db, server/db/inexpro.db-wal, server/db/manual_demo.db (+3 more)
+
+## 2026-05-03 15:35
+- Modified 8 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/build-manual.js, docs/manual/capture.js, docs/manual/seed-demo.js, server/db/manual_demo.db (+3 more)
+
+## 2026-05-03 15:42
+- Modified 28 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/_extracted/[Content_Types].xml, docs/manual/_extracted/docProps/app.xml, docs/manual/_extracted/docProps/core.xml, docs/manual/_extracted/word/_rels/document.xml.rels (+23 more)
+
+## 2026-05-03 15:58
+- Modified 25 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/_extracted/[Content_Types].xml (deleted), docs/manual/_extracted/docProps/app.xml (deleted), docs/manual/_extracted/docProps/core.xml (deleted), docs/manual/_extracted/word/_rels/document.xml.rels (deleted) (+20 more)
+
+## 2026-05-03 16:02
+- Modified 3 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/build-manual.js, server/db/sessions.db
+
+## 2026-05-03 16:08
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db

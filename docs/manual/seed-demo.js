@@ -98,18 +98,30 @@ async function findOrCreateAccount(name, overrides = {}) {
 
 async function ensureFicaVerified(kind, id) {
   const path = `/api/fica/${kind}/${id}`;
+  // Resolve admin user id for "verified-by"
+  const usersResp = await api('GET', '/api/admin/users').catch(() => ({ data: [] }));
+  const users = usersResp.data || usersResp || [];
+  const admin = users.find(u => u.username === 'admin') || users[0] || { id: 1 };
   await api('PUT', path, {
     fica_status: 'Verified',
     fica_verification_date: '2026-04-20',
-    fica_verification_method: 'South African ID document',
+    fica_verification_method: kind === 'account' ? 'CIPC registration (company)' : 'South African ID document',
+    fica_document_reference: kind === 'account' ? 'CIPC: 2018/123456/07' : 'ID: 8001015009088',
+    fica_verified_by_id: admin.id,
     fica_beneficial_owner_confirmed: 'Yes',
     fica_pep_check: 'Yes — clear',
+    fica_pep_check_date: '2026-04-20',
     fica_id_document_received: 1,
     fica_proof_of_address_received: 1,
+    _admin_password: 'admin123',
   }).catch(e => console.warn(`  · FICA(${kind}/${id}) update note:`, e.message));
 }
 
 async function ensurePopiaConsented(contactId) {
+  // Resolve admin to use as Information Officer
+  const usersResp = await api('GET', '/api/admin/users').catch(() => ({ data: [] }));
+  const users = usersResp.data || usersResp || [];
+  const admin = users.find(u => u.username === 'admin') || users[0] || { id: 1 };
   await api('PUT', `/api/popia/contact/${contactId}`, {
     popia_consent_obtained: 1,
     popia_consent_date: '2026-04-20',
@@ -117,7 +129,24 @@ async function ensurePopiaConsented(contactId) {
     data_processing_basis: 'Consent',
     purpose_of_processing: 'Insurance advice, intermediary services and policy administration',
     retention_period_years: 5,
+    data_source: 'Direct from data subject',
+    data_categories_held: JSON.stringify(['Identity', 'Contact', 'Financial', 'Insurance']),
+    information_officer_id: admin.id,
+    privacy_notice_provided: 1,
+    _admin_password: 'admin123',
   }).catch(e => console.warn('  · POPIA update note:', e.message));
+}
+
+async function findOrCreateBrokerCode(brokerId) {
+  const codes = await api('GET', `/api/admin/users/${brokerId}/broker-codes`).catch(() => ({ data: [] }));
+  const list = codes.data || codes || [];
+  if (list[0]) return list[0].id;
+  const created = await api('POST', `/api/admin/users/${brokerId}/broker-codes`, {
+    code: 'TRN-001',
+    description: 'Default broker code (training data)',
+  });
+  console.log(`  ✓ Created broker code TRN-001 for broker id=${brokerId}`);
+  return (created.data || created).id;
 }
 
 async function activateContact(contact) {
@@ -158,6 +187,7 @@ async function findOrCreatePolicy(number, contactId, brokerId) {
   const list = await api('GET', '/api/policies?limit=200');
   const existing = (list.data || []).find(p => p.policy_number === number);
   if (existing) return existing;
+  const brokerCodeId = await findOrCreateBrokerCode(brokerId);
   const created = await api('POST', '/api/policies', {
     policy_number: number,
     policy_name: 'Sarah Naidoo — Household & Motor 2026',
@@ -165,6 +195,7 @@ async function findOrCreatePolicy(number, contactId, brokerId) {
     product_category: 'Personal Lines Multi-Peril',
     inception_date: '2026-04-01',
     assigned_broker_id: brokerId,
+    broker_code_id: brokerCodeId,
     contact_id: contactId,
     policy_status: 'Pending',
     annual_premium: 18450,
@@ -238,8 +269,12 @@ async function ensurePolicyActiveWithApprovedQuote(policy) {
     await api('POST', `/api/policies/quotes/${quote.id}/approve`, { approved_at: '2026-04-15' });
     console.log(`  ✓ Approved quote id=${quote.id}`);
   }
-  // 3. Activate policy
-  await api('PUT', `/api/policies/${policy.id}`, { ...policy, policy_status: 'Active' });
+  // 3. Activate policy (edit-lock requires admin password)
+  await api('PUT', `/api/policies/${policy.id}`, {
+    ...policy,
+    policy_status: 'Active',
+    _admin_password: 'admin123',
+  });
   console.log(`  ✓ Activated policy id=${policy.id}`);
 }
 
@@ -247,8 +282,71 @@ async function findMotorProduct() {
   const products = await api('GET', '/api/products?limit=200');
   const list = products.data || products;
   const motor = list.find(p => p.product_category === 'Personal Lines — Motor' && p.product_status === 'Active');
-  if (!motor) throw new Error('No active Personal Lines — Motor product in library');
-  return motor.id;
+  if (motor) return motor.id;
+  const created = await api('POST', '/api/products', {
+    product_code: 'SAN-MOT-COMP',
+    product_name: 'Santam Multi-Peril Motor (Comprehensive)',
+    insurer: 'Santam',
+    product_category: 'Personal Lines — Motor',
+    product_status: 'Active',
+    target_market: 'Individuals owning private motor vehicles for personal use; SA residents.',
+    geographic_scope: 'Republic of South Africa (cross-border extension on request)',
+    risk_appetite: 'Low to Medium',
+    minimum_insurable_value: 50000,
+    maximum_insurable_value: 5000000,
+    key_exclusions: 'Wear and tear, willful damage, unlicensed driver, racing.',
+  });
+  console.log(`  ✓ Created Personal Lines — Motor product (id=${(created.data || created).id})`);
+  return (created.data || created).id;
+}
+
+async function findHomeProduct() {
+  const products = await api('GET', '/api/products?limit=200');
+  const list = products.data || products;
+  const home = list.find(p => p.product_category === 'Personal Lines — Property' && p.product_status === 'Active');
+  if (home) return home.id;
+  const created = await api('POST', '/api/products', {
+    product_code: 'SAN-HOME-MULTI',
+    product_name: 'Santam Multi-Peril Household & Buildings',
+    insurer: 'Santam',
+    product_category: 'Personal Lines — Property',
+    product_status: 'Active',
+    target_market: 'Individual homeowners; SA residents.',
+    geographic_scope: 'Republic of South Africa',
+    risk_appetite: 'Low to Medium',
+    minimum_insurable_value: 100000,
+    maximum_insurable_value: 15000000,
+    key_exclusions: 'Subsidence (without endorsement), gradual deterioration, war risks.',
+  });
+  console.log(`  ✓ Created Personal Lines — Property product (id=${(created.data || created).id})`);
+  return (created.data || created).id;
+}
+
+async function findOrCreatePolicySection(policyId, contactId, sectionType) {
+  const list = await api('GET', `/api/policy-sections?policy_id=${policyId}&limit=50`).catch(() => ({ data: [] }));
+  const existing = (list.data || []).find(s => s.section_type === sectionType);
+  if (existing) return existing;
+  const sectionName = sectionType === 'Personal Motor'
+    ? 'Personal Motor section'
+    : `${sectionType} section`;
+  const created = await api('POST', '/api/policy-sections', {
+    section_name: sectionName,
+    policy_id: policyId,
+    contact_id: contactId,
+    section_type: sectionType,
+    section_category: sectionType === 'Personal Motor' ? 'Personal Lines' : 'Personal Lines',
+    needs_analysis_status: 'Implemented',
+    risk_exists: 1,
+    cover_required: 1,
+    currently_covered: 1,
+    recommended_for_cover: 1,
+    implemented: 1,
+    gap_identified: 0,
+    disclosure_explained: 1,
+    client_understanding_confirmed: 1,
+  });
+  console.log(`  ✓ Created policy section "${sectionName}" (id=${(created.data || created).id})`);
+  return created.data || created;
 }
 
 async function findOrCreateAsset(name, contactId, policyId, brokerId) {
@@ -256,9 +354,12 @@ async function findOrCreateAsset(name, contactId, policyId, brokerId) {
   const existing = (list.data || []).find(a => a.asset_name === name);
   if (existing) return existing;
   const productId = await findMotorProduct();
+  const section = await findOrCreatePolicySection(policyId, contactId, 'Personal Motor');
   const created = await api('POST', '/api/assets', {
     asset_name: name,
-    asset_type: 'Motor Vehicle',
+    asset_type: 'Motor',
+    asset_section: 'Motor – Light Motor Vehicle',
+    policy_section_id: section.id,
     asset_status: 'Active',
     contact_id: contactId,
     policy_id: policyId,
@@ -269,9 +370,21 @@ async function findOrCreateAsset(name, contactId, policyId, brokerId) {
     year: 2024,
     registration_number: 'CA 123-456',
     vin_number: 'JT1ZE10E000123456',
-    asset_value: 425000,
     sum_insured: 425000,
+    sum_insured_premium: 685,
+    asset_value: 425000,
     premium: 685,
+    sasria: 25,
+    excess: 5000,
+    vehicle_extras: JSON.stringify([
+      { name: 'Aftermarket sound system + roof rack', amount: 18500, premium: 35, include_in_total: true },
+      { name: 'Tracker hardware (factory-fitted)',     amount: 4200,  premium: 0,  include_in_total: false },
+    ]),
+    additional_covers: JSON.stringify([
+      { description: 'Hail (named perils extension)', cover_amount: 50000, premium: 28, include_in_total: true },
+      { description: 'Riot & Strike (under SASRIA limit)', cover_amount: 100000, premium: 0, include_in_total: false },
+    ]),
+    extras_in_total: 1,
   });
   console.log(`  ✓ Created asset "${name}" (id=${created.id})`);
   return created;
