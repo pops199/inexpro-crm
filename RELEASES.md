@@ -6,6 +6,27 @@ sits at the top.
 
 ---
 
+## v1.0.25 — 2026-05-03
+
+**User Manual layout fixes (re-published PDF)**
+
+- Tab-content screenshots throughout the manual are now tight-clipped
+  to the actual rendered content, removing the trailing grey strip
+  that used to extend a screenshot to the bottom of its PDF page
+  (most visible on the contact-detail Timeline tab and the policy
+  Commission / Versions / Quotes tabs).
+- Tall ruleTable rows and tall callouts are now `cantSplit` so they
+  migrate whole to the next page instead of bleeding shaded space at
+  the bottom of the previous one.
+- Replaced the broken "Policy Sections list" figure (it was a 404
+  capture — that route doesn't exist) with corrected text explaining
+  that Policy Sections live inside the Sections tab on a policy /
+  contact / account.
+- `client/public/Inexpro_CRM_User_Manual.pdf` refreshed so the v1.0.24
+  in-app notification continues to point at the corrected PDF.
+
+---
+
 ## v1.0.24 — 2026-05-03
 
 **User Manual v3.0 published + in-app notification for every user**
