@@ -1390,28 +1390,41 @@ const Assets = (() => {
               <!-- ── Additional Cover ── -->
               <fieldset class="form-section">
                 <legend class="form-section-title">Additional Cover</legend>
+                <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;">
+                  Tick "In total" to include the cover's amount in the asset's Sum Insured / Asset Value.
+                  Premium is always included in the asset's total Premium.
+                </div>
                 <div id="additional-cover-rows">
                   ${(() => {
                     let covers = [];
                     try { covers = JSON.parse(d.additional_covers || '[]'); } catch(_) {}
                     if (!covers.length) return '';
-                    return covers.map((c) => `
-                      <div class="additional-cover-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:.5rem;margin-bottom:.5rem;align-items:center;">
+                    // Per-row include flag. Older rows default to true (the
+                    // pre-tickbox behaviour was always "include").
+                    return covers.map((c) => {
+                      const inTotal = (c.include_in_total != null) ? !!c.include_in_total : true;
+                      return `
+                      <div class="additional-cover-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:.5rem;margin-bottom:.5rem;align-items:center;">
                         <input type="text" class="form-control ac-description" placeholder="Description"
                           value="${esc(c.description || '')}" />
-                        <div class="input-prefix-group">
+                        <div class="input-prefix-group" style="display:flex;align-items:center;">
                           <span class="input-prefix cur-label">R</span>
                           <input type="number" class="form-control ac-cover-amount" placeholder="Cover Amount"
                             value="${esc(c.cover_amount != null ? c.cover_amount : '')}" min="0" step="0.01" />
                         </div>
-                        <div class="input-prefix-group">
+                        <div class="input-prefix-group" style="display:flex;align-items:center;">
                           <span class="input-prefix cur-label">R</span>
                           <input type="number" class="form-control ac-premium" placeholder="Premium"
                             value="${esc(c.premium != null ? c.premium : '')}" min="0" step="0.01" />
                         </div>
+                        <label class="checklist-item" style="margin:0;white-space:nowrap;font-size:.82rem;">
+                          <input type="checkbox" class="ac-in-total" ${inTotal ? 'checked' : ''} />
+                          <span>In total</span>
+                        </label>
                         <button type="button" class="btn btn-sm btn-danger remove-additional-cover-btn"
                           style="white-space:nowrap;">✕</button>
-                      </div>`).join('');
+                      </div>`;
+                    }).join('');
                   })()}
                 </div>
                 <div style="margin-top:.5rem;">
@@ -1572,27 +1585,37 @@ const Assets = (() => {
       function addAdditionalCoverRow() {
         const row = document.createElement('div');
         row.className = 'additional-cover-row';
-        row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:.5rem;margin-bottom:.5rem;align-items:center;';
+        row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:.5rem;margin-bottom:.5rem;align-items:center;';
         const curEl = document.querySelector('[name="currency"]');
         const sym   = currencySymbol(curEl ? curEl.value : 'ZAR');
         row.innerHTML = `
           <input type="text" class="form-control ac-description" placeholder="Description" />
-          <div class="input-prefix-group">
+          <div class="input-prefix-group" style="display:flex;align-items:center;">
             <span class="input-prefix cur-label">${sym}</span>
             <input type="number" class="form-control ac-cover-amount" placeholder="Cover Amount" min="0" step="0.01" />
           </div>
-          <div class="input-prefix-group">
+          <div class="input-prefix-group" style="display:flex;align-items:center;">
             <span class="input-prefix cur-label">${sym}</span>
             <input type="number" class="form-control ac-premium" placeholder="Premium" min="0" step="0.01" />
           </div>
+          <label class="checklist-item" style="margin:0;white-space:nowrap;font-size:.82rem;">
+            <input type="checkbox" class="ac-in-total" checked />
+            <span>In total</span>
+          </label>
           <button type="button" class="btn btn-sm btn-danger remove-additional-cover-btn" style="white-space:nowrap;">✕</button>`;
         additionalCoverRows.appendChild(row);
+        if (typeof refreshAssetTotals === 'function') refreshAssetTotals();
       }
       if (addAdditionalCoverBtn) addAdditionalCoverBtn.addEventListener('click', addAdditionalCoverRow);
       if (additionalCoverRows) {
         additionalCoverRows.addEventListener('click', (e) => {
           if (e.target.classList.contains('remove-additional-cover-btn')) {
             e.target.closest('.additional-cover-row').remove();
+            if (typeof refreshAssetTotals === 'function') refreshAssetTotals();
+          }
+        });
+        additionalCoverRows.addEventListener('change', (e) => {
+          if (e.target.classList.contains('ac-in-total')) {
             if (typeof refreshAssetTotals === 'function') refreshAssetTotals();
           }
         });
@@ -1664,8 +1687,7 @@ const Assets = (() => {
         const sumInsuredPremiumEl = document.querySelector('[name="sum_insured_premium"]');
         const sasriaEl            = document.querySelector('[name="sasria"]');
 
-        // Asset Value = sum_insured + Σ additional_covers[].cover_amount
-        //               + Σ vehicle_extras[].amount where row's "In total" is ticked
+        // Vehicle Extras: per-row "In total" controls inclusion.
         const extrasRows = Array.from(document.querySelectorAll('#vehicle-extras-rows .vehicle-extra-row'));
         let extrasIncluded = 0;
         let extrasPremTotal = 0;
@@ -1675,16 +1697,26 @@ const Assets = (() => {
           if (r.querySelector('.extra-in-total')?.checked) extrasIncluded += amt;
           extrasPremTotal += prm;
         });
-        const additionalCoverTotal = sumInputs('#additional-cover-rows .ac-cover-amount');
-        const sumInsured           = parseFloat(sumInsuredEl?.value) || 0;
-        const assetValue           = sumInsured + additionalCoverTotal + extrasIncluded;
 
-        // Premium = extras + additional covers + excess premiums + sum insured premium + SASRIA
-        const additionalCoverPrem  = sumInputs('#additional-cover-rows .ac-premium');
-        const excessPremTotal      = sumInputs('#excess-rows .excess-premium');
-        const sumInsuredPremium    = parseFloat(sumInsuredPremiumEl?.value) || 0;
-        const sasria               = parseFloat(sasriaEl?.value) || 0;
-        const premium              = extrasPremTotal + additionalCoverPrem + excessPremTotal + sumInsuredPremium + sasria;
+        // Additional Covers: per-row "In total" controls inclusion.
+        const acRows = Array.from(document.querySelectorAll('#additional-cover-rows .additional-cover-row'));
+        let acIncluded = 0;
+        let acPremTotal = 0;
+        acRows.forEach(r => {
+          const amt = parseFloat(r.querySelector('.ac-cover-amount')?.value) || 0;
+          const prm = parseFloat(r.querySelector('.ac-premium')?.value)      || 0;
+          if (r.querySelector('.ac-in-total')?.checked) acIncluded += amt;
+          acPremTotal += prm;
+        });
+
+        const sumInsured = parseFloat(sumInsuredEl?.value) || 0;
+        const assetValue = sumInsured + acIncluded + extrasIncluded;
+
+        // Premium = sum_insured_premium + SASRIA + extras + additional covers + excesses
+        const excessPremTotal   = sumInputs('#excess-rows .excess-premium');
+        const sumInsuredPremium = parseFloat(sumInsuredPremiumEl?.value) || 0;
+        const sasria            = parseFloat(sasriaEl?.value) || 0;
+        const premium = extrasPremTotal + acPremTotal + excessPremTotal + sumInsuredPremium + sasria;
 
         if (assetValueAutoEl)   assetValueAutoEl.value   = assetValue.toFixed(2);
         if (assetPremiumAutoEl) assetPremiumAutoEl.value = premium.toFixed(2);
@@ -1700,9 +1732,10 @@ const Assets = (() => {
           refreshAssetTotals();
         }
       });
-      // Re-run when any per-row "In total" toggles.
+      // Re-run when any per-row "In total" toggles (extras or additional covers).
       document.addEventListener('change', (e) => {
-        if (e.target?.classList?.contains('extra-in-total')) refreshAssetTotals();
+        if (e.target?.classList?.contains('extra-in-total') ||
+            e.target?.classList?.contains('ac-in-total')) refreshAssetTotals();
       });
       // Initial calc on load (picks up prepopulated rows for edits)
       refreshAssetTotals();
@@ -1787,18 +1820,22 @@ const Assets = (() => {
           // Serialize related contacts as JSON
           const relatedContacts = readAssetContacts();
           data.related_contacts = relatedContacts.length ? JSON.stringify(relatedContacts) : null;
-          // Serialize additional covers as JSON
+          // Serialize additional covers as JSON, including the per-row
+          // "In total" flag (controls whether the cover_amount counts
+          // toward the asset's Sum Insured / Asset Value).
           const acRowEls = document.querySelectorAll('#additional-cover-rows .additional-cover-row');
           const additional = [];
           acRowEls.forEach(row => {
             const description  = row.querySelector('.ac-description')?.value?.trim()  || '';
             const coverAmount  = row.querySelector('.ac-cover-amount')?.value?.trim() || '';
             const premium      = row.querySelector('.ac-premium')?.value?.trim()      || '';
+            const inTotal      = !!row.querySelector('.ac-in-total')?.checked;
             if (description || coverAmount || premium) {
               additional.push({
                 description,
                 cover_amount: coverAmount !== '' ? parseFloat(coverAmount) : null,
                 premium:      premium     !== '' ? parseFloat(premium)     : null,
+                include_in_total: inTotal,
               });
             }
           });
@@ -2137,24 +2174,45 @@ const Assets = (() => {
             let covers = [];
             try { covers = JSON.parse(d.additional_covers || '[]'); } catch(_) {}
             if (!covers.length) return '';
-            const totalCA  = covers.reduce((s, c) => s + (parseFloat(c.cover_amount) || 0), 0);
-            const totalPrm = covers.reduce((s, c) => s + (parseFloat(c.premium)      || 0), 0);
+            const isIn          = (c) => (c.include_in_total != null ? !!c.include_in_total : true);
+            const totalIncluded = covers.reduce((s, c) => s + (isIn(c)  ? (parseFloat(c.cover_amount) || 0) : 0), 0);
+            const totalExcluded = covers.reduce((s, c) => s + (!isIn(c) ? (parseFloat(c.cover_amount) || 0) : 0), 0);
+            const totalCA       = totalIncluded + totalExcluded;
+            const totalPrm      = covers.reduce((s, c) => s + (parseFloat(c.premium) || 0), 0);
             return `
             <div class="detail-section card">
               <div class="detail-section-title">Additional Cover</div>
               <table class="table" style="margin:0;">
-                <thead><tr><th>Description</th><th style="text-align:right;">Cover Amount</th><th style="text-align:right;">Premium</th></tr></thead>
+                <thead><tr>
+                  <th>Description</th>
+                  <th style="text-align:right;">Cover Amount</th>
+                  <th style="text-align:right;">Premium</th>
+                  <th style="text-align:center;">In Total</th>
+                </tr></thead>
                 <tbody>
-                  ${covers.map(c => `<tr>
+                  ${covers.map(c => `<tr${!isIn(c) ? ' style="opacity:.65;"' : ''}>
                     <td>${esc(c.description || '—')}</td>
                     <td style="text-align:right;">${c.cover_amount != null ? cur(c.cover_amount) : '—'}</td>
                     <td style="text-align:right;">${c.premium      != null ? cur(c.premium)      : '—'}</td>
+                    <td style="text-align:center;">${isIn(c) ? '<span class="bool-yes">&#10003;</span>' : '<span class="bool-no">&#10007;</span>'}</td>
                   </tr>`).join('')}
                   <tr style="font-weight:600;border-top:2px solid #dee2e6;">
-                    <td>Total</td>
+                    <td>Totals (all covers)</td>
                     <td style="text-align:right;">${cur(totalCA)}</td>
                     <td style="text-align:right;">${cur(totalPrm)}</td>
+                    <td></td>
                   </tr>
+                  ${totalExcluded ? `
+                  <tr style="font-weight:500;color:var(--text-muted);">
+                    <td>Of which: included in Asset Value</td>
+                    <td style="text-align:right;">${cur(totalIncluded)}</td>
+                    <td colspan="2"></td>
+                  </tr>
+                  <tr style="font-weight:500;color:var(--text-muted);">
+                    <td>Of which: excluded</td>
+                    <td style="text-align:right;">${cur(totalExcluded)}</td>
+                    <td colspan="2"></td>
+                  </tr>` : ''}
                 </tbody>
               </table>
             </div>`;
@@ -2335,7 +2393,8 @@ const Assets = (() => {
             body.innerHTML = `
               <div class="detail-grid">
                 ${row('Sum Insured',                breakdown.sumInsured)}
-                ${row('Additional Covers Amount',   breakdown.additionalCoversAmount)}
+                ${breakdown.additionalCoversAmountIncluded ? row('Additional Covers (in total)', breakdown.additionalCoversAmountIncluded) : ''}
+                ${breakdown.additionalCoversAmountExcluded ? row(`Additional Covers (excluded) <span style="color:var(--text-muted);font-size:.75rem;font-weight:400;">— per-row "In total" off</span>`, breakdown.additionalCoversAmountExcluded) : ''}
                 ${breakdown.extrasAmountIncluded ? row('Vehicle Extras (in total)', breakdown.extrasAmountIncluded) : ''}
                 ${breakdown.extrasAmountExcluded ? row(`Vehicle Extras (excluded) <span style="color:var(--text-muted);font-size:.75rem;font-weight:400;">— per-row "In total" off</span>`, breakdown.extrasAmountExcluded) : ''}
                 ${row('Total Asset Value',          breakdown.assetValue, { bold: true })}
@@ -2874,8 +2933,10 @@ ${brokerName}`;
   function calcAssetBreakdown(asset) {
     if (!asset) {
       return {
-        sumInsured: 0, extrasAmount: 0, extrasAmountIncluded: 0, extrasAmountExcluded: 0,
-        additionalCoversAmount: 0, assetValue: 0,
+        sumInsured: 0,
+        extrasAmount: 0, extrasAmountIncluded: 0, extrasAmountExcluded: 0,
+        additionalCoversAmount: 0, additionalCoversAmountIncluded: 0, additionalCoversAmountExcluded: 0,
+        assetValue: 0,
         sumInsuredPremium: 0, sasria: 0,
         extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
         premium: 0,
@@ -2895,13 +2956,17 @@ ${brokerName}`;
 
     const legacyAllIn = !!asset.extras_in_total;
     const isExtraIncluded = (ex) => (ex.include_in_total != null ? !!ex.include_in_total : legacyAllIn);
+    // Additional covers were always summed pre-tickbox, so missing flag = true.
+    const isCoverIncluded = (c)  => (c.include_in_total  != null ? !!c.include_in_total  : true);
 
     const sumInsured             = num(asset.sum_insured);
     const extrasAmount           = extrasArr.reduce((s, x) => s + num(x.amount), 0);
     const extrasAmountIncluded   = extrasArr.reduce((s, x) => s + (isExtraIncluded(x) ? num(x.amount) : 0), 0);
     const extrasAmountExcluded   = extrasAmount - extrasAmountIncluded;
-    const additionalCoversAmount = coversArr.reduce((s, x) => s + num(x.cover_amount), 0);
-    const assetValue             = sumInsured + additionalCoversAmount + extrasAmountIncluded;
+    const additionalCoversAmount         = coversArr.reduce((s, x) => s + num(x.cover_amount), 0);
+    const additionalCoversAmountIncluded = coversArr.reduce((s, x) => s + (isCoverIncluded(x) ? num(x.cover_amount) : 0), 0);
+    const additionalCoversAmountExcluded = additionalCoversAmount - additionalCoversAmountIncluded;
+    const assetValue             = sumInsured + additionalCoversAmountIncluded + extrasAmountIncluded;
 
     const sumInsuredPremium       = num(asset.sum_insured_premium);
     const sasria                  = num(asset.sasria);
@@ -2912,8 +2977,10 @@ ${brokerName}`;
                   + extrasPremium + additionalCoversPremium + excessesPremium;
 
     return {
-      sumInsured, extrasAmount, extrasAmountIncluded, extrasAmountExcluded,
-      additionalCoversAmount, assetValue,
+      sumInsured,
+      extrasAmount, extrasAmountIncluded, extrasAmountExcluded,
+      additionalCoversAmount, additionalCoversAmountIncluded, additionalCoversAmountExcluded,
+      assetValue,
       sumInsuredPremium, sasria, extrasPremium, additionalCoversPremium, excessesPremium, premium,
     };
   }
@@ -2922,7 +2989,8 @@ ${brokerName}`;
     const init = {
       sumInsured: 0,
       extrasAmount: 0, extrasAmountIncluded: 0, extrasAmountExcluded: 0,
-      additionalCoversAmount: 0, assetValue: 0,
+      additionalCoversAmount: 0, additionalCoversAmountIncluded: 0, additionalCoversAmountExcluded: 0,
+      assetValue: 0,
       sumInsuredPremium: 0, sasria: 0,
       extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
       premium: 0, excess: 0,
@@ -2931,19 +2999,21 @@ ${brokerName}`;
     return assets.reduce((agg, a) => {
       const b = calcAssetBreakdown(a);
       return {
-        sumInsured:              agg.sumInsured              + b.sumInsured,
-        extrasAmount:            agg.extrasAmount            + b.extrasAmount,
-        extrasAmountIncluded:    agg.extrasAmountIncluded    + b.extrasAmountIncluded,
-        extrasAmountExcluded:    agg.extrasAmountExcluded    + b.extrasAmountExcluded,
-        additionalCoversAmount:  agg.additionalCoversAmount  + b.additionalCoversAmount,
-        assetValue:              agg.assetValue              + b.assetValue,
-        sumInsuredPremium:       agg.sumInsuredPremium       + b.sumInsuredPremium,
-        sasria:                  agg.sasria                  + b.sasria,
-        extrasPremium:           agg.extrasPremium           + b.extrasPremium,
-        additionalCoversPremium: agg.additionalCoversPremium + b.additionalCoversPremium,
-        excessesPremium:         agg.excessesPremium         + b.excessesPremium,
-        premium:                 agg.premium                 + b.premium,
-        excess:                  agg.excess                  + (parseFloat(a.excess) || 0),
+        sumInsured:                       agg.sumInsured                       + b.sumInsured,
+        extrasAmount:                     agg.extrasAmount                     + b.extrasAmount,
+        extrasAmountIncluded:             agg.extrasAmountIncluded             + b.extrasAmountIncluded,
+        extrasAmountExcluded:             agg.extrasAmountExcluded             + b.extrasAmountExcluded,
+        additionalCoversAmount:           agg.additionalCoversAmount           + b.additionalCoversAmount,
+        additionalCoversAmountIncluded:   agg.additionalCoversAmountIncluded   + b.additionalCoversAmountIncluded,
+        additionalCoversAmountExcluded:   agg.additionalCoversAmountExcluded   + b.additionalCoversAmountExcluded,
+        assetValue:                       agg.assetValue                       + b.assetValue,
+        sumInsuredPremium:                agg.sumInsuredPremium                + b.sumInsuredPremium,
+        sasria:                           agg.sasria                           + b.sasria,
+        extrasPremium:                    agg.extrasPremium                    + b.extrasPremium,
+        additionalCoversPremium:          agg.additionalCoversPremium          + b.additionalCoversPremium,
+        excessesPremium:                  agg.excessesPremium                  + b.excessesPremium,
+        premium:                          agg.premium                          + b.premium,
+        excess:                           agg.excess                           + (parseFloat(a.excess) || 0),
       };
     }, init);
   }
@@ -2973,7 +3043,8 @@ ${brokerName}`;
     return `
       <div class="detail-grid" style="margin-top:.5rem;">
         ${row('Sum Insured (asset)', agg.sumInsured)}
-        ${agg.additionalCoversAmount ? row('Additional Covers Amount', agg.additionalCoversAmount) : ''}
+        ${agg.additionalCoversAmountIncluded ? row('Additional Covers (in total)', agg.additionalCoversAmountIncluded) : ''}
+        ${agg.additionalCoversAmountExcluded ? row(`Additional Covers (excluded) <span style="color:var(--text-muted);font-weight:normal;font-size:.75rem;">— not added to Asset Value</span>`, agg.additionalCoversAmountExcluded) : ''}
         ${agg.extrasAmountIncluded ? row('Vehicle Extras (in total)', agg.extrasAmountIncluded) : ''}
         ${agg.extrasAmountExcluded ? row(`Vehicle Extras (excluded) <span style="color:var(--text-muted);font-weight:normal;font-size:.75rem;">— not added to Asset Value</span>`, agg.extrasAmountExcluded) : ''}
         ${row('Total Asset Value', agg.assetValue, true)}

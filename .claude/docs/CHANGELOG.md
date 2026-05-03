@@ -277,3 +277,7 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-03 12:41
 - Modified 4 files
 - Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-03 13:06
+- Modified 6 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/assets.js, client/src/components/policies.js, package.json (+1 more)

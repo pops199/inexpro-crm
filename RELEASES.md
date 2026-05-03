@@ -6,6 +6,30 @@ sits at the top.
 
 ---
 
+## v1.0.23 — 2026-05-03
+
+**Per-row "In total" tickbox on Additional Covers + R-prefix layout fix**
+
+- Additional Cover grid now mirrors Vehicle Extras: each row has its
+  own **In total** tickbox. The premium of every cover always counts
+  toward the asset's Premium; only the cover amount is gated.
+- The Cover Amount and Premium inputs no longer break onto two lines —
+  the `R` currency prefix now reliably sits inline next to the input
+  (we forced `display:flex; align-items:center;` on the prefix
+  wrapper so grid cells can't push the prefix above).
+- `additional_covers[]` JSON gains a per-row `include_in_total` flag.
+  Older rows missing the flag default to "included" (the pre-tickbox
+  behaviour), so existing assets keep the same Asset Value totals.
+- Asset detail Additional Cover table grew the same `In Total` ✓ / ✗
+  column with a dimmed "excluded" row state and an "of which
+  included / excluded" footer when the split is non-trivial.
+- Insurance Financials breakdown, Sections tab summary + breakdown
+  table, "Assets in this Section" totals card and the policy-detail
+  premium-breakdown panel all now show *Additional Covers (in total)*
+  vs *Additional Covers (excluded)* as separate lines/columns.
+
+---
+
 ## v1.0.22 — 2026-05-03
 
 **Per-row "In total" tickbox on Vehicle Extras**
