@@ -139,7 +139,10 @@ function callout(label, text, color = 'FFF4E5', textColor = '8A4A00') {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
+      // cantSplit prevents Word from splitting a tall callout across a page
+      // break and leaving a trailing grey block at the bottom of the page.
       new TableRow({
+        cantSplit: true,
         children: [
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: color },
@@ -177,12 +180,16 @@ function ruleTable(rows) {
     rows: [
       new TableRow({
         tableHeader: true,
+        cantSplit: true,
         children: rows[0].map(text => new TableCell({
           shading: { type: ShadingType.CLEAR, fill: NAVY },
           children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: WHITE, size: 20 })] })],
         })),
       }),
+      // cantSplit on every row keeps tall rows whole — prevents the
+      // "grey trailing block at end of page" artefact.
       ...rows.slice(1).map(row => new TableRow({
+        cantSplit: true,
         children: row.map(text => new TableCell({
           children: [new Paragraph({ children: [new TextRun({ text, size: 20 })] })],
         })),
@@ -951,9 +958,11 @@ children.push(caption('Figure 13.4 — Risk Details list.'));
 children.push(p('Risk Details are deeper risk descriptors that hang off an asset (e.g. detailed motor risk, building construction details, GIT route info). They feed underwriting and renewal questions.'));
 
 children.push(h2('13.5 Policy Sections'));
-children.push(img('131-policy-sections-list.png'));
-children.push(caption('Figure 13.5 — Policy Sections list.'));
-children.push(p('Policy sections are the named cover lines (e.g. "Personal Motor section"). They tie assets together for the schedule and are where needs analysis status is tracked. The detail view has a GAP banner (identified / none) and bottom tabs Timeline + Documents.'));
+children.push(p('Policy sections are the named cover lines on a policy (e.g. "Personal Motor section", "Buildings — Domestic"). They tie assets together for the schedule and are where the needs-analysis status, gap-identified flag, gap severity, sum insured, premium, and the per-section compliance fields are tracked.'));
+children.push(p('Policy Sections are not a top-level list page — they are reached from inside their parent record:'));
+children.push(bullet('Open a policy → click the Sections tab at the bottom (Figure 9.3a) → click a section name to drill into the section detail page.'));
+children.push(bullet('Open a contact or account → Sections tab (Figure 5.3d / Chapter 6) → drill in the same way.'));
+children.push(p('The section detail page shows a GAP banner across the top (red "GAP IDENTIFIED — Severity" or green "No Gap Identified"), then cards for Section Details, Parties & Links, Financial, Needs Analysis Status, Needs Analysis Checklist, Compliance, and Cover Details. Bottom tabs: Timeline · Documents.'));
 
 children.push(h2('13.6 POPIA, FICA and TCF overviews'));
 children.push(img('150-popia-overview.png'));

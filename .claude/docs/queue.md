@@ -835,3 +835,15 @@ Files changed: 1
 - `server/db/sessions.db`
 Session: fc18185e-d933-456b-ac8b-c8df133c94d8
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 16:14 — auto-detected change
+Files changed: 7
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/notifications.js`
+- `docs/manual/~$raining-module-extracted.docx (deleted)`
+- `package.json`
+- `server/db/database.js`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
