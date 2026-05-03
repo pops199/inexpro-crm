@@ -1,6 +1,6 @@
 {
   "name": "inexpro-crm",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "Inexpro COFI-Aligned Insurance Brokerage CRM",
   "main": "server/app.js",
   "scripts": {

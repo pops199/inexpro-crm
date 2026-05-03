@@ -1876,7 +1876,8 @@ const Policies = (() => {
             <div class="detail-field"><span class="detail-label">Total Assets</span><span class="detail-value">${sAssets.length}</span></div>
             <div class="detail-field"><span class="detail-label">Sum Insured</span><span class="detail-value">${fmtCur(agg.sumInsured)}</span></div>
             ${agg.additionalCoversAmount ? `<div class="detail-field"><span class="detail-label">Add'l Covers Amount</span><span class="detail-value">${fmtCur(agg.additionalCoversAmount)}</span></div>` : ''}
-            ${agg.extrasAmount           ? `<div class="detail-field"><span class="detail-label">Vehicle Extras Amount</span><span class="detail-value">${fmtCur(agg.extrasAmount)}</span></div>` : ''}
+            ${agg.extrasAmountIncluded ? `<div class="detail-field"><span class="detail-label">Vehicle Extras (in total)</span><span class="detail-value">${fmtCur(agg.extrasAmountIncluded)}</span></div>` : ''}
+            ${agg.extrasAmountExcluded ? `<div class="detail-field"><span class="detail-label">Vehicle Extras (excluded)</span><span class="detail-value" style="color:var(--text-muted);">${fmtCur(agg.extrasAmountExcluded)}</span></div>` : ''}
             <div class="detail-field" style="font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;"><span class="detail-label">Total Asset Value</span><span class="detail-value">${fmtCur(agg.assetValue)}</span></div>
             <div class="detail-field"><span class="detail-label">Sum Insured Premium</span><span class="detail-value">${fmtCur(agg.sumInsuredPremium)}</span></div>
             ${agg.extrasPremium           ? `<div class="detail-field"><span class="detail-label">Vehicle Extras Premium</span><span class="detail-value">${fmtCur(agg.extrasPremium)}</span></div>` : ''}
@@ -1965,7 +1966,8 @@ const Policies = (() => {
                    <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
                    <span>Sum Insured: <strong>${cur(grandAgg.sumInsured)}</strong></span>
                    ${grandAgg.additionalCoversAmount ? `<span>Add'l Covers Amount: <strong>${cur(grandAgg.additionalCoversAmount)}</strong></span>` : ''}
-                   ${grandAgg.extrasAmount ? `<span>Extras Amount: <strong>${cur(grandAgg.extrasAmount)}</strong></span>` : ''}
+                   ${grandAgg.extrasAmountIncluded ? `<span>Extras (in total): <strong>${cur(grandAgg.extrasAmountIncluded)}</strong></span>` : ''}
+                   ${grandAgg.extrasAmountExcluded ? `<span>Extras (excluded): <strong>${cur(grandAgg.extrasAmountExcluded)}</strong></span>` : ''}
                    <span>Total Asset Value: <strong>${cur(grandAgg.assetValue)}</strong></span>
                    <span>Sum Insured Premium: <strong>${cur(grandAgg.sumInsuredPremium)}</strong></span>
                    ${grandAgg.extrasPremium           ? `<span>Extras Premium: <strong>${cur(grandAgg.extrasPremium)}</strong></span>` : ''}
@@ -1988,7 +1990,8 @@ const Policies = (() => {
                     <th style="text-align:right;">Assets</th>
                     <th style="text-align:right;">Sum Insured</th>
                     <th style="text-align:right;">Add'l Covers</th>
-                    <th style="text-align:right;">Extras Amt</th>
+                    <th style="text-align:right;" title="Vehicle extras with In-total ticked">Extras (in)</th>
+                    <th style="text-align:right;" title="Vehicle extras NOT in Asset Value">Extras (excl)</th>
                     <th style="text-align:right;">Asset Value</th>
                     <th style="text-align:right;">Sum Ins. Prem</th>
                     <th style="text-align:right;">Extras Prem</th>
@@ -2012,7 +2015,8 @@ const Policies = (() => {
                         <td style="text-align:right;">${items.length}</td>
                         <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.sumInsured)}</td>
                         <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.additionalCoversAmount ? cur(sb.additionalCoversAmount) : '—'}</td>
-                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.extrasAmount ? cur(sb.extrasAmount) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.extrasAmountIncluded ? cur(sb.extrasAmountIncluded) : '—'}</td>
+                        <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-muted);">${sb.extrasAmountExcluded ? cur(sb.extrasAmountExcluded) : '—'}</td>
                         <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">${cur(sb.assetValue)}</td>
                         <td style="text-align:right;font-variant-numeric:tabular-nums;">${cur(sb.sumInsuredPremium)}</td>
                         <td style="text-align:right;font-variant-numeric:tabular-nums;">${sb.extrasPremium ? cur(sb.extrasPremium) : '—'}</td>
@@ -2030,7 +2034,8 @@ const Policies = (() => {
                       <td style="text-align:right;">${allAssets.length}</td>
                       <td style="text-align:right;">${cur(grandAgg.sumInsured)}</td>
                       <td style="text-align:right;">${grandAgg.additionalCoversAmount ? cur(grandAgg.additionalCoversAmount) : '—'}</td>
-                      <td style="text-align:right;">${grandAgg.extrasAmount ? cur(grandAgg.extrasAmount) : '—'}</td>
+                      <td style="text-align:right;">${grandAgg.extrasAmountIncluded ? cur(grandAgg.extrasAmountIncluded) : '—'}</td>
+                      <td style="text-align:right;color:var(--text-muted);">${grandAgg.extrasAmountExcluded ? cur(grandAgg.extrasAmountExcluded) : '—'}</td>
                       <td style="text-align:right;">${cur(grandAgg.assetValue)}</td>
                       <td style="text-align:right;">${cur(grandAgg.sumInsuredPremium)}</td>
                       <td style="text-align:right;">${grandAgg.extrasPremium ? cur(grandAgg.extrasPremium) : '—'}</td>

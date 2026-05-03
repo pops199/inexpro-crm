@@ -1301,12 +1301,25 @@ const Assets = (() => {
               <fieldset class="form-section" id="vehicle-extras-fieldset"
                 style="${['Motor','Goods in Transit','Marine','Aviation','Agriculture'].includes(d.asset_type) ? '' : 'display:none;'}">
                 <legend class="form-section-title">Vehicle Extras</legend>
+                <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;">
+                  Tick "In total" to include the extra's amount in the asset's Sum Insured / Asset Value.
+                  Premium is always included in the asset's total Premium.
+                </div>
                 <div id="vehicle-extras-rows">
                   ${(() => {
                     let extras = [];
                     try { extras = JSON.parse(d.vehicle_extras || '[]'); } catch(_) {}
                     if (!extras.length) return '';
-                    return extras.map((ex, i) => `
+                    // Per-row include flag. Backwards compat: when the legacy
+                    // asset.extras_in_total flag is set, all existing rows
+                    // inherit "include = true" if they don't carry their own
+                    // include_in_total flag. Otherwise default to false.
+                    const legacyAllIn = !!d.extras_in_total;
+                    return extras.map((ex, i) => {
+                      const inTotal = (ex.include_in_total != null)
+                        ? !!ex.include_in_total
+                        : legacyAllIn;
+                      return `
                       <div class="vehicle-extra-row" style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;">
                         <input type="text" class="form-control extra-name" placeholder="Extra description"
                           value="${esc(ex.name || '')}" style="flex:2;" />
@@ -1314,22 +1327,22 @@ const Assets = (() => {
                           value="${esc(ex.amount != null ? ex.amount : '')}" min="0" step="0.01" style="flex:1;" />
                         <input type="number" class="form-control extra-premium" placeholder="Premium"
                           value="${esc(ex.premium != null ? ex.premium : '')}" min="0" step="0.01" style="flex:1;" />
+                        <label class="checklist-item" style="margin:0;white-space:nowrap;font-size:.82rem;">
+                          <input type="checkbox" class="extra-in-total" ${inTotal ? 'checked' : ''} />
+                          <span>In total</span>
+                        </label>
                         <button type="button" class="btn btn-sm btn-danger remove-extra-btn"
                           style="white-space:nowrap;">✕</button>
-                      </div>`).join('');
+                      </div>`;
+                    }).join('');
                   })()}
                 </div>
                 <div id="extras-total-row" style="display:none;text-align:right;padding:.4rem .5rem;font-weight:600;border-top:1px solid #dee2e6;margin-bottom:.25rem;">
-                  Amount Total: <span id="extras-total-display">R 0.00</span>
+                  Amount Total <span style="font-weight:400;color:var(--text-muted);font-size:.78rem;">(included only)</span>: <span id="extras-total-display">R 0.00</span>
                   <span style="margin-left:1rem;">Premium Total: <span id="extras-premium-total-display">R 0.00</span></span>
                 </div>
                 <div style="display:flex;align-items:center;gap:1rem;margin-top:.5rem;flex-wrap:wrap;">
                   <button type="button" class="btn btn-secondary btn-sm" id="add-extra-btn">+ Extras</button>
-                  <label style="display:flex;align-items:center;gap:.4rem;margin:0;font-size:.9rem;">
-                    <input type="checkbox" id="extras-in-total" name="extras_in_total" value="1"
-                      ${d.extras_in_total ? 'checked' : ''} />
-                    Extras included in total asset value
-                  </label>
                 </div>
               </fieldset>
 
@@ -1452,17 +1465,23 @@ const Assets = (() => {
       const extrasPremiumTotalDisplay = document.getElementById('extras-premium-total-display');
 
       function refreshExtrasTotal() {
-        const amounts = Array.from(document.querySelectorAll('#vehicle-extras-rows .extra-amount'))
-          .map(el => parseFloat(el.value) || 0);
-        const premiums = Array.from(document.querySelectorAll('#vehicle-extras-rows .extra-premium'))
-          .map(el => parseFloat(el.value) || 0);
-        const total   = amounts.reduce((s, v) => s + v, 0);
-        const premTot = premiums.reduce((s, v) => s + v, 0);
-        if (extrasTotalRow) extrasTotalRow.style.display = (amounts.length || premiums.length) ? '' : 'none';
+        // Per-row "In total" check: only sum amounts where the row's
+        // include-in-total checkbox is ticked. Premium is always summed.
+        const rows = Array.from(document.querySelectorAll('#vehicle-extras-rows .vehicle-extra-row'));
+        let amountIncl = 0;
+        let premTot    = 0;
+        rows.forEach(r => {
+          const amt = parseFloat(r.querySelector('.extra-amount')?.value)  || 0;
+          const prm = parseFloat(r.querySelector('.extra-premium')?.value) || 0;
+          const inc = !!r.querySelector('.extra-in-total')?.checked;
+          if (inc) amountIncl += amt;
+          premTot += prm;
+        });
+        if (extrasTotalRow) extrasTotalRow.style.display = rows.length ? '' : 'none';
         const curEl = document.querySelector('[name="currency"]');
         const sym   = currencySymbol(curEl ? curEl.value : 'ZAR');
         if (extrasTotalDisplay) {
-          extrasTotalDisplay.textContent = sym + '\u00a0' + total.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          extrasTotalDisplay.textContent = sym + '\u00a0' + amountIncl.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
         if (extrasPremiumTotalDisplay) {
           extrasPremiumTotalDisplay.textContent = sym + '\u00a0' + premTot.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1478,10 +1497,15 @@ const Assets = (() => {
           <input type="text"   class="form-control extra-name"    placeholder="Extra description" style="flex:2;" />
           <input type="number" class="form-control extra-amount"  placeholder="Amount" min="0" step="0.01" style="flex:1;" />
           <input type="number" class="form-control extra-premium" placeholder="Premium" min="0" step="0.01" style="flex:1;" />
+          <label class="checklist-item" style="margin:0;white-space:nowrap;font-size:.82rem;">
+            <input type="checkbox" class="extra-in-total" checked />
+            <span>In total</span>
+          </label>
           <button type="button" class="btn btn-sm btn-danger remove-extra-btn" style="white-space:nowrap;">✕</button>`;
         row.querySelector('.remove-extra-btn').addEventListener('click', () => { row.remove(); refreshExtrasTotal(); });
         row.querySelector('.extra-amount').addEventListener('input', refreshExtrasTotal);
         row.querySelector('.extra-premium').addEventListener('input', refreshExtrasTotal);
+        row.querySelector('.extra-in-total').addEventListener('change', refreshExtrasTotal);
         extrasRows.appendChild(row);
         refreshExtrasTotal();
       }
@@ -1492,6 +1516,9 @@ const Assets = (() => {
         });
         extrasRows.addEventListener('input', (e) => {
           if (e.target.classList.contains('extra-amount') || e.target.classList.contains('extra-premium')) refreshExtrasTotal();
+        });
+        extrasRows.addEventListener('change', (e) => {
+          if (e.target.classList.contains('extra-in-total')) refreshExtrasTotal();
         });
       }
       refreshExtrasTotal();
@@ -1636,19 +1663,23 @@ const Assets = (() => {
         const sumInsuredEl        = document.querySelector('[name="sum_insured"]');
         const sumInsuredPremiumEl = document.querySelector('[name="sum_insured_premium"]');
         const sasriaEl            = document.querySelector('[name="sasria"]');
-        const extrasInTotalEl     = document.getElementById('extras-in-total');
-        const includeExtras       = extrasInTotalEl ? extrasInTotalEl.checked : true;
 
         // Asset Value = sum_insured + Σ additional_covers[].cover_amount
-        //               + (extras_in_total ? Σ vehicle_extras[].amount : 0)
-        const extrasAmountTotal    = sumInputs('#vehicle-extras-rows .extra-amount');
+        //               + Σ vehicle_extras[].amount where row's "In total" is ticked
+        const extrasRows = Array.from(document.querySelectorAll('#vehicle-extras-rows .vehicle-extra-row'));
+        let extrasIncluded = 0;
+        let extrasPremTotal = 0;
+        extrasRows.forEach(r => {
+          const amt = parseFloat(r.querySelector('.extra-amount')?.value)  || 0;
+          const prm = parseFloat(r.querySelector('.extra-premium')?.value) || 0;
+          if (r.querySelector('.extra-in-total')?.checked) extrasIncluded += amt;
+          extrasPremTotal += prm;
+        });
         const additionalCoverTotal = sumInputs('#additional-cover-rows .ac-cover-amount');
         const sumInsured           = parseFloat(sumInsuredEl?.value) || 0;
-        const assetValue           = sumInsured + additionalCoverTotal
-                                   + (includeExtras ? extrasAmountTotal : 0);
+        const assetValue           = sumInsured + additionalCoverTotal + extrasIncluded;
 
         // Premium = extras + additional covers + excess premiums + sum insured premium + SASRIA
-        const extrasPremTotal      = sumInputs('#vehicle-extras-rows .extra-premium');
         const additionalCoverPrem  = sumInputs('#additional-cover-rows .ac-premium');
         const excessPremTotal      = sumInputs('#excess-rows .excess-premium');
         const sumInsuredPremium    = parseFloat(sumInsuredPremiumEl?.value) || 0;
@@ -1669,8 +1700,10 @@ const Assets = (() => {
           refreshAssetTotals();
         }
       });
-      // Re-run when "Extras included in total asset value" toggles.
-      document.getElementById('extras-in-total')?.addEventListener('change', refreshAssetTotals);
+      // Re-run when any per-row "In total" toggles.
+      document.addEventListener('change', (e) => {
+        if (e.target?.classList?.contains('extra-in-total')) refreshAssetTotals();
+      });
       // Initial calc on load (picks up prepopulated rows for edits)
       refreshAssetTotals();
 
@@ -1715,21 +1748,27 @@ const Assets = (() => {
           }
           if (btn) btn.disabled = true;
           const data = serializeForm(formEl);
-          // Serialize vehicle extras as JSON
+          // Serialize vehicle extras as JSON, including the per-row
+          // "In total" flag (controls whether the amount counts toward
+          // the asset's Sum Insured / Asset Value).
           const extraRows = document.querySelectorAll('#vehicle-extras-rows .vehicle-extra-row');
           const extras = [];
           extraRows.forEach(row => {
             const name    = row.querySelector('.extra-name')?.value?.trim()    || '';
             const amount  = row.querySelector('.extra-amount')?.value?.trim()  || '';
             const premium = row.querySelector('.extra-premium')?.value?.trim() || '';
+            const inTotal = !!row.querySelector('.extra-in-total')?.checked;
             if (name || amount || premium) extras.push({
               name,
               amount:  amount  !== '' ? parseFloat(amount)  : null,
               premium: premium !== '' ? parseFloat(premium) : null,
+              include_in_total: inTotal,
             });
           });
           data.vehicle_extras  = extras.length ? JSON.stringify(extras) : null;
-          data.extras_in_total = document.getElementById('extras-in-total')?.checked ? 1 : 0;
+          // Legacy column: now reflects "any extra included". Kept so older
+          // exports/audit code that reads asset.extras_in_total still works.
+          data.extras_in_total = extras.some(x => x.include_in_total) ? 1 : 0;
           data.financial_interest_noted = document.getElementById('financial-interest-noted')?.checked ? 1 : 0;
           // Serialize excesses as JSON (type, amount, premium)
           const excessRowEls = document.querySelectorAll('#excess-rows .excess-row');
@@ -2022,27 +2061,48 @@ const Assets = (() => {
             let extras = [];
             try { extras = JSON.parse(d.vehicle_extras || '[]'); } catch(_) {}
             if (!extras.length) return '';
-            const totalExtras   = extras.reduce((s, ex) => s + (parseFloat(ex.amount)  || 0), 0);
+            const legacyAllIn   = !!d.extras_in_total;
+            const isIncluded    = (ex) => (ex.include_in_total != null ? !!ex.include_in_total : legacyAllIn);
+            const totalIncluded = extras.reduce((s, ex) => s + (isIncluded(ex) ? (parseFloat(ex.amount) || 0) : 0), 0);
+            const totalExcluded = extras.reduce((s, ex) => s + (!isIncluded(ex) ? (parseFloat(ex.amount) || 0) : 0), 0);
+            const totalExtras   = totalIncluded + totalExcluded;
             const totalExtrasPr = extras.reduce((s, ex) => s + (parseFloat(ex.premium) || 0), 0);
             return `
             <div class="detail-section card">
               <div class="detail-section-title">Vehicle Extras</div>
               <table class="table" style="margin:0;">
-                <thead><tr><th>Description</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Premium</th></tr></thead>
+                <thead><tr>
+                  <th>Description</th>
+                  <th style="text-align:right;">Amount</th>
+                  <th style="text-align:right;">Premium</th>
+                  <th style="text-align:center;">In Total</th>
+                </tr></thead>
                 <tbody>
-                  ${extras.map(ex => `<tr>
+                  ${extras.map(ex => `<tr${!isIncluded(ex) ? ' style="opacity:.65;"' : ''}>
                     <td>${esc(ex.name || '—')}</td>
                     <td style="text-align:right;">${ex.amount != null ? cur(ex.amount) : '—'}</td>
                     <td style="text-align:right;">${ex.premium != null ? cur(ex.premium) : '—'}</td>
+                    <td style="text-align:center;">${isIncluded(ex) ? '<span class="bool-yes">&#10003;</span>' : '<span class="bool-no">&#10007;</span>'}</td>
                   </tr>`).join('')}
                   <tr style="font-weight:600;border-top:2px solid #dee2e6;">
-                    <td>Totals</td>
+                    <td>Totals (all extras)</td>
                     <td style="text-align:right;">${cur(totalExtras)}</td>
                     <td style="text-align:right;">${cur(totalExtrasPr)}</td>
+                    <td></td>
                   </tr>
+                  ${totalExcluded ? `
+                  <tr style="font-weight:500;color:var(--text-muted);">
+                    <td>Of which: included in Asset Value</td>
+                    <td style="text-align:right;">${cur(totalIncluded)}</td>
+                    <td colspan="2"></td>
+                  </tr>
+                  <tr style="font-weight:500;color:var(--text-muted);">
+                    <td>Of which: excluded</td>
+                    <td style="text-align:right;">${cur(totalExcluded)}</td>
+                    <td colspan="2"></td>
+                  </tr>` : ''}
                 </tbody>
               </table>
-              ${d.extras_in_total ? '<p style="margin:.5rem 0 0;font-size:.85rem;color:#555;">&#10003; Extras included in total asset value</p>' : ''}
             </div>`;
           })()}
 
@@ -2276,7 +2336,8 @@ const Assets = (() => {
               <div class="detail-grid">
                 ${row('Sum Insured',                breakdown.sumInsured)}
                 ${row('Additional Covers Amount',   breakdown.additionalCoversAmount)}
-                ${row(`Vehicle Extras Amount${breakdown.extrasInTotal ? '' : ' <span style="color:var(--text-muted);font-size:.75rem;font-weight:400;">(excluded — Extras-in-total off)</span>'}`, breakdown.extrasAmount)}
+                ${breakdown.extrasAmountIncluded ? row('Vehicle Extras (in total)', breakdown.extrasAmountIncluded) : ''}
+                ${breakdown.extrasAmountExcluded ? row(`Vehicle Extras (excluded) <span style="color:var(--text-muted);font-size:.75rem;font-weight:400;">— per-row "In total" off</span>`, breakdown.extrasAmountExcluded) : ''}
                 ${row('Total Asset Value',          breakdown.assetValue, { bold: true })}
                 ${row('Sum Insured Premium',        breakdown.sumInsuredPremium)}
                 ${row('Vehicle Extras Premium',     breakdown.extrasPremium)}
@@ -2801,16 +2862,20 @@ ${brokerName}`;
   // ── Breakdown helpers (canonical shape consumed by every total display) ───
   // Single source of truth for "what makes up an asset's Sum Insured / Premium".
   // Asset Value parts:  sum_insured + Σ additional_covers[].cover_amount
-  //                     + (extras_in_total ? Σ vehicle_extras[].amount : 0)
+  //                     + Σ vehicle_extras[].amount where ex.include_in_total
   // Premium parts:      sum_insured_premium + sasria
   //                     + Σ vehicle_extras[].premium
   //                     + Σ additional_covers[].premium
   //                     + Σ excesses[].premium
+  // Per-row include flag (`include_in_total`) is the new model. Older rows
+  // saved before this version don't carry the flag — they fall back to the
+  // legacy asset.extras_in_total column so historic data still rolls up
+  // correctly until the asset is re-saved.
   function calcAssetBreakdown(asset) {
     if (!asset) {
       return {
-        sumInsured: 0, extrasAmount: 0, additionalCoversAmount: 0,
-        extrasInTotal: false, assetValue: 0,
+        sumInsured: 0, extrasAmount: 0, extrasAmountIncluded: 0, extrasAmountExcluded: 0,
+        additionalCoversAmount: 0, assetValue: 0,
         sumInsuredPremium: 0, sasria: 0,
         extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
         premium: 0,
@@ -2828,12 +2893,15 @@ ${brokerName}`;
     if (!Array.isArray(coversArr))   coversArr   = [];
     if (!Array.isArray(excessesArr)) excessesArr = [];
 
+    const legacyAllIn = !!asset.extras_in_total;
+    const isExtraIncluded = (ex) => (ex.include_in_total != null ? !!ex.include_in_total : legacyAllIn);
+
     const sumInsured             = num(asset.sum_insured);
-    const extrasAmount           = extrasArr.reduce((s, x) => s + num(x.amount),       0);
+    const extrasAmount           = extrasArr.reduce((s, x) => s + num(x.amount), 0);
+    const extrasAmountIncluded   = extrasArr.reduce((s, x) => s + (isExtraIncluded(x) ? num(x.amount) : 0), 0);
+    const extrasAmountExcluded   = extrasAmount - extrasAmountIncluded;
     const additionalCoversAmount = coversArr.reduce((s, x) => s + num(x.cover_amount), 0);
-    const extrasInTotal          = !!asset.extras_in_total;
-    const assetValue             = sumInsured + additionalCoversAmount
-                                 + (extrasInTotal ? extrasAmount : 0);
+    const assetValue             = sumInsured + additionalCoversAmount + extrasAmountIncluded;
 
     const sumInsuredPremium       = num(asset.sum_insured_premium);
     const sasria                  = num(asset.sasria);
@@ -2844,14 +2912,17 @@ ${brokerName}`;
                   + extrasPremium + additionalCoversPremium + excessesPremium;
 
     return {
-      sumInsured, extrasAmount, additionalCoversAmount, extrasInTotal, assetValue,
+      sumInsured, extrasAmount, extrasAmountIncluded, extrasAmountExcluded,
+      additionalCoversAmount, assetValue,
       sumInsuredPremium, sasria, extrasPremium, additionalCoversPremium, excessesPremium, premium,
     };
   }
 
   function calcAggregateBreakdown(assets) {
     const init = {
-      sumInsured: 0, extrasAmount: 0, additionalCoversAmount: 0, assetValue: 0,
+      sumInsured: 0,
+      extrasAmount: 0, extrasAmountIncluded: 0, extrasAmountExcluded: 0,
+      additionalCoversAmount: 0, assetValue: 0,
       sumInsuredPremium: 0, sasria: 0,
       extrasPremium: 0, additionalCoversPremium: 0, excessesPremium: 0,
       premium: 0, excess: 0,
@@ -2862,6 +2933,8 @@ ${brokerName}`;
       return {
         sumInsured:              agg.sumInsured              + b.sumInsured,
         extrasAmount:            agg.extrasAmount            + b.extrasAmount,
+        extrasAmountIncluded:    agg.extrasAmountIncluded    + b.extrasAmountIncluded,
+        extrasAmountExcluded:    agg.extrasAmountExcluded    + b.extrasAmountExcluded,
         additionalCoversAmount:  agg.additionalCoversAmount  + b.additionalCoversAmount,
         assetValue:              agg.assetValue              + b.assetValue,
         sumInsuredPremium:       agg.sumInsuredPremium       + b.sumInsuredPremium,
@@ -2901,7 +2974,8 @@ ${brokerName}`;
       <div class="detail-grid" style="margin-top:.5rem;">
         ${row('Sum Insured (asset)', agg.sumInsured)}
         ${agg.additionalCoversAmount ? row('Additional Covers Amount', agg.additionalCoversAmount) : ''}
-        ${agg.extrasAmount ? row('Vehicle Extras Amount', agg.extrasAmount) : ''}
+        ${agg.extrasAmountIncluded ? row('Vehicle Extras (in total)', agg.extrasAmountIncluded) : ''}
+        ${agg.extrasAmountExcluded ? row(`Vehicle Extras (excluded) <span style="color:var(--text-muted);font-weight:normal;font-size:.75rem;">— not added to Asset Value</span>`, agg.extrasAmountExcluded) : ''}
         ${row('Total Asset Value', agg.assetValue, true)}
         ${row('Sum Insured Premium', agg.sumInsuredPremium)}
         ${agg.extrasPremium           ? row('Vehicle Extras Premium', agg.extrasPremium) : ''}

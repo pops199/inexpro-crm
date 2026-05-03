@@ -6,6 +6,36 @@ sits at the top.
 
 ---
 
+## v1.0.22 — 2026-05-03
+
+**Per-row "In total" tickbox on Vehicle Extras**
+
+- Vehicle Extras grid: replaced the single global "Extras included
+  in total asset value" checkbox with a per-row **In total** tickbox.
+  Each extra can now individually choose whether its amount counts
+  toward the asset's Sum Insured / Asset Value. The premium of every
+  extra still always counts toward Total Premium.
+- Form's auto-calculated Asset Value now sums only the extras whose
+  per-row tickbox is on. Per-row totals footer shows the *included*
+  amount and total premium separately.
+- Asset detail page: Vehicle Extras table grew an "In Total" column
+  (✓ / ✗ per row), and excluded rows are dimmed. Footer adds
+  "of which included / excluded" lines when the split is non-trivial.
+- Insurance Financials breakdown now shows two distinct rows —
+  *Vehicle Extras (in total)* and *Vehicle Extras (excluded)* — so
+  you can see the full picture without losing the totals.
+- Sections tab breakdown table replaces the single "Extras Amt"
+  column with separate "Extras (in)" and "Extras (excl)" columns.
+  "Assets in this Section" totals card and the policy-detail
+  breakdown panel show the same split.
+- Backwards-compatible: assets saved before this version (no per-row
+  flag, only the legacy `asset.extras_in_total` boolean) inherit
+  that boolean as the include flag for every extra. Re-saving an
+  asset persists per-row flags going forward, and the legacy
+  `extras_in_total` column is now derived from "any row included".
+
+---
+
 ## v1.0.21 — 2026-05-03
 
 **Sum-Insured / Premium breakdown toggles + section-assets customisable columns**
