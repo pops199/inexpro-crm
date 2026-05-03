@@ -313,3 +313,7 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-03 16:14
 - Modified 7 files
 - Files: RELEASES.md, client/public/index.html, client/src/components/notifications.js, docs/manual/~$raining-module-extracted.docx (deleted), package.json (+2 more)
+
+## 2026-05-03 17:14
+- Modified 3 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/build-manual.js, server/db/sessions.db

@@ -444,14 +444,40 @@ async function gotoHash(page, hash) {
       if (s.afterLoad) await s.afterLoad(page);
       const file = path.join(OUT, s.file);
       if (s.clip) {
-        // Element-only screenshot: tightly frames the tab card or modal etc.
-        // Falls back to a viewport screenshot if the element is missing.
+        // Element-clipped screenshot, tight on actual rendered content.
+        // The element's bounding box can be much taller than the visible
+        // content (CSS layout / flex stretch / .content-area filling). To
+        // avoid trailing empty grey, compute a clip rect from the element's
+        // top/left + the maximum bottom of any visible descendant.
         const handle = await page.$(s.clip);
         if (handle) {
-          // Make sure the element is in view, then screenshot just it.
           await handle.scrollIntoViewIfNeeded().catch(() => {});
-          await page.waitForTimeout(150);
-          await handle.screenshot({ path: file });
+          await page.waitForTimeout(180);
+          const rect = await page.evaluate((selector) => {
+            const root = document.querySelector(selector);
+            if (!root) return null;
+            const rootR = root.getBoundingClientRect();
+            let maxBottom = rootR.top + 40;   // at least the tab strip height
+            const walk = (el) => {
+              if (!el || !el.getBoundingClientRect) return;
+              const r = el.getBoundingClientRect();
+              // Ignore non-visible / collapsed nodes
+              if (r.height > 0 && r.width > 0 && r.bottom > maxBottom) maxBottom = r.bottom;
+              for (const c of (el.children || [])) walk(c);
+            };
+            walk(root);
+            // Pad 10 px below the last content row.
+            const x      = Math.max(0, Math.floor(rootR.left));
+            const y      = Math.max(0, Math.floor(rootR.top));
+            const width  = Math.ceil(rootR.width);
+            const height = Math.ceil(maxBottom - rootR.top + 10);
+            return { x, y, width, height };
+          }, s.clip);
+          if (rect && rect.width > 0 && rect.height > 0) {
+            await page.screenshot({ path: file, clip: rect });
+          } else {
+            await handle.screenshot({ path: file });
+          }
         } else {
           await page.screenshot({ path: file, fullPage: false });
         }
