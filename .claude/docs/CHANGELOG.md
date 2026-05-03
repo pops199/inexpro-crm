@@ -317,3 +317,7 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-03 17:14
 - Modified 3 files
 - Files: Inexpro_CRM_User_Manual.docx, docs/manual/build-manual.js, server/db/sessions.db
+
+## 2026-05-03 17:25
+- Modified 6 files
+- Files: Inexpro_CRM_User_Manual.docx, docs/manual/capture.js, server/db/manual_demo.db, server/db/manual_demo.db-shm, server/db/manual_demo.db-wal (+1 more)

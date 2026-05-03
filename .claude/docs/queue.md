@@ -855,3 +855,14 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: fc18185e-d933-456b-ac8b-c8df133c94d8
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 17:25 — auto-detected change
+Files changed: 6
+- `Inexpro_CRM_User_Manual.docx`
+- `docs/manual/capture.js`
+- `server/db/manual_demo.db`
+- `server/db/manual_demo.db-shm`
+- `server/db/manual_demo.db-wal`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
