@@ -2350,7 +2350,7 @@ const Assets = (() => {
           <!-- Tabs -->
           <div class="detail-tabs card">
             <div class="tabs-header" id="asset-tabs-header">
-              <button class="tab-btn active" data-tab="amendments">Amendments</button>
+              <button class="tab-btn active" data-tab="amendments">Notes</button>
               <button class="tab-btn"        data-tab="claims">Claims</button>
               <button class="tab-btn"        data-tab="documents">Documents</button>
               <button class="tab-btn"        data-tab="workflows">Workflows</button>
@@ -2547,11 +2547,11 @@ const Assets = (() => {
 
           tabEl.innerHTML = `
             <div class="tab-toolbar">
-              <button type="button" class="btn btn-primary btn-sm" id="asset-amend-new-btn">+ Add Amendment</button>
+              <button type="button" class="btn btn-primary btn-sm" id="asset-amend-new-btn">+ Add Note</button>
             </div>
             <form id="asset-amend-form" class="card" style="display:none;padding:1rem;margin:0 1rem 1rem;">
               <input type="hidden" name="amendment_id" value="" />
-              <h4 id="asset-amend-form-title" style="margin:0 0 .75rem;">New Amendment</h4>
+              <h4 id="asset-amend-form-title" style="margin:0 0 .75rem;">New Note</h4>
               <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="form-group">
                   <label class="form-label">Date</label>
@@ -2564,7 +2564,7 @@ const Assets = (() => {
               </div>
               <div class="form-group">
                 <label class="form-label">Details</label>
-                <textarea name="details" class="form-control" rows="4" required placeholder="Describe the amendment or note…"></textarea>
+                <textarea name="details" class="form-control" rows="4" required placeholder="Describe the note…"></textarea>
               </div>
               <div class="form-group">
                 <label class="form-label">Attachments <span style="color:var(--text-muted);font-weight:normal;">(optional — pdf, jpg, png, docx, xlsx, csv; max 20 MB each)</span></label>
@@ -2575,7 +2575,7 @@ const Assets = (() => {
               </div>
               <div style="display:flex;gap:.5rem;justify-content:flex-end;">
                 <button type="button" class="btn btn-sm btn-secondary" id="asset-amend-cancel-btn">Cancel</button>
-                <button type="submit" class="btn btn-sm btn-primary" id="asset-amend-submit-btn">Save Amendment</button>
+                <button type="submit" class="btn btn-sm btn-primary" id="asset-amend-submit-btn">Save Note</button>
               </div>
             </form>
             ${rows.length ? `
@@ -2602,7 +2602,7 @@ const Assets = (() => {
                     ${isAdmin ? `<button class="btn btn-xs btn-danger amend-del-btn" data-amend-id="${r.id}">Delete</button>` : ''}
                   </td>
                 </tr>`).join('')}</tbody>
-            </table>` : `<p class="tab-empty">No amendments captured yet.</p>`}
+            </table>` : `<p class="tab-empty">No notes captured yet.</p>`}
           `;
 
           const newBtn    = document.getElementById('asset-amend-new-btn');
@@ -2620,8 +2620,8 @@ const Assets = (() => {
             form.reset();
             idInput.value = '';
             form.querySelector('input[name="amendment_date"]').value = today;
-            formTitle.textContent = 'New Amendment';
-            submitBtn.textContent = 'Save Amendment';
+            formTitle.textContent = 'New Note';
+            submitBtn.textContent = 'Save Note';
             fileHelp.textContent = '';
             filePrev.textContent = '';
             form.style.display = 'block';
@@ -2639,9 +2639,9 @@ const Assets = (() => {
               : today;
             form.querySelector('input[name="amendment_type"]').value = row.amendment_type || '';
             form.querySelector('textarea[name="details"]').value = row.details || '';
-            formTitle.textContent = 'Edit Amendment';
+            formTitle.textContent = 'Edit Note';
             submitBtn.textContent = 'Save Changes';
-            fileHelp.textContent = 'Files added here will be attached to this amendment in addition to its existing attachments.';
+            fileHelp.textContent = 'Files added here will be attached to this note in addition to its existing attachments.';
             filePrev.textContent = '';
             form.style.display = 'block';
             form.querySelector('textarea[name="details"]').focus();
@@ -2700,18 +2700,18 @@ const Assets = (() => {
                   }
                 }
                 if (uploadFailures.length) {
-                  showToast(`Amendment ${isEdit ? 'updated' : 'saved'}, but ${uploadFailures.length} file(s) failed: ${uploadFailures.join('; ')}`, 'error');
+                  showToast(`Note ${isEdit ? 'updated' : 'saved'}, but ${uploadFailures.length} file(s) failed: ${uploadFailures.join('; ')}`, 'error');
                 } else {
-                  showToast(`Amendment ${isEdit ? 'updated' : 'saved'} with ${files.length} file(s).`, 'success');
+                  showToast(`Note ${isEdit ? 'updated' : 'saved'} with ${files.length} file(s).`, 'success');
                 }
               } else {
-                showToast(`Amendment ${isEdit ? 'updated' : 'saved'}.`, 'success');
+                showToast(`Note ${isEdit ? 'updated' : 'saved'}.`, 'success');
               }
               loadAssetTab(assetId, 'amendments');
             } catch (err) {
-              showToast(`Failed to ${isEdit ? 'update' : 'save'} amendment: ` + (err.message || err), 'error');
+              showToast(`Failed to ${isEdit ? 'update' : 'save'} note: ` + (err.message || err), 'error');
               submitBtn.disabled = false;
-              submitBtn.textContent = isEdit ? 'Save Changes' : 'Save Amendment';
+              submitBtn.textContent = isEdit ? 'Save Changes' : 'Save Note';
             }
           });
 
@@ -2723,10 +2723,10 @@ const Assets = (() => {
           // Delete (admin only)
           tabEl.querySelectorAll('.amend-del-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-              if (!confirm('Delete this amendment and all its attached files? This cannot be undone.')) return;
+              if (!confirm('Delete this note and all its attached files? This cannot be undone.')) return;
               try {
                 await Api.assets.amendmentsDelete(assetId, btn.dataset.amendId);
-                showToast('Amendment deleted.', 'success');
+                showToast('Note deleted.', 'success');
                 loadAssetTab(assetId, 'amendments');
               } catch (err) {
                 showToast('Delete failed: ' + (err.message || err), 'error');

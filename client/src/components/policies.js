@@ -1963,7 +1963,7 @@ const Policies = (() => {
             const grandAgg = Assets.calcAggregateBreakdown(allAssets);
 
             const summaryHtml = showBreakdown
-              ? `<div style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
+              ? `<div class="pol-sections-summary" style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
                    <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
                    <span>Sum Insured: <strong>${cur(grandAgg.sumInsured)}</strong></span>
                    ${grandAgg.additionalCoversAmountIncluded ? `<span>Add'l Covers (in): <strong>${cur(grandAgg.additionalCoversAmountIncluded)}</strong></span>` : ''}
@@ -1978,7 +1978,7 @@ const Policies = (() => {
                    <span>SASRIA: <strong>${cur(grandAgg.sasria)}</strong></span>
                    <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
                  </div>`
-              : `<div style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
+              : `<div class="pol-sections-summary" style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
                    <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
                    <span>Total Value: <strong>${cur(grandAgg.assetValue)}</strong></span>
                    <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
@@ -1986,7 +1986,7 @@ const Policies = (() => {
                  </div>`;
 
             const tableHtml = showBreakdown
-              ? `<div class="table-responsive"><table class="table">
+              ? `<div class="table-responsive pol-sections-table-breakdown"><table class="table">
                   <thead><tr>
                     <th>Section</th>
                     <th style="text-align:right;">Assets</th>
@@ -2052,7 +2052,7 @@ const Policies = (() => {
                     </tr>
                   </tfoot>
                 </table></div>`
-              : `<div class="table-responsive"><table class="table">
+              : `<div class="table-responsive pol-sections-table-simple"><table class="table">
                   <thead><tr>
                     <th>Section</th>
                     <th style="text-align:right;">Assets</th>

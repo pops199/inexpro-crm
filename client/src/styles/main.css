@@ -2640,7 +2640,8 @@ body.filter-drawer-open #top-header {
     display: none;
   }
 
-  table.table tbody tr {
+  table.table tbody tr,
+  table.table tfoot tr {
     display: block;
     margin-bottom: .6rem;
     border: 1px solid var(--border);
@@ -2650,11 +2651,17 @@ body.filter-drawer-open #top-header {
     box-shadow: var(--shadow-sm);
   }
 
+  table.table tfoot tr {
+    background: var(--surface-secondary, #f8f9fa);
+    font-weight: 600;
+  }
+
   table.table tbody tr:last-child {
     margin-bottom: 0;
   }
 
-  table.table tbody td {
+  table.table tbody td,
+  table.table tfoot td {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -2667,8 +2674,56 @@ body.filter-drawer-open #top-header {
     word-break: break-word;
   }
 
-  table.table tbody td:last-child {
+  table.table tbody td:last-child,
+  table.table tfoot td:last-child {
     border-bottom: none;
+  }
+
+  table.table tfoot td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* Policy Sections tab — hide breakdown-only columns on mobile so each
+     section card shows just Section, Assets, Asset Value, Total Premium.
+     Column indices match the table headers in policies.js sections tab. */
+  .pol-sections-table-breakdown table.table tbody td:nth-child(3),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(4),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(5),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(6),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(7),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(9),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(10),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(11),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(12),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(13),
+  .pol-sections-table-breakdown table.table tbody td:nth-child(15),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(3),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(4),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(5),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(6),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(7),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(9),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(10),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(11),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(12),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(13),
+  .pol-sections-table-breakdown table.table tfoot td:nth-child(15) {
+    display: none;
+  }
+  .pol-sections-table-simple table.table tbody td:nth-child(5),
+  .pol-sections-table-simple table.table tbody td:nth-child(6),
+  .pol-sections-table-simple table.table tfoot td:nth-child(5),
+  .pol-sections-table-simple table.table tfoot td:nth-child(6) {
+    display: none;
+  }
+  /* The wide section-totals strip above the table — hide on mobile so the
+     section cards (with footer Totals row) carry the summary instead. */
+  .pol-sections-summary {
+    display: none !important;
   }
 
   table.table tbody td::before {

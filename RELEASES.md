@@ -6,6 +6,30 @@ sits at the top.
 
 ---
 
+## v1.0.30 — 2026-05-05
+
+**Asset Notes (rename) + policy Sections tab mobile fix**
+
+- The asset **Amendments** tab is now called **Notes** — tab label,
+  toolbar button (`+ Add Note`), form titles (`New Note` / `Edit Note`),
+  submit button (`Save Note`), placeholder, empty state, toasts, and
+  the delete-confirm prompt all read as Note. Audit-log / timeline
+  descriptions on create / update / delete now also read as Note
+  (existing pre-rename rows keep their original wording). The
+  underlying API, database column names, and document module key are
+  unchanged so existing data is preserved.
+- **Policy → Sections tab on mobile.** The wide breakdown table was
+  rendering each section as a 15-line stack on phones. Mobile now
+  hides the breakdown-only columns so each section card shows just
+  Section, Assets, Asset Value, Total Premium (simple-mode hides
+  SASRIA / Excess too). The wide totals strip above the table is
+  hidden on mobile — the footer Totals card now carries the same
+  numbers. Globally, table footer rows now also stack as a card on
+  mobile (previously they overflowed horizontally) — affects every
+  module with a `<tfoot>` Totals row.
+
+---
+
 ## v1.0.29 — 2026-05-05
 
 **Asset amendments edit + role-gated delete; email audit + timeline; mobile tabs**

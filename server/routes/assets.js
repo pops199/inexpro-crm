@@ -1097,7 +1097,7 @@ router.post('/:id/amendments', (req, res) => {
 
     res.locals.logAudit({
       action: 'CREATE', module: 'assets', recordId: parseInt(req.params.id),
-      newValue: created, description: `Amendment added to asset`
+      newValue: created, description: `Note added to asset`
     });
 
     res.status(201).json(created);
@@ -1142,7 +1142,7 @@ router.put('/:assetId/amendments/:amendmentId', (req, res) => {
 
     res.locals.logAudit({
       action: 'UPDATE', module: 'assets', recordId: parseInt(req.params.assetId),
-      oldValue: existing, newValue: updated, description: `Amendment updated on asset`
+      oldValue: existing, newValue: updated, description: `Note updated on asset`
     });
 
     res.json(updated);
@@ -1183,7 +1183,7 @@ router.delete('/:assetId/amendments/:amendmentId', requireAdmin, (req, res) => {
 
     res.locals.logAudit({
       action: 'DELETE', module: 'assets', recordId: parseInt(req.params.assetId),
-      oldValue: existing, description: `Amendment deleted from asset (${docs.length} attachment(s) removed)`
+      oldValue: existing, description: `Note deleted from asset (${docs.length} attachment(s) removed)`
     });
 
     res.json({ message: 'Amendment deleted', removed_attachments: docs.length });
