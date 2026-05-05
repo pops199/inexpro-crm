@@ -6,6 +6,42 @@ sits at the top.
 
 ---
 
+## v1.0.29 — 2026-05-05
+
+**Asset amendments edit + role-gated delete; email audit + timeline; mobile tabs**
+
+- **Asset amendments — edit + role-gated delete.** Every amendment row
+  now has an Edit button (visible to all roles); the form opens
+  pre-populated and submits as an UPDATE. Files added during edit are
+  appended to the amendment. The Delete button (and per-attachment
+  `×` chip) only renders for the `admin` role. The DELETE endpoint is
+  now gated with `requireAdmin`, so brokers and admin_only get 403 if
+  they hit it directly.
+- **Mobile tab bar fix.** The `@media (max-width: 767px)` rule was
+  targeting `.tab-header` (no `s`) but every detail page uses
+  `.tabs-header`, so on mobile tabs were stacking vertically. Mobile
+  tab bars now scroll horizontally with momentum on touch (no
+  scrollbar) and tab buttons get a 36 px touch-friendly hit area.
+  Affects every module (assets, policies, contacts, accounts, claims,
+  engagements, ROAs, complaints, reviews, etc.).
+- **Email audit + timeline integration.** Every email sent through the
+  shared `lib/mailer.js` helper now writes an audit_log row on success.
+  Always writes a generic `module: 'emails'` entry (global audit-log
+  visibility); when the caller passes `audit: { module, recordId }`,
+  it also writes a record-specific row so the email appears on that
+  record's Timeline tab. Wired through:
+  - POPIA breach notifications → recipient's contact/account timeline.
+  - Complaint SLA scanner (Day 3 / 21 / 30) → complaint timeline.
+  - New-complaint handler notification → complaint timeline.
+  - Complaint test send → complaint timeline.
+  - ROA acknowledgement reminders → ROA timeline.
+  - Broker-fitness alerts → broker profile timeline.
+  - Weekly broker-fitness digest → global audit log only.
+  ROA send and Confirmation of Cover already audited correctly and
+  needed no change.
+
+---
+
 ## v1.0.28 — 2026-05-05
 
 **Engagement timeline fix + tab order**

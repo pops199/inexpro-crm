@@ -2,7 +2,7 @@ const express = require('express');
 const path    = require('path');
 const fs      = require('fs');
 const router = express.Router();
-const { requireAuth, canDelete, getBrokerId } = require('../middleware/auth');
+const { requireAuth, canDelete, requireAdmin, getBrokerId } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const { resolveSort } = require('./view-prefs');
 
@@ -1152,8 +1152,8 @@ router.put('/:assetId/amendments/:amendmentId', (req, res) => {
   }
 });
 
-// DELETE /:assetId/amendments/:amendmentId
-router.delete('/:assetId/amendments/:amendmentId', canDelete, (req, res) => {
+// DELETE /:assetId/amendments/:amendmentId — admin role only
+router.delete('/:assetId/amendments/:amendmentId', requireAdmin, (req, res) => {
   try {
     const db = getDb();
     const check = _checkAssetAccess(db, req, req.params.assetId);

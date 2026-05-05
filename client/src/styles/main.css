@@ -2336,15 +2336,20 @@ fieldset legend {
     font-size: .7rem;
   }
 
-  /* Tabs — horizontal scroll */
+  /* Tabs — horizontal scroll on mobile so tabs don't stack vertically.
+     `.tabs-header` is the actual container used by every detail page;
+     `.tab-header` and `.tab-bar` are kept for legacy callers. */
+  .tabs-header,
   .tab-header,
   .tab-bar {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     flex-wrap: nowrap;
+    padding-bottom: .5rem;
   }
 
+  .tabs-header::-webkit-scrollbar,
   .tab-header::-webkit-scrollbar,
   .tab-bar::-webkit-scrollbar {
     display: none;
@@ -2352,8 +2357,9 @@ fieldset legend {
 
   .tab-btn {
     flex-shrink: 0;
-    padding: .35rem .65rem;
-    font-size: .76rem;
+    padding: .45rem .8rem;
+    font-size: .8rem;
+    min-height: 36px;
   }
 
   /* Modal full-width */

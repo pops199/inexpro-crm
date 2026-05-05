@@ -990,3 +990,40 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 18:16 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 18:21 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 18:25 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/styles/main.css`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 18:32 — auto-detected change
+Files changed: 7
+- `server/db/sessions.db`
+- `server/lib/broker-fitness-alerts.js`
+- `server/lib/mailer.js`
+- `server/lib/roa-acknowledgement-reminders.js`
+- `server/lib/scheduler.js`
+- `server/routes/complaints.js`
+- `server/routes/popia.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

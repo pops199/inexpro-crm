@@ -131,6 +131,11 @@ function processRoaReminders(db = getDb()) {
                 <p>Please follow up with the client to confirm acknowledgement.
                 Reminders will continue at 3, 7, 14, and 30 days until the
                 ROA is marked acknowledged in the CRM.</p>`,
+              audit: {
+                module: 'advice_records',
+                recordId: r.id,
+                description: `ROA acknowledgement reminder (${stage}-day) emailed to ${r.broker_email}`,
+              },
             }))
             .catch(() => {});
         }

@@ -245,6 +245,11 @@ function processAlerts(db = getDb()) {
                      <p>Broker: ${p.broker_name} (${p.broker_email || 'no email'})</p>
                      <p>FSCA reg: ${p.fsca_registration_number || '—'}</p>
                      <p>Open the broker fitness audit report in the CRM for full history.</p>`,
+              audit: {
+                module: 'broker_profiles',
+                recordId: p.id,
+                description: `[${a.severity.toUpperCase()}] Broker fitness alert "${a.code}" emailed`,
+              },
             }))
             .catch(() => {});
         }

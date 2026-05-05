@@ -79,6 +79,11 @@ function processSlaAlerts(db) {
         html: `<p>Complaint <strong>${c.complaint_number}</strong> has not been acknowledged 3 days after receipt.</p>
                <p>Summary: ${c.complaint_summary || ''}</p>
                <p>Please record an acknowledgment date in the CRM.</p>`,
+        audit: {
+          module: 'complaints',
+          recordId: c.id,
+          description: `Day 3 SLA alert emailed for complaint ${c.complaint_number}`,
+        },
       });
     }
 
@@ -92,6 +97,11 @@ function processSlaAlerts(db) {
         html: `<p>Complaint <strong>${c.complaint_number}</strong> is at day ${days} and remains unresolved.</p>
                <p>Summary: ${c.complaint_summary || ''}</p>
                <p>Please review and accelerate to meet the 30-day FAIS GCC deadline.</p>`,
+        audit: {
+          module: 'complaints',
+          recordId: c.id,
+          description: `Day 21 SLA escalation emailed for complaint ${c.complaint_number}`,
+        },
       });
     }
 
@@ -105,6 +115,11 @@ function processSlaAlerts(db) {
         html: `<p>Complaint <strong>${c.complaint_number}</strong> has reached day ${days} unresolved and has been auto-escalated to <strong>Critical</strong>.</p>
                <p>Summary: ${c.complaint_summary || ''}</p>
                <p>Senior management notification triggered.</p>`,
+        audit: {
+          module: 'complaints',
+          recordId: c.id,
+          description: `Day 30 senior-management escalation emailed for complaint ${c.complaint_number}`,
+        },
       });
     }
   }
@@ -387,6 +402,11 @@ router.post('/', requireAuth, (req, res) => {
                <p>Summary: ${(b.complaint_summary || '').slice(0, 500)}</p>
                <p>Please open the complaint in the CRM and acknowledge within 3 business days.</p>`,
         userId: req.session.userId,
+        audit: {
+          module: 'complaints',
+          recordId: result.lastInsertRowid,
+          description: `New-complaint notification emailed for ${complaint_number}`,
+        },
       });
       db.prepare('UPDATE complaints SET handler_notified_at = CURRENT_TIMESTAMP WHERE id = ?').run(result.lastInsertRowid);
     }
@@ -578,6 +598,11 @@ router.post('/test-mail', requireAuth, async (req, res) => {
            <p>Summary: ${(c.complaint_summary || '').slice(0, 500)}</p>
            <p style="color:#888;font-size:.85rem;">Triggered by ${req.session.userId} via /api/complaints/test-mail.</p>`,
     userId: req.session.userId,
+    audit: {
+      module: 'complaints',
+      recordId: c.id,
+      description: `[TEST] Complaint alert preview emailed to ${to}`,
+    },
   });
   if (!result.ok) return res.status(500).json({ error: 'Mail failed: ' + result.reason });
   res.json({ ok: true, sent_to: to, complaint_number });

@@ -171,10 +171,15 @@ function runDigest() {
   Promise.resolve()
     // System digest — no `userId`, so no personal signature is appended.
     // This is an automated weekly system message, not a mail "from a user".
+    // No `audit.module` either — there is no specific record to attach
+    // to. The mailer still writes a generic 'emails' audit_log entry.
     .then(() => sendMail({
       to: admins,
       subject: `[Weekly] Broker Fitness Digest — ${rows.length} broker(s) flagged`,
       html,
+      audit: {
+        description: `Weekly broker-fitness digest emailed (${rows.length} broker(s) flagged)`,
+      },
     }))
     .catch(() => {});
   return { ok: true, brokers: rows.length, alerts: rows.reduce((s, r) => s + r.alerts.length, 0) };

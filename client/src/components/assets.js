@@ -2529,14 +2529,20 @@ const Assets = (() => {
         case 'amendments': {
           const rows = await Api.assets.amendmentsList(assetId).catch(() => []);
           const today = new Date().toISOString().slice(0, 10);
+          const isAdmin = window.currentUser?.role === 'admin';
 
           const renderAttachments = (atts) => {
             if (!atts || !atts.length) return '<span style="color:var(--text-muted);font-size:.85rem;">No files attached</span>';
-            return atts.map(a => `
-              <span class="amend-attachment" style="display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;margin:.15rem .25rem .15rem 0;background:#f1f3f5;border-radius:12px;font-size:.8rem;">
-                <a href="/api/documents/${a.id}/view" target="_blank" rel="noopener" title="${esc(a.original_name)}" style="text-decoration:none;color:#0d6efd;">📎 ${esc(a.original_name)}</a>
-                <button type="button" class="amend-att-del-btn" data-doc-id="${a.id}" data-doc-name="${esc(a.original_name)}" title="Delete file" style="background:none;border:none;color:#dc3545;cursor:pointer;padding:0 .15rem;font-weight:bold;">×</button>
-              </span>`).join('');
+            return atts.map(a => {
+              const delBtn = isAdmin
+                ? `<button type="button" class="amend-att-del-btn" data-doc-id="${a.id}" data-doc-name="${esc(a.original_name)}" title="Delete file" style="background:none;border:none;color:#dc3545;cursor:pointer;padding:0 .15rem;font-weight:bold;">×</button>`
+                : '';
+              return `
+                <span class="amend-attachment" style="display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;margin:.15rem .25rem .15rem 0;background:#f1f3f5;border-radius:12px;font-size:.8rem;">
+                  <a href="/api/documents/${a.id}/view" target="_blank" rel="noopener" title="${esc(a.original_name)}" style="text-decoration:none;color:#0d6efd;">📎 ${esc(a.original_name)}</a>
+                  ${delBtn}
+                </span>`;
+            }).join('');
           };
 
           tabEl.innerHTML = `
@@ -2544,6 +2550,8 @@ const Assets = (() => {
               <button type="button" class="btn btn-primary btn-sm" id="asset-amend-new-btn">+ Add Amendment</button>
             </div>
             <form id="asset-amend-form" class="card" style="display:none;padding:1rem;margin:0 1rem 1rem;">
+              <input type="hidden" name="amendment_id" value="" />
+              <h4 id="asset-amend-form-title" style="margin:0 0 .75rem;">New Amendment</h4>
               <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="form-group">
                   <label class="form-label">Date</label>
@@ -2563,6 +2571,7 @@ const Assets = (() => {
                 <input type="file" name="attachments" id="asset-amend-files" class="form-control"
                   accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.csv" multiple />
                 <div id="asset-amend-files-preview" style="margin-top:.4rem;font-size:.85rem;color:var(--text-muted);"></div>
+                <div id="asset-amend-files-help" style="margin-top:.25rem;font-size:.75rem;color:var(--text-muted);"></div>
               </div>
               <div style="display:flex;gap:.5rem;justify-content:flex-end;">
                 <button type="button" class="btn btn-sm btn-secondary" id="asset-amend-cancel-btn">Cancel</button>
@@ -2589,7 +2598,8 @@ const Assets = (() => {
                   </td>
                   <td>${esc(r.created_by_name || '—')}</td>
                   <td style="white-space:nowrap;text-align:right;">
-                    <button class="btn btn-xs btn-danger amend-del-btn" data-amend-id="${r.id}">Delete</button>
+                    <button class="btn btn-xs btn-outline amend-edit-btn" data-amend-id="${r.id}">Edit</button>
+                    ${isAdmin ? `<button class="btn btn-xs btn-danger amend-del-btn" data-amend-id="${r.id}">Delete</button>` : ''}
                   </td>
                 </tr>`).join('')}</tbody>
             </table>` : `<p class="tab-empty">No amendments captured yet.</p>`}
@@ -2597,19 +2607,53 @@ const Assets = (() => {
 
           const newBtn    = document.getElementById('asset-amend-new-btn');
           const form      = document.getElementById('asset-amend-form');
+          const formTitle = document.getElementById('asset-amend-form-title');
           const cancelBtn = document.getElementById('asset-amend-cancel-btn');
           const fileInput = document.getElementById('asset-amend-files');
           const filePrev  = document.getElementById('asset-amend-files-preview');
+          const fileHelp  = document.getElementById('asset-amend-files-help');
           const submitBtn = document.getElementById('asset-amend-submit-btn');
+          const idInput   = form.querySelector('input[name="amendment_id"]');
 
-          newBtn.addEventListener('click', () => {
+          // Open the form in CREATE mode
+          function openCreate() {
+            form.reset();
+            idInput.value = '';
+            form.querySelector('input[name="amendment_date"]').value = today;
+            formTitle.textContent = 'New Amendment';
+            submitBtn.textContent = 'Save Amendment';
+            fileHelp.textContent = '';
+            filePrev.textContent = '';
             form.style.display = 'block';
             form.querySelector('textarea[name="details"]').focus();
-          });
+          }
+
+          // Open the form in EDIT mode, pre-populated from a row
+          function openEdit(amendId) {
+            const row = rows.find(r => String(r.id) === String(amendId));
+            if (!row) return;
+            form.reset();
+            idInput.value = String(row.id);
+            form.querySelector('input[name="amendment_date"]').value = row.amendment_date
+              ? String(row.amendment_date).slice(0, 10)
+              : today;
+            form.querySelector('input[name="amendment_type"]').value = row.amendment_type || '';
+            form.querySelector('textarea[name="details"]').value = row.details || '';
+            formTitle.textContent = 'Edit Amendment';
+            submitBtn.textContent = 'Save Changes';
+            fileHelp.textContent = 'Files added here will be attached to this amendment in addition to its existing attachments.';
+            filePrev.textContent = '';
+            form.style.display = 'block';
+            form.querySelector('textarea[name="details"]').focus();
+          }
+
+          newBtn.addEventListener('click', openCreate);
           cancelBtn.addEventListener('click', () => {
             form.reset();
+            idInput.value = '';
             form.querySelector('input[name="amendment_date"]').value = today;
             filePrev.textContent = '';
+            fileHelp.textContent = '';
             form.style.display = 'none';
           });
           fileInput.addEventListener('change', () => {
@@ -2622,6 +2666,7 @@ const Assets = (() => {
           form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const fd = new FormData(form);
+            const editingId = idInput.value || null;
             const payload = {
               amendment_date: fd.get('amendment_date') || today,
               amendment_type: (fd.get('amendment_type') || '').trim() || null,
@@ -2633,9 +2678,14 @@ const Assets = (() => {
             }
             const files = Array.from(fileInput.files || []);
             submitBtn.disabled = true;
-            submitBtn.textContent = files.length ? 'Saving + uploading…' : 'Saving…';
+            const isEdit = !!editingId;
+            submitBtn.textContent = files.length
+              ? (isEdit ? 'Saving changes + uploading…' : 'Saving + uploading…')
+              : (isEdit ? 'Saving changes…' : 'Saving…');
             try {
-              const created = await Api.assets.amendmentsCreate(assetId, payload);
+              const saved = isEdit
+                ? await Api.assets.amendmentsUpdate(assetId, editingId, payload)
+                : await Api.assets.amendmentsCreate(assetId, payload);
               if (files.length) {
                 const uploadFailures = [];
                 for (const f of files) {
@@ -2643,28 +2693,34 @@ const Assets = (() => {
                     const ufd = new FormData();
                     ufd.append('file', f);
                     ufd.append('module', 'asset-amendments');
-                    ufd.append('record_id', created.id);
+                    ufd.append('record_id', saved.id);
                     await Api.documents.upload(ufd);
                   } catch (err) {
                     uploadFailures.push(`${f.name}: ${err.message || err}`);
                   }
                 }
                 if (uploadFailures.length) {
-                  showToast(`Amendment saved, but ${uploadFailures.length} file(s) failed: ${uploadFailures.join('; ')}`, 'error');
+                  showToast(`Amendment ${isEdit ? 'updated' : 'saved'}, but ${uploadFailures.length} file(s) failed: ${uploadFailures.join('; ')}`, 'error');
                 } else {
-                  showToast(`Amendment saved with ${files.length} file(s).`, 'success');
+                  showToast(`Amendment ${isEdit ? 'updated' : 'saved'} with ${files.length} file(s).`, 'success');
                 }
               } else {
-                showToast('Amendment saved.', 'success');
+                showToast(`Amendment ${isEdit ? 'updated' : 'saved'}.`, 'success');
               }
               loadAssetTab(assetId, 'amendments');
             } catch (err) {
-              showToast('Failed to save amendment: ' + (err.message || err), 'error');
+              showToast(`Failed to ${isEdit ? 'update' : 'save'} amendment: ` + (err.message || err), 'error');
               submitBtn.disabled = false;
-              submitBtn.textContent = 'Save Amendment';
+              submitBtn.textContent = isEdit ? 'Save Changes' : 'Save Amendment';
             }
           });
 
+          // Edit
+          tabEl.querySelectorAll('.amend-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => openEdit(btn.dataset.amendId));
+          });
+
+          // Delete (admin only)
           tabEl.querySelectorAll('.amend-del-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               if (!confirm('Delete this amendment and all its attached files? This cannot be undone.')) return;
@@ -2698,7 +2754,7 @@ const Assets = (() => {
             });
           });
 
-          // Delete a single attachment
+          // Delete a single attachment (admin only — only rendered for admin)
           tabEl.querySelectorAll('.amend-att-del-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
               if (!confirm(`Delete file "${btn.dataset.docName}"?`)) return;

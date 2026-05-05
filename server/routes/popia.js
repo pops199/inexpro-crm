@@ -190,7 +190,23 @@ async function sendBreachNotifications(db, breach, recipients, userId) {
     };
     const subject = replacePlaceholders(template.subject, values);
     const html = replacePlaceholders(template.body, values);
-    const result = await sendMail({ to: recipient.email, subject, html, userId });
+    // Map recipient type → timeline module so the breach mail lands on
+    // the right record (contact / account). Users have no timeline page.
+    const moduleByType = { contact: 'contacts', account: 'accounts' };
+    const timelineModule = moduleByType[recipient.type];
+    const result = await sendMail({
+      to: recipient.email,
+      subject,
+      html,
+      userId,
+      audit: timelineModule && recipient.id
+        ? {
+            module: timelineModule,
+            recordId: recipient.id,
+            description: `POPIA breach notification (#${breach.id}) emailed to ${recipient.email} — "${subject}"`,
+          }
+        : { description: `POPIA breach notification (#${breach.id}) emailed to ${recipient.email} — "${subject}"` },
+    });
     if (result.ok) sent += 1;
     else failures.push({ email: recipient.email, reason: result.reason || 'send failed' });
   }
