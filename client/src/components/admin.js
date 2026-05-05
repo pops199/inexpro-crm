@@ -2917,12 +2917,48 @@ const Admin = (() => {
     const s = _sysUpdateLastStatus;
     if (!s || !s.update_available) return;
     const pending = s.pending_migrations?.length || 0;
-    const msg = `Update from ${s.current_tag || (s.current_commit||'').slice(0,7)} to ${s.latest_tag}?\n\n` +
-                `• Database will be snapshotted first\n` +
-                `• ${pending} schema migration${pending === 1 ? '' : 's'} will run\n` +
-                `• Server will restart — users will be briefly disconnected\n\n` +
-                `Continue?`;
-    if (!confirm(msg)) return;
+    const fromLabel = esc(s.current_tag || (s.current_commit || '').slice(0, 7));
+    const toLabel   = esc(s.latest_tag);
+    const proceed = await new Promise((resolve) => {
+      document.getElementById('sys-apply-overlay')?.remove();
+      const overlay = document.createElement('div');
+      overlay.id = 'sys-apply-overlay';
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" style="width:480px;max-width:92vw;">
+          <div class="modal-header">
+            <h3>Apply update</h3>
+            <button class="btn-close" type="button" id="sys-apply-x">×</button>
+          </div>
+          <div class="modal-body" style="font-size:.9rem;line-height:1.5;">
+            <p style="margin:0 0 .75rem;">
+              Update from <strong>${fromLabel}</strong> to <strong>${toLabel}</strong>?
+            </p>
+            <ul style="margin:0 0 .75rem 1.1rem;padding:0;">
+              <li>Database will be snapshotted first</li>
+              <li>${pending} schema migration${pending === 1 ? '' : 's'} will run</li>
+              <li>Server will restart — users will be briefly disconnected</li>
+            </ul>
+            <p style="margin:0;color:var(--text-muted);">Continue?</p>
+          </div>
+          <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem;">
+            <button type="button" class="btn btn-secondary" id="sys-apply-cancel">Cancel</button>
+            <button type="button" class="btn btn-primary"   id="sys-apply-ok">Apply update</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const close = (val) => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); };
+      function onKey(e) {
+        if (e.key === 'Escape') close(false);
+        if (e.key === 'Enter')  close(true);
+      }
+      overlay.querySelector('#sys-apply-x').addEventListener('click', () => close(false));
+      overlay.querySelector('#sys-apply-cancel').addEventListener('click', () => close(false));
+      overlay.querySelector('#sys-apply-ok').addEventListener('click', () => close(true));
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => overlay.querySelector('#sys-apply-ok')?.focus(), 50);
+    });
+    if (!proceed) return;
 
     const result = document.getElementById('sys-update-result');
     const apply  = document.getElementById('sys-update-apply');

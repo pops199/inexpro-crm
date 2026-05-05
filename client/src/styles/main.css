@@ -1384,25 +1384,34 @@ fieldset legend {
   color: var(--text);
 }
 
+/* Action cells: buttons stay on one line and stay within the cell's
+   bounds. We deliberately do NOT use `display: flex` on the <td> —
+   flex on a table cell ignores column boundaries and causes the
+   buttons to overflow into the previous column. Inline-block buttons
+   with `white-space: nowrap` + sibling margin keep everything tidy
+   within the cell. `width: 1%` lets the cell shrink to its content
+   width so the actions column doesn't waste horizontal space. */
 .table td.actions,
 .table td.actions-cell,
 .table td.table-actions {
   white-space: nowrap;
   text-align: right;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: .35rem;
-  justify-content: flex-end;
   width: 1%;
 }
 
-.table td.actions > .btn,
-.table td.actions-cell > .btn,
-.table td.table-actions > .btn,
-.table td.actions > a.btn,
-.table td.actions-cell > a.btn,
-.table td.table-actions > a.btn {
-  flex-shrink: 0;
+.table td.actions > .btn + .btn,
+.table td.actions-cell > .btn + .btn,
+.table td.table-actions > .btn + .btn,
+.table td.actions > a.btn + .btn,
+.table td.actions-cell > a.btn + .btn,
+.table td.table-actions > a.btn + .btn,
+.table td.actions > .btn + a.btn,
+.table td.actions-cell > .btn + a.btn,
+.table td.table-actions > .btn + a.btn,
+.table td.actions > a.btn + a.btn,
+.table td.actions-cell > a.btn + a.btn,
+.table td.table-actions > a.btn + a.btn {
+  margin-left: .35rem;
 }
 
 .table-footer {

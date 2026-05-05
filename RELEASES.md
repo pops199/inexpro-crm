@@ -6,6 +6,26 @@ sits at the top.
 
 ---
 
+## v1.0.32 — 2026-05-05
+
+**Action-cell overlap fix; centered Apply Update modal**
+
+- The previous one-row action-button fix used `display: flex` on the
+  table cell, which ignores column boundaries and caused the buttons
+  to overflow into the Broker (or previous) column. Switched to
+  inline-block buttons with `white-space: nowrap`, `text-align: right`,
+  `width: 1%` on the cell, and sibling `margin-left` for spacing.
+  Buttons now stay on one row AND stay inside the Actions column on
+  every list (policies, contacts, accounts, claims, engagements, ROAs,
+  complaints, reviews, etc.).
+- Admin → System Update → **Apply update** no longer opens a native
+  browser confirm popup at the top of the screen. It now opens a
+  centered overlay modal that matches the rest of the app's modals
+  (header with × close, bullet-listed actions, Cancel / Apply update
+  footer). Keyboard: Esc cancels, Enter applies.
+
+---
+
 ## v1.0.31 — 2026-05-05
 
 **Action-button row fix; backfill old asset Note descriptions**
