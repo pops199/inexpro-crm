@@ -328,6 +328,18 @@ const Api = {
     delete(id) {
       return apiFetch('DELETE', `/api/assets/${id}`);
     },
+    amendmentsList(assetId) {
+      return apiFetch('GET', `/api/assets/${assetId}/amendments`);
+    },
+    amendmentsCreate(assetId, data) {
+      return apiFetch('POST', `/api/assets/${assetId}/amendments`, data);
+    },
+    amendmentsUpdate(assetId, amendmentId, data) {
+      return apiFetch('PUT', `/api/assets/${assetId}/amendments/${amendmentId}`, data);
+    },
+    amendmentsDelete(assetId, amendmentId) {
+      return apiFetch('DELETE', `/api/assets/${assetId}/amendments/${amendmentId}`);
+    },
   },
 
   // ── Risk Details ──────────────────────────────────────────────

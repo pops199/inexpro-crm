@@ -15,7 +15,8 @@ const ALLOWED_MODULES = new Set([
   'contacts', 'policies', 'claims', 'accounts', 'engagements',
   'policy-sections', 'assets', 'risk-details', 'advice-records',
   'complaints', 'reviews', 'workflows',
-  'broker-profiles', 'cpd-activities'
+  'broker-profiles', 'cpd-activities',
+  'asset-amendments'
 ]);
 
 // ─── Module name → documents table FK column mapping ─────────
@@ -34,7 +35,8 @@ const MODULE_FK = {
   'reviews':          'review_id',
   'workflows':        'workflow_id',
   'broker-profiles':  'broker_profile_id',
-  'cpd-activities':   'cpd_activity_id'
+  'cpd-activities':   'cpd_activity_id',
+  'asset-amendments': 'asset_amendment_id'
 };
 
 // ─── Allowed MIME types ───────────────────────────────────────

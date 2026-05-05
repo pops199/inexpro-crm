@@ -169,6 +169,8 @@ function runDigest() {
   `;
 
   Promise.resolve()
+    // System digest — no `userId`, so no personal signature is appended.
+    // This is an automated weekly system message, not a mail "from a user".
     .then(() => sendMail({
       to: admins,
       subject: `[Weekly] Broker Fitness Digest — ${rows.length} broker(s) flagged`,

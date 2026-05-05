@@ -234,6 +234,8 @@ function processAlerts(db = getDb()) {
         const { emails, userIds } = resolveAudience(db, p, a.audience);
 
         // 2) Send email (fire-and-forget).
+        // System alert — no `userId` so no personal signature is appended;
+        // this is an automated compliance message, not "from a user".
         if (emails.length) {
           Promise.resolve()
             .then(() => sendMail({

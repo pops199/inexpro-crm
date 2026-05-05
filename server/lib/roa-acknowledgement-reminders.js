@@ -111,6 +111,9 @@ function processRoaReminders(db = getDb()) {
         } catch (_) {}
 
         // 2) Email the broker (fire-and-forget).
+        // System reminder — no `userId` so no personal signature is appended.
+        // This goes TO the broker (the assigned owner) reminding them to chase
+        // their client; it is not a mail "from a user".
         if (r.broker_email) {
           Promise.resolve()
             .then(() => sendMail({

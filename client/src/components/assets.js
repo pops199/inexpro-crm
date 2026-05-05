@@ -2350,11 +2350,12 @@ const Assets = (() => {
           <!-- Tabs -->
           <div class="detail-tabs card">
             <div class="tabs-header" id="asset-tabs-header">
-              <button class="tab-btn active" data-tab="timeline">Timeline</button>
-              <button class="tab-btn"        data-tab="documents">Documents</button>
+              <button class="tab-btn active" data-tab="amendments">Amendments</button>
               <button class="tab-btn"        data-tab="claims">Claims</button>
+              <button class="tab-btn"        data-tab="documents">Documents</button>
               <button class="tab-btn"        data-tab="workflows">Workflows</button>
               <button class="tab-btn"        data-tab="versions">Versions</button>
+              <button class="tab-btn"        data-tab="timeline">Timeline</button>
             </div>
             <div class="tab-content" id="asset-tab-content">
               <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
@@ -2364,7 +2365,7 @@ const Assets = (() => {
         </div>
       `;
 
-      loadAssetTab(id, 'timeline');
+      loadAssetTab(id, 'amendments');
 
       // Insurance Financials — combined / breakdown toggle
       (function wireAssetFinBreakdown() {
@@ -2523,6 +2524,193 @@ const Assets = (() => {
                 </tr>`).join('')}</tbody>
             </table>` : `<p class="tab-empty">No workflows linked to this asset.</p>`}
           `;
+          break;
+        }
+        case 'amendments': {
+          const rows = await Api.assets.amendmentsList(assetId).catch(() => []);
+          const today = new Date().toISOString().slice(0, 10);
+
+          const renderAttachments = (atts) => {
+            if (!atts || !atts.length) return '<span style="color:var(--text-muted);font-size:.85rem;">No files attached</span>';
+            return atts.map(a => `
+              <span class="amend-attachment" style="display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;margin:.15rem .25rem .15rem 0;background:#f1f3f5;border-radius:12px;font-size:.8rem;">
+                <a href="/api/documents/${a.id}/view" target="_blank" rel="noopener" title="${esc(a.original_name)}" style="text-decoration:none;color:#0d6efd;">📎 ${esc(a.original_name)}</a>
+                <button type="button" class="amend-att-del-btn" data-doc-id="${a.id}" data-doc-name="${esc(a.original_name)}" title="Delete file" style="background:none;border:none;color:#dc3545;cursor:pointer;padding:0 .15rem;font-weight:bold;">×</button>
+              </span>`).join('');
+          };
+
+          tabEl.innerHTML = `
+            <div class="tab-toolbar">
+              <button type="button" class="btn btn-primary btn-sm" id="asset-amend-new-btn">+ Add Amendment</button>
+            </div>
+            <form id="asset-amend-form" class="card" style="display:none;padding:1rem;margin:0 1rem 1rem;">
+              <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Date</label>
+                  <input type="date" name="amendment_date" class="form-control" value="${today}" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Type <span style="color:var(--text-muted);font-weight:normal;">(optional)</span></label>
+                  <input type="text" name="amendment_type" class="form-control" placeholder="e.g. Sum insured change, Section move, Reg number" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Details</label>
+                <textarea name="details" class="form-control" rows="4" required placeholder="Describe the amendment or note…"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Attachments <span style="color:var(--text-muted);font-weight:normal;">(optional — pdf, jpg, png, docx, xlsx, csv; max 20 MB each)</span></label>
+                <input type="file" name="attachments" id="asset-amend-files" class="form-control"
+                  accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.csv" multiple />
+                <div id="asset-amend-files-preview" style="margin-top:.4rem;font-size:.85rem;color:var(--text-muted);"></div>
+              </div>
+              <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+                <button type="button" class="btn btn-sm btn-secondary" id="asset-amend-cancel-btn">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary" id="asset-amend-submit-btn">Save Amendment</button>
+              </div>
+            </form>
+            ${rows.length ? `
+            <table class="table">
+              <thead><tr>
+                <th>Date</th><th>Type</th><th>Details</th><th>Attachments</th><th>Logged By</th><th></th>
+              </tr></thead>
+              <tbody>${rows.map(r => `
+                <tr data-amend-row="${r.id}">
+                  <td style="white-space:nowrap;">${r.amendment_date ? formatDate(r.amendment_date) : '—'}</td>
+                  <td>${esc(r.amendment_type || '—')}</td>
+                  <td style="white-space:pre-wrap;">${esc(r.details || '')}</td>
+                  <td>
+                    <div class="amend-att-list" data-amend-id="${r.id}">${renderAttachments(r.attachments)}</div>
+                    <label class="btn btn-xs btn-outline" style="margin-top:.3rem;cursor:pointer;">
+                      + Add file
+                      <input type="file" class="amend-att-add-input" data-amend-id="${r.id}"
+                        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.csv" style="display:none;" />
+                    </label>
+                  </td>
+                  <td>${esc(r.created_by_name || '—')}</td>
+                  <td style="white-space:nowrap;text-align:right;">
+                    <button class="btn btn-xs btn-danger amend-del-btn" data-amend-id="${r.id}">Delete</button>
+                  </td>
+                </tr>`).join('')}</tbody>
+            </table>` : `<p class="tab-empty">No amendments captured yet.</p>`}
+          `;
+
+          const newBtn    = document.getElementById('asset-amend-new-btn');
+          const form      = document.getElementById('asset-amend-form');
+          const cancelBtn = document.getElementById('asset-amend-cancel-btn');
+          const fileInput = document.getElementById('asset-amend-files');
+          const filePrev  = document.getElementById('asset-amend-files-preview');
+          const submitBtn = document.getElementById('asset-amend-submit-btn');
+
+          newBtn.addEventListener('click', () => {
+            form.style.display = 'block';
+            form.querySelector('textarea[name="details"]').focus();
+          });
+          cancelBtn.addEventListener('click', () => {
+            form.reset();
+            form.querySelector('input[name="amendment_date"]').value = today;
+            filePrev.textContent = '';
+            form.style.display = 'none';
+          });
+          fileInput.addEventListener('change', () => {
+            const files = Array.from(fileInput.files || []);
+            filePrev.textContent = files.length
+              ? `${files.length} file(s) selected: ${files.map(f => f.name).join(', ')}`
+              : '';
+          });
+
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData(form);
+            const payload = {
+              amendment_date: fd.get('amendment_date') || today,
+              amendment_type: (fd.get('amendment_type') || '').trim() || null,
+              details:        (fd.get('details') || '').trim(),
+            };
+            if (!payload.details) {
+              showToast('Details are required.', 'error');
+              return;
+            }
+            const files = Array.from(fileInput.files || []);
+            submitBtn.disabled = true;
+            submitBtn.textContent = files.length ? 'Saving + uploading…' : 'Saving…';
+            try {
+              const created = await Api.assets.amendmentsCreate(assetId, payload);
+              if (files.length) {
+                const uploadFailures = [];
+                for (const f of files) {
+                  try {
+                    const ufd = new FormData();
+                    ufd.append('file', f);
+                    ufd.append('module', 'asset-amendments');
+                    ufd.append('record_id', created.id);
+                    await Api.documents.upload(ufd);
+                  } catch (err) {
+                    uploadFailures.push(`${f.name}: ${err.message || err}`);
+                  }
+                }
+                if (uploadFailures.length) {
+                  showToast(`Amendment saved, but ${uploadFailures.length} file(s) failed: ${uploadFailures.join('; ')}`, 'error');
+                } else {
+                  showToast(`Amendment saved with ${files.length} file(s).`, 'success');
+                }
+              } else {
+                showToast('Amendment saved.', 'success');
+              }
+              loadAssetTab(assetId, 'amendments');
+            } catch (err) {
+              showToast('Failed to save amendment: ' + (err.message || err), 'error');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Save Amendment';
+            }
+          });
+
+          tabEl.querySelectorAll('.amend-del-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Delete this amendment and all its attached files? This cannot be undone.')) return;
+              try {
+                await Api.assets.amendmentsDelete(assetId, btn.dataset.amendId);
+                showToast('Amendment deleted.', 'success');
+                loadAssetTab(assetId, 'amendments');
+              } catch (err) {
+                showToast('Delete failed: ' + (err.message || err), 'error');
+              }
+            });
+          });
+
+          // Add file to an existing amendment
+          tabEl.querySelectorAll('.amend-att-add-input').forEach(inp => {
+            inp.addEventListener('change', async () => {
+              const f = inp.files && inp.files[0];
+              if (!f) return;
+              try {
+                const ufd = new FormData();
+                ufd.append('file', f);
+                ufd.append('module', 'asset-amendments');
+                ufd.append('record_id', inp.dataset.amendId);
+                await Api.documents.upload(ufd);
+                showToast('File attached.', 'success');
+                loadAssetTab(assetId, 'amendments');
+              } catch (err) {
+                showToast('Upload failed: ' + (err.message || err), 'error');
+                inp.value = '';
+              }
+            });
+          });
+
+          // Delete a single attachment
+          tabEl.querySelectorAll('.amend-att-del-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              if (!confirm(`Delete file "${btn.dataset.docName}"?`)) return;
+              try {
+                await Api.documents.delete(btn.dataset.docId);
+                showToast('File deleted.', 'success');
+                loadAssetTab(assetId, 'amendments');
+              } catch (err) {
+                showToast('Delete failed: ' + (err.message || err), 'error');
+              }
+            });
+          });
           break;
         }
         case 'claims': {

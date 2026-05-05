@@ -30,6 +30,10 @@ function resolveRecipients(db, complaint) {
 
 function _fireAndForgetMail(opts) {
   // Don't await — caller must not block on email send.
+  // Note: callers that have a sender (req.session.userId) must pass it via
+  // `opts.userId` so the user's signature gets appended. SLA-scanner sends
+  // (background, no sender) intentionally omit userId — they are system
+  // alerts, not "from a user".
   Promise.resolve().then(() => sendMail(opts)).catch(() => {});
 }
 
@@ -382,6 +386,7 @@ router.post('/', requireAuth, (req, res) => {
                   <strong>Target resolution:</strong> ${targetResolutionDate || '—'}</p>
                <p>Summary: ${(b.complaint_summary || '').slice(0, 500)}</p>
                <p>Please open the complaint in the CRM and acknowledge within 3 business days.</p>`,
+        userId: req.session.userId,
       });
       db.prepare('UPDATE complaints SET handler_notified_at = CURRENT_TIMESTAMP WHERE id = ?').run(result.lastInsertRowid);
     }
@@ -572,6 +577,7 @@ router.post('/test-mail', requireAuth, async (req, res) => {
               <strong>Acknowledged:</strong> ${c.acknowledgment_date || 'No'}</p>
            <p>Summary: ${(c.complaint_summary || '').slice(0, 500)}</p>
            <p style="color:#888;font-size:.85rem;">Triggered by ${req.session.userId} via /api/complaints/test-mail.</p>`,
+    userId: req.session.userId,
   });
   if (!result.ok) return res.status(500).json({ error: 'Mail failed: ' + result.reason });
   res.json({ ok: true, sent_to: to, complaint_number });

@@ -1246,46 +1246,24 @@ router.post('/:id/send-roa', requireAuth, async (req, res) => {
       auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
     });
 
-    // ── Per-user From + Signature + Auto-CC (same logic as send-email) ──
-    let fromAddress = smtp.smtp_from || smtp.smtp_user;
-    let userEntry = null;
-    try {
-      const fromList = Array.isArray(smtp.smtp_from_list) ? smtp.smtp_from_list : [];
-      userEntry = fromList.find(f => String(f.user_id) === String(req.session.userId) && f.email) || null;
-      if (userEntry) {
-        fromAddress = userEntry.name
-          ? `"${String(userEntry.name).replace(/"/g, '')}" <${userEntry.email}>`
-          : userEntry.email;
-      }
-    } catch (_) {}
+    // ── Per-user From + Signature + Auto-CC (via shared helper) ──
+    const { buildSignature } = require('../lib/email-signature');
+    const sig = buildSignature(req.session.userId, { db: db2 });
+    const fromAddress = sig.fromAddress || smtp.smtp_from || smtp.smtp_user;
 
     const attachments = [{
       filename: `ROA-${d.advice_record_number || id}.pdf`,
       content:  pdfBuffer,
       contentType: 'application/pdf',
     }];
+    if (sig.signatureAttachment) attachments.push(sig.signatureAttachment);
 
     let htmlBody = message
       ? `<p>${message.replace(/\n/g, '<br>')}</p><p>Please find your Record of Advice (${d.advice_record_number || ''}) attached as a PDF.</p>`
       : `<p>Please find your Record of Advice (${d.advice_record_number || ''}) attached as a PDF.</p>`;
+    if (sig.signatureHtml) htmlBody += sig.signatureHtml;
 
-    // Append signature image if mapped
-    if (userEntry && userEntry.signature) {
-      const safeName = path.basename(String(userEntry.signature));
-      const sigPath = path.join(__dirname, '..', '..', 'signatures', safeName);
-      if (fs.existsSync(sigPath)) {
-        const cid = 'user-signature@inexpro';
-        attachments.push({ filename: safeName, path: sigPath, cid });
-        htmlBody += `<br><br><img src="cid:${cid}" alt="signature" style="max-width:400px;height:auto;">`;
-      }
-    }
-
-    // Auto-CC the sending user
-    let senderEmail = userEntry ? userEntry.email : null;
-    if (!senderEmail) {
-      const senderRow = db2.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
-      if (senderRow) senderEmail = senderRow.email;
-    }
+    const senderEmail = sig.senderEmail;
 
     await transporter.sendMail({
       from: fromAddress,

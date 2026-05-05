@@ -866,3 +866,80 @@ Files changed: 6
 - `server/db/sessions.db`
 Session: fc18185e-d933-456b-ac8b-c8df133c94d8
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 17:29 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-03 17:30 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: fc18185e-d933-456b-ac8b-c8df133c94d8
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:27 — auto-detected change
+Files changed: 7
+- `client/src/api.js`
+- `client/src/components/assets.js`
+- `server/db/inexpro.db-wal`
+- `server/db/migrations/0001_asset_amendments.sql`
+- `server/db/schema.sql`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:30 — auto-detected change
+Files changed: 5
+- `client/src/components/assets.js`
+- `server/db/migrations/0002_documents_asset_amendment_fk.sql`
+- `server/db/schema.sql`
+- `server/routes/assets.js`
+- `server/routes/documents.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:35 — auto-detected change
+Files changed: 4
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/schema.sql`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:37 — auto-detected change
+Files changed: 5
+- `client/src/components/assets.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:38 — auto-detected change
+Files changed: 2
+- `client/public/index.html`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:50 — auto-detected change
+Files changed: 10
+- `server/db/sessions.db`
+- `server/lib/broker-fitness-alerts.js`
+- `server/lib/email-signature.js`
+- `server/lib/mailer.js`
+- `server/lib/roa-acknowledgement-reminders.js`
+- `server/lib/scheduler.js`
+- `server/routes/advice-records.js`
+- `server/routes/complaints.js`
+- `server/routes/popia.js`
+- `server/routes/settings.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

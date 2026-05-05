@@ -1,8 +1,16 @@
 const express = require('express');
+const path    = require('path');
+const fs      = require('fs');
 const router = express.Router();
 const { requireAuth, canDelete, getBrokerId } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const { resolveSort } = require('./view-prefs');
+
+function _amendmentUploadRoot() {
+  return process.env.UPLOAD_PATH
+    ? path.resolve(process.env.UPLOAD_PATH)
+    : path.resolve(__dirname, '../../uploads');
+}
 
 // All routes require authentication
 router.use(requireAuth);
@@ -999,6 +1007,189 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
   } catch (err) {
     console.error('confirmation-of-cover-pdf error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ASSET AMENDMENTS — CRUD
+// ============================================================
+
+// Helper: ensure caller can access asset (via linked policy's broker)
+function _checkAssetAccess(db, req, assetId) {
+  const asset = db.prepare('SELECT id, policy_id FROM assets WHERE id = ?').get(assetId);
+  if (!asset) return { error: 404, message: 'Asset not found' };
+  const scopedBrokerId = getBrokerId(req);
+  if (scopedBrokerId && asset.policy_id) {
+    const policy = db.prepare('SELECT assigned_broker_id FROM policies WHERE id = ?').get(asset.policy_id);
+    if (policy && policy.assigned_broker_id !== scopedBrokerId) {
+      return { error: 403, message: 'Access denied' };
+    }
+  }
+  return { asset };
+}
+
+// GET /:id/amendments — list all amendments for an asset (with attachments)
+router.get('/:id/amendments', (req, res) => {
+  try {
+    const db = getDb();
+    const check = _checkAssetAccess(db, req, req.params.id);
+    if (check.error) return res.status(check.error).json({ error: check.message });
+
+    const rows = db.prepare(`
+      SELECT aa.*, u.full_name AS created_by_name
+      FROM asset_amendments aa
+      LEFT JOIN users u ON u.id = aa.created_by
+      WHERE aa.asset_id = ?
+      ORDER BY aa.amendment_date DESC, aa.created_at DESC
+    `).all(req.params.id);
+
+    if (rows.length) {
+      const ids = rows.map(r => r.id);
+      const placeholders = ids.map(() => '?').join(',');
+      const docs = db.prepare(`
+        SELECT id, asset_amendment_id, original_name, file_type, file_size, uploaded_at
+        FROM documents
+        WHERE asset_amendment_id IN (${placeholders})
+        ORDER BY uploaded_at DESC
+      `).all(...ids);
+      const byAmendment = new Map(rows.map(r => [r.id, []]));
+      docs.forEach(d => {
+        const list = byAmendment.get(d.asset_amendment_id);
+        if (list) list.push(d);
+      });
+      rows.forEach(r => { r.attachments = byAmendment.get(r.id) || []; });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /assets/:id/amendments error:', err.message);
+    res.status(500).json({ error: 'Failed to load amendments' });
+  }
+});
+
+// POST /:id/amendments — add an amendment note
+router.post('/:id/amendments', (req, res) => {
+  try {
+    const db = getDb();
+    const check = _checkAssetAccess(db, req, req.params.id);
+    if (check.error) return res.status(check.error).json({ error: check.message });
+
+    const { amendment_date, amendment_type, details } = req.body;
+    if (!details || !details.trim()) return res.status(400).json({ error: 'Details are required' });
+
+    const result = db.prepare(`
+      INSERT INTO asset_amendments (asset_id, amendment_date, amendment_type, details, created_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      req.params.id,
+      amendment_date || new Date().toISOString().slice(0, 10),
+      amendment_type || null,
+      details.trim(),
+      req.session.userId
+    );
+
+    const created = db.prepare(`
+      SELECT aa.*, u.full_name AS created_by_name
+      FROM asset_amendments aa
+      LEFT JOIN users u ON u.id = aa.created_by
+      WHERE aa.id = ?
+    `).get(result.lastInsertRowid);
+
+    res.locals.logAudit({
+      action: 'CREATE', module: 'assets', recordId: parseInt(req.params.id),
+      newValue: created, description: `Amendment added to asset`
+    });
+
+    res.status(201).json(created);
+  } catch (err) {
+    console.error('POST /assets/:id/amendments error:', err.message);
+    res.status(500).json({ error: 'Failed to add amendment' });
+  }
+});
+
+// PUT /:assetId/amendments/:amendmentId — update an amendment note
+router.put('/:assetId/amendments/:amendmentId', (req, res) => {
+  try {
+    const db = getDb();
+    const check = _checkAssetAccess(db, req, req.params.assetId);
+    if (check.error) return res.status(check.error).json({ error: check.message });
+
+    const existing = db.prepare(
+      'SELECT * FROM asset_amendments WHERE id = ? AND asset_id = ?'
+    ).get(req.params.amendmentId, req.params.assetId);
+    if (!existing) return res.status(404).json({ error: 'Amendment not found' });
+
+    const { amendment_date, amendment_type, details } = req.body;
+    if (!details || !details.trim()) return res.status(400).json({ error: 'Details are required' });
+
+    db.prepare(`
+      UPDATE asset_amendments
+      SET amendment_date = ?, amendment_type = ?, details = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      amendment_date || existing.amendment_date,
+      amendment_type || null,
+      details.trim(),
+      req.params.amendmentId
+    );
+
+    const updated = db.prepare(`
+      SELECT aa.*, u.full_name AS created_by_name
+      FROM asset_amendments aa
+      LEFT JOIN users u ON u.id = aa.created_by
+      WHERE aa.id = ?
+    `).get(req.params.amendmentId);
+
+    res.locals.logAudit({
+      action: 'UPDATE', module: 'assets', recordId: parseInt(req.params.assetId),
+      oldValue: existing, newValue: updated, description: `Amendment updated on asset`
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('PUT /assets/:assetId/amendments/:amendmentId error:', err.message);
+    res.status(500).json({ error: 'Failed to update amendment' });
+  }
+});
+
+// DELETE /:assetId/amendments/:amendmentId
+router.delete('/:assetId/amendments/:amendmentId', canDelete, (req, res) => {
+  try {
+    const db = getDb();
+    const check = _checkAssetAccess(db, req, req.params.assetId);
+    if (check.error) return res.status(check.error).json({ error: check.message });
+
+    const existing = db.prepare(
+      'SELECT * FROM asset_amendments WHERE id = ? AND asset_id = ?'
+    ).get(req.params.amendmentId, req.params.assetId);
+    if (!existing) return res.status(404).json({ error: 'Amendment not found' });
+
+    // Remove attached files from disk + DB before deleting the amendment row
+    const docs = db.prepare(
+      'SELECT id, file_path FROM documents WHERE asset_amendment_id = ?'
+    ).all(req.params.amendmentId);
+    const uploadRoot = _amendmentUploadRoot();
+    docs.forEach(d => {
+      if (d.file_path) {
+        const full = path.resolve(uploadRoot, d.file_path);
+        const rel  = path.relative(uploadRoot, full);
+        if (rel && !rel.startsWith('..') && !path.isAbsolute(rel) && fs.existsSync(full)) {
+          try { fs.unlinkSync(full); } catch (e) { console.error('amendment file unlink failed:', e.message); }
+        }
+      }
+    });
+    db.prepare('DELETE FROM documents WHERE asset_amendment_id = ?').run(req.params.amendmentId);
+    db.prepare('DELETE FROM asset_amendments WHERE id = ?').run(req.params.amendmentId);
+
+    res.locals.logAudit({
+      action: 'DELETE', module: 'assets', recordId: parseInt(req.params.assetId),
+      oldValue: existing, description: `Amendment deleted from asset (${docs.length} attachment(s) removed)`
+    });
+
+    res.json({ message: 'Amendment deleted', removed_attachments: docs.length });
+  } catch (err) {
+    console.error('DELETE asset amendment error:', err.message);
+    res.status(500).json({ error: 'Failed to delete amendment' });
   }
 });
 

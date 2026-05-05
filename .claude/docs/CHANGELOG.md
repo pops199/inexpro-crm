@@ -321,3 +321,35 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-03 17:25
 - Modified 6 files
 - Files: Inexpro_CRM_User_Manual.docx, docs/manual/capture.js, server/db/manual_demo.db, server/db/manual_demo.db-shm, server/db/manual_demo.db-wal (+1 more)
+
+## 2026-05-03 17:29
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-03 17:30
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-05 17:27
+- Modified 7 files
+- Files: client/src/api.js, client/src/components/assets.js, server/db/inexpro.db-wal, server/db/migrations/0001_asset_amendments.sql, server/db/schema.sql (+2 more)
+
+## 2026-05-05 17:30
+- Modified 5 files
+- Files: client/src/components/assets.js, server/db/migrations/0002_documents_asset_amendment_fk.sql, server/db/schema.sql, server/routes/assets.js, server/routes/documents.js
+
+## 2026-05-05 17:35
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/schema.sql
+
+## 2026-05-05 17:37
+- Modified 5 files
+- Files: client/src/components/assets.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-05 17:38
+- Modified 2 files
+- Files: client/public/index.html, server/db/sessions.db
+
+## 2026-05-05 17:50
+- Modified 10 files
+- Files: server/db/sessions.db, server/lib/broker-fitness-alerts.js, server/lib/email-signature.js, server/lib/mailer.js, server/lib/roa-acknowledgement-reminders.js (+5 more)

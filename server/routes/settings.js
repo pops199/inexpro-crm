@@ -1000,21 +1000,12 @@ router.post('/send-email', requireAuth, async (req, res) => {
       secure: String(settings.smtp_port) === '465',
       auth: { user: settings.smtp_user, pass: settings.smtp_pass },
     });
-    // ── Determine the From address + signature based on signed-in user ──
-    // smtp_from_list is a JSON array of { user_id, name, email, signature } entries.
-    let fromAddress = settings.smtp_from || settings.smtp_user;
-    let userEntry = null;
-    try {
-      const fromList = Array.isArray(settings.smtp_from_list) ? settings.smtp_from_list : [];
-      userEntry = fromList.find(f => String(f.user_id) === String(req.session.userId) && f.email) || null;
-      if (userEntry) {
-        fromAddress = userEntry.name
-          ? `"${String(userEntry.name).replace(/"/g, '')}" <${userEntry.email}>`
-          : userEntry.email;
-      }
-    } catch (_) {}
+    // ── Per-user From + Signature + Auto-CC (via shared helper) ──
+    const { buildSignature } = require('../lib/email-signature');
+    const sig = buildSignature(req.session.userId, { db });
+    const fromAddress = sig.fromAddress || settings.smtp_from || settings.smtp_user;
 
-    // ── Append signature image if the user has one assigned ──
+    // ── Compose final HTML: body + (optional letterhead wrap) + signature ──
     let finalHtml = normaliseEmailHtml(html || text);
     let finalText = text;
     const includeLetterhead = !!scheduleEmailContext && fsMod.existsSync(INEXPRO_LETTERHEAD_PATH);
@@ -1025,39 +1016,15 @@ router.post('/send-email', requireAuth, async (req, res) => {
         cid: EMAIL_LETTERHEAD_CID,
       });
     }
-    if (userEntry && userEntry.signature) {
-      const path = require('path');
-      const fs = require('fs');
-      // Guard against path traversal — only use the basename
-      const safeName = path.basename(String(userEntry.signature));
-      const sigPath = path.join(__dirname, '..', '..', 'signatures', safeName);
-      if (fs.existsSync(sigPath)) {
-        const cid = 'user-signature@inexpro';
-        attachments.push({
-          filename: safeName,
-          path: sigPath,
-          cid,
-        });
-        const sigHtml = `<div style="margin-top:18px;"><img src="cid:${cid}" alt="signature" style="max-width:400px;height:auto;"></div>`;
-        if (finalHtml) finalHtml = finalHtml + sigHtml;
-        else finalHtml = sigHtml;
-      }
+    if (sig.signatureAttachment) attachments.push(sig.signatureAttachment);
+    if (sig.signatureHtml) {
+      finalHtml = (finalHtml || '') + sig.signatureHtml;
     }
-
-    // ── Auto-CC the sending user ──
-    // Determine the sender's email to add as CC
     if (includeLetterhead) {
       finalHtml = wrapInexproEmail(finalHtml, scheduleEmailContext);
     }
 
-    let senderEmail = null;
-    if (userEntry && userEntry.email) {
-      senderEmail = userEntry.email;
-    } else {
-      // Fallback: look up the user's email from the users table
-      const senderRow = db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId);
-      if (senderRow) senderEmail = senderRow.email;
-    }
+    const senderEmail = sig.senderEmail;
 
     // Merge sender into CC list (avoid duplicating if already present)
     let finalCc = [];

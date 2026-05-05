@@ -6,6 +6,36 @@ sits at the top.
 
 ---
 
+## v1.0.26 — 2026-05-05
+
+**Asset amendments tab + per-user email signatures across all modules**
+
+- **Assets → Amendments tab.** New tab on the asset detail (now the default
+  tab; tab order is Amendments, Claims, Documents, Workflows, Versions,
+  Timeline). Capture multiple notes per asset with date, optional type,
+  free-text details, and any number of attached files (pdf / jpg / png /
+  docx / xlsx / csv, 20 MB max each). Files can be added or deleted on a
+  saved amendment, and deleting an amendment cleans up its files from disk.
+  Broker isolation is enforced via the linked policy. New tables
+  `asset_amendments` and a new `documents.asset_amendment_id` FK come
+  in via migrations `0001` and `0002` (auto-applied on boot).
+- **User signatures on every outgoing email.** Introduced a single
+  signature helper (`server/lib/email-signature.js`). When a user sends
+  mail, their signature is now appended automatically — the image-based
+  signature mapped in *Admin → Settings → SMTP From-list* if available,
+  or a `Kind regards, <Full Name>` text-block fallback so a signature
+  appears even without per-user image config. The shared `lib/mailer.js`
+  helper now accepts `userId`, applies the signature, overrides the From
+  header, adds the inline image attachment, and auto-CCs the sender.
+  Wired through the ROA send (advice-records), the admin send-email panel
+  (settings), POPIA breach notifications, and the new-complaint /
+  test-complaint sends. Background system messages (weekly broker-fitness
+  digest, broker-fitness alerts, ROA acknowledgement reminders, complaint
+  SLA scanner) are intentionally left unsigned — they are system-generated,
+  not "from a user".
+
+---
+
 ## v1.0.25 — 2026-05-03
 
 **User Manual layout fixes (re-published PDF)**

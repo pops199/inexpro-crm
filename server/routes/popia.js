@@ -160,7 +160,7 @@ function resolveBreachRecipients(db, selection = {}) {
   return [...recipients.values()];
 }
 
-async function sendBreachNotifications(db, breach, recipients) {
+async function sendBreachNotifications(db, breach, recipients, userId) {
   if (!recipients.length) return { attempted: 0, sent: 0, failed: 0, failures: [] };
   const template = loadTemplate(db, 'data_breach_notification', {
     subject: 'Important: Data breach notification',
@@ -190,7 +190,7 @@ async function sendBreachNotifications(db, breach, recipients) {
     };
     const subject = replacePlaceholders(template.subject, values);
     const html = replacePlaceholders(template.body, values);
-    const result = await sendMail({ to: recipient.email, subject, html });
+    const result = await sendMail({ to: recipient.email, subject, html, userId });
     if (result.ok) sent += 1;
     else failures.push({ email: recipient.email, reason: result.reason || 'send failed' });
   }
@@ -798,7 +798,7 @@ router.post('/breaches', async (req, res) => {
   let emailSummary = null;
 
   if (b.notify_recipients) {
-    emailSummary = await sendBreachNotifications(db, created, recipients);
+    emailSummary = await sendBreachNotifications(db, created, recipients, req.session.userId);
     const notified = emailSummary.sent > 0 ? 1 : 0;
     db.prepare(`
       UPDATE data_breach_log SET

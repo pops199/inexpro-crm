@@ -538,6 +538,7 @@ CREATE TABLE IF NOT EXISTS documents (
   advice_record_id INTEGER REFERENCES advice_records(id),
   complaint_id INTEGER REFERENCES complaints(id),
   review_id INTEGER REFERENCES reviews(id),
+  -- asset_amendment_id is added by migration 0002_documents_asset_amendment_fk.sql
   file_name TEXT NOT NULL,
   original_name TEXT NOT NULL,
   file_type TEXT NOT NULL,
@@ -619,6 +620,20 @@ CREATE TABLE IF NOT EXISTS claim_third_parties (
 );
 
 -- ============================================================
+-- ASSET AMENDMENTS TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS asset_amendments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  amendment_date DATE NOT NULL,
+  amendment_type TEXT,
+  details TEXT NOT NULL,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_contacts_broker ON contacts(assigned_broker_id);
@@ -648,3 +663,5 @@ CREATE INDEX IF NOT EXISTS idx_documents_contact ON documents(contact_id);
 CREATE INDEX IF NOT EXISTS idx_documents_policy ON documents(policy_id);
 CREATE INDEX IF NOT EXISTS idx_claim_notes_claim ON claim_notes(claim_id);
 CREATE INDEX IF NOT EXISTS idx_claim_third_parties_claim ON claim_third_parties(claim_id);
+CREATE INDEX IF NOT EXISTS idx_asset_amendments_asset ON asset_amendments(asset_id);
+-- idx_documents_asset_amendment is created by migration 0002_documents_asset_amendment_fk.sql
