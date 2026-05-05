@@ -1113,8 +1113,8 @@ const Engagements = (() => {
           <!-- Tabs -->
           <div class="detail-tabs card">
             <div class="tabs-header" id="engagement-tabs-header">
-              <button class="tab-btn active" data-tab="timeline">Timeline</button>
-              <button class="tab-btn"        data-tab="documents">Documents</button>
+              <button class="tab-btn active" data-tab="documents">Documents</button>
+              <button class="tab-btn"        data-tab="timeline">Timeline</button>
             </div>
             <div class="tab-content" id="engagement-tab-content">
               <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
@@ -1124,7 +1124,7 @@ const Engagements = (() => {
         </div>
       `;
 
-      loadEngagementTab(id, 'timeline');
+      loadEngagementTab(id, 'documents');
 
       document.getElementById('engagement-tabs-header').querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1146,7 +1146,7 @@ const Engagements = (() => {
     try {
       switch (tab) {
         case 'timeline': {
-          const entries = await Api.timeline.forRecord('engagements', engagementId);
+          const entries = await Api.timeline.forRecord('client_engagements', engagementId);
           const rows = Array.isArray(entries) ? entries : (entries.data || []);
           tabEl.innerHTML = `<div style="padding:.75rem 1rem;">${renderTimeline(rows, 'No activity recorded yet.')}</div>`;
           break;

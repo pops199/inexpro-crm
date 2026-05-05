@@ -6,6 +6,20 @@ sits at the top.
 
 ---
 
+## v1.0.28 — 2026-05-05
+
+**Engagement timeline fix + tab order**
+
+- The Timeline tab on a Client Engagement was empty even though changes
+  were being audit-logged. The audit_log stores engagement entries under
+  `client_engagements`, but the frontend was querying with `engagements`,
+  so the strict module match returned no rows. The frontend now queries
+  the correct canonical name and existing history appears immediately.
+- Tab order on the engagement detail is now **Documents, Timeline**, with
+  Documents as the default-active tab.
+
+---
+
 ## v1.0.27 — 2026-05-05
 
 **Email signatures linked on the user profile**
