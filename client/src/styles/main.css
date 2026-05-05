@@ -1384,12 +1384,25 @@ fieldset legend {
   color: var(--text);
 }
 
-.table td.actions {
+.table td.actions,
+.table td.actions-cell,
+.table td.table-actions {
   white-space: nowrap;
   text-align: right;
   display: flex;
+  flex-wrap: nowrap;
   gap: .35rem;
   justify-content: flex-end;
+  width: 1%;
+}
+
+.table td.actions > .btn,
+.table td.actions-cell > .btn,
+.table td.table-actions > .btn,
+.table td.actions > a.btn,
+.table td.actions-cell > a.btn,
+.table td.table-actions > a.btn {
+  flex-shrink: 0;
 }
 
 .table-footer {

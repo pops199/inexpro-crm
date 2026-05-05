@@ -1062,3 +1062,26 @@ Files changed: 2
 - `server/routes/assets.js`
 Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 19:00 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 19:03 — auto-detected change
+Files changed: 2
+- `server/db/migrations/0004_rename_asset_amendment_audit_descriptions.sql`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 19:06 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/styles/main.css`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

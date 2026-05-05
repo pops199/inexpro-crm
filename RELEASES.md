@@ -6,6 +6,29 @@ sits at the top.
 
 ---
 
+## v1.0.31 — 2026-05-05
+
+**Action-button row fix; backfill old asset Note descriptions**
+
+- **Action buttons stay on one row.** Tables across every module
+  (policies, contacts, accounts, claims, engagements, ROAs, complaints,
+  reviews, etc.) had View / Edit / Delete wrapping onto multiple lines
+  when the actions column got narrow. The no-wrap CSS rule was scoped
+  to `.actions` but the cells use `.actions-cell` / `.table-actions`,
+  so the rule never matched. Rule now covers all three variants, plus
+  `flex-shrink: 0` on each button and `width: 1%` on the cell so the
+  column sizes itself to the buttons. Mobile auto-card layout
+  unaffected.
+- **Backfill old asset Note descriptions.** v1.0.30 renamed the asset
+  Amendments tab to Notes, but historic audit_log rows still read
+  "Amendment …". Migration `0004` rewrites every pre-rename row
+  scoped to `module = 'assets'`: `Amendment added/updated/deleted on
+  asset` → `Note added/updated/deleted on asset`. Idempotent and
+  scoped — does not touch the unrelated "Create Amendment Mail"
+  feature's audit entries.
+
+---
+
 ## v1.0.30 — 2026-05-05
 
 **Asset Notes (rename) + policy Sections tab mobile fix**
