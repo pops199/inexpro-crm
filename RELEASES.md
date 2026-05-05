@@ -6,6 +6,20 @@ sits at the top.
 
 ---
 
+## v1.0.33 — 2026-05-05
+
+**Centered Roll back modal**
+
+- Admin → System Update → **Roll back** no longer opens a native
+  browser confirm popup. It now opens a centered overlay modal that
+  matches the Apply Update one — header with × close, bullet-listed
+  consequences (data-loss warning highlighted in danger colour),
+  Cancel / **Roll back** (red) buttons. Default focus is Cancel so an
+  Enter keypress doesn't accidentally roll back. Keyboard: Esc cancels,
+  Enter rolls back.
+
+---
+
 ## v1.0.32 — 2026-05-05
 
 **Action-cell overlap fix; centered Apply Update modal**

@@ -3060,13 +3060,48 @@ const Admin = (() => {
 
   async function _systemRollback(snapshotId) {
     const which = snapshotId ? `snapshot ${snapshotId}` : 'the most recent snapshot';
-    const msg = `Roll back to ${which}?\n\n` +
-                `• The database will be replaced with the snapshot copy\n` +
-                `• Any data changes since that snapshot will be LOST\n` +
-                `• The commit recorded with the snapshot will be checked out\n` +
-                `• Server will restart\n\n` +
-                `Continue?`;
-    if (!confirm(msg)) return;
+    const whichLabel = esc(which);
+    const proceed = await new Promise((resolve) => {
+      document.getElementById('sys-rollback-overlay')?.remove();
+      const overlay = document.createElement('div');
+      overlay.id = 'sys-rollback-overlay';
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" style="width:480px;max-width:92vw;">
+          <div class="modal-header">
+            <h3>Roll back database</h3>
+            <button class="btn-close" type="button" id="sys-rb-x">×</button>
+          </div>
+          <div class="modal-body" style="font-size:.9rem;line-height:1.5;">
+            <p style="margin:0 0 .75rem;">
+              Roll back to <strong>${whichLabel}</strong>?
+            </p>
+            <ul style="margin:0 0 .75rem 1.1rem;padding:0;">
+              <li>The database will be replaced with the snapshot copy</li>
+              <li><strong style="color:var(--danger);">Any data changes since that snapshot will be lost</strong></li>
+              <li>The commit recorded with the snapshot will be checked out</li>
+              <li>Server will restart</li>
+            </ul>
+            <p style="margin:0;color:var(--text-muted);">Continue?</p>
+          </div>
+          <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem;">
+            <button type="button" class="btn btn-secondary" id="sys-rb-cancel">Cancel</button>
+            <button type="button" class="btn btn-danger"    id="sys-rb-ok">Roll back</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const close = (val) => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); };
+      function onKey(e) {
+        if (e.key === 'Escape') close(false);
+        if (e.key === 'Enter')  close(true);
+      }
+      overlay.querySelector('#sys-rb-x').addEventListener('click', () => close(false));
+      overlay.querySelector('#sys-rb-cancel').addEventListener('click', () => close(false));
+      overlay.querySelector('#sys-rb-ok').addEventListener('click', () => close(true));
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => overlay.querySelector('#sys-rb-cancel')?.focus(), 50);
+    });
+    if (!proceed) return;
     const result = document.getElementById('sys-update-result');
     if (result) result.textContent = `Rolling back to ${which}…`;
     try {
