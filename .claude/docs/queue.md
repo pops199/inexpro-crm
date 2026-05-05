@@ -943,3 +943,31 @@ Files changed: 10
 - `server/routes/settings.js`
 Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:53 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 17:56 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 18:06 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/admin.js`
+- `server/db/migrations/0003_users_signature_filename.sql`
+- `server/db/sessions.db`
+- `server/lib/email-signature.js`
+- `server/routes/admin.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -3,13 +3,15 @@
 /**
  * Resolves the email signature for a given user.
  *
- * Lookup chain:
- *   1. smtp_from_list (system_settings) — admin-configured From + signature
- *      image filename. If a signature image is mapped and exists on disk,
- *      we return an image-based signature (inline CID attachment).
- *   2. Fallback — uses the user's row in `users` to render a simple
+ * Lookup chain (first match wins):
+ *   1. users.signature_filename — set on the user profile itself, this is
+ *      the canonical per-user linkage. The file must live in /signatures/.
+ *   2. smtp_from_list (system_settings) — legacy admin-configured From +
+ *      signature mapping. Kept as a fallback so existing setups keep
+ *      working.
+ *   3. Text fallback — uses the user's row in `users` to render a simple
  *      "Kind regards, <name>" text-block signature so every email gets
- *      signed even when admin hasn't configured an image.
+ *      signed even when no image is mapped.
  *
  * Returns:
  *   {
@@ -104,9 +106,16 @@ function buildSignature(userId, opts = {}) {
   let userRow = null;
   try {
     userRow = db.prepare(
-      'SELECT id, full_name, email, role FROM users WHERE id = ?'
+      'SELECT id, full_name, email, role, signature_filename FROM users WHERE id = ?'
     ).get(userId);
-  } catch (_) { /* table missing — keep userRow null */ }
+  } catch (_) {
+    // Pre-migration DB — try without the new column.
+    try {
+      userRow = db.prepare(
+        'SELECT id, full_name, email, role FROM users WHERE id = ?'
+      ).get(userId);
+    } catch (_) { /* table missing — keep userRow null */ }
+  }
 
   const fromList = _loadFromList(db);
   const entry = fromList.find(f => String(f.user_id) === String(userId) && f.email) || null;
@@ -129,9 +138,13 @@ function buildSignature(userId, opts = {}) {
     return empty;
   }
 
-  // Image signature wins if mapped and present on disk
-  if (entry && entry.signature) {
-    const resolved = _safeSignaturePath(entry.signature);
+  // Image signature: prefer users.signature_filename, then smtp_from_list.
+  const filenameCandidate =
+    (userRow && userRow.signature_filename) ||
+    (entry && entry.signature) ||
+    null;
+  if (filenameCandidate) {
+    const resolved = _safeSignaturePath(filenameCandidate);
     if (resolved) {
       return {
         fromAddress,

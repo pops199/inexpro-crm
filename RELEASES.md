@@ -6,6 +6,26 @@ sits at the top.
 
 ---
 
+## v1.0.27 — 2026-05-05
+
+**Email signatures linked on the user profile**
+
+- Each user now has a **Signature** field on their profile (Admin → Users
+  → Edit). The dropdown lists every image file in `/signatures/` and shows
+  a live thumbnail of the selected one. New schema column
+  `users.signature_filename` is added by migration `0003`, which auto-
+  applies on boot.
+- The email-signature helper now looks up the per-user value first,
+  falling back to the legacy admin SMTP "From-list" mapping, then to a
+  text-block ("Kind regards, …") fallback. Every outgoing email signed
+  by a user (ROA send, admin send-email, POPIA breach notifications,
+  complaint notifications) picks up the signature without any extra
+  admin configuration.
+- Validation rejects signature filenames that aren't a real file in
+  `/signatures/` so a typo or path-traversal attempt fails closed.
+
+---
+
 ## v1.0.26 — 2026-05-05
 
 **Asset amendments tab + per-user email signatures across all modules**

@@ -1,10 +1,25 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
+const path    = require('path');
+const fs      = require('fs');
 const { getDb } = require('../db/database');
 const { requireAuth, requireAdmin, requireAdminAny, getBrokerId } = require('../middleware/auth');
 const { notify } = require('../lib/notifications');
 
 const router = express.Router();
+
+// Validate a signature filename: must be a basename of an existing file
+// in <repo>/signatures/. Returns the safe basename or null. Empty string
+// or null input → null (clears the signature).
+function _validateSignatureFilename(input) {
+  if (input == null || input === '') return null;
+  const safe = path.basename(String(input));
+  if (!safe || safe !== String(input).trim()) return undefined; // invalid
+  const dir = path.join(__dirname, '..', '..', 'signatures');
+  const full = path.join(dir, safe);
+  if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return undefined;
+  return safe;
+}
 
 // All admin routes require at least authentication
 router.use(requireAuth);
@@ -16,7 +31,9 @@ router.get('/users', (req, res) => {
   const db = getDb();
 
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.email, u.full_name, u.role, u.active, u.created_at, u.updated_at,
+    SELECT u.id, u.username, u.email, u.full_name, u.role, u.active,
+           u.signature_filename,
+           u.created_at, u.updated_at,
            CASE WHEN tf.enrolled = 1 THEN 1 ELSE 0 END AS two_factor_enabled
     FROM users u
     LEFT JOIN user_2fa tf ON tf.user_id = u.id
@@ -126,7 +143,7 @@ router.delete('/broker-codes/:id', requireAdmin, (req, res) => {
 router.post('/users', requireAdmin, (req, res) => {
   const db = getDb();
 
-  const { username, email, password, full_name, role } = req.body;
+  const { username, email, password, full_name, role, signature_filename } = req.body;
 
   if (!username || !email || !password || !full_name || !role) {
     return res.status(400).json({
@@ -139,6 +156,18 @@ router.post('/users', requireAdmin, (req, res) => {
     return res.status(400).json({
       error: `Invalid role. Allowed: ${validRoles.join(', ')}`
     });
+  }
+
+  // Validate signature_filename if provided
+  let sigFilename = null;
+  if (signature_filename !== undefined && signature_filename !== '') {
+    const validated = _validateSignatureFilename(signature_filename);
+    if (validated === undefined) {
+      return res.status(400).json({
+        error: `Signature file "${signature_filename}" not found in /signatures/`
+      });
+    }
+    sigFilename = validated;
   }
 
   // Check uniqueness
@@ -155,18 +184,19 @@ router.post('/users', requireAdmin, (req, res) => {
   const password_hash = bcrypt.hashSync(password, 12);
 
   const result = db.prepare(`
-    INSERT INTO users (username, email, password_hash, full_name, role, active)
-    VALUES (?, ?, ?, ?, ?, 1)
+    INSERT INTO users (username, email, password_hash, full_name, role, active, signature_filename)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
   `).run(
     username.trim(),
     email.trim().toLowerCase(),
     password_hash,
     full_name.trim(),
-    role
+    role,
+    sigFilename
   );
 
   const created = db.prepare(
-    'SELECT id, username, email, full_name, role, active, created_at, updated_at FROM users WHERE id = ?'
+    'SELECT id, username, email, full_name, role, active, signature_filename, created_at, updated_at FROM users WHERE id = ?'
   ).get(result.lastInsertRowid);
 
   res.locals.logAudit({
@@ -388,14 +418,30 @@ router.put('/users/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
 
   const existing = db.prepare(
-    'SELECT id, username, email, full_name, role, active, created_at, updated_at FROM users WHERE id = ?'
+    'SELECT id, username, email, full_name, role, active, signature_filename, created_at, updated_at FROM users WHERE id = ?'
   ).get(id);
 
   if (!existing) {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  const { role, active, full_name, email, username, password } = req.body;
+  const { role, active, full_name, email, username, password, signature_filename } = req.body;
+
+  // Validate signature_filename if the field is present in the body
+  let sigFilename = existing.signature_filename;
+  if (signature_filename !== undefined) {
+    if (signature_filename === null || signature_filename === '') {
+      sigFilename = null;
+    } else {
+      const validated = _validateSignatureFilename(signature_filename);
+      if (validated === undefined) {
+        return res.status(400).json({
+          error: `Signature file "${signature_filename}" not found in /signatures/`
+        });
+      }
+      sigFilename = validated;
+    }
+  }
 
   // Validate role if provided
   if (role !== undefined) {
@@ -428,12 +474,13 @@ router.put('/users/:id', requireAdmin, (req, res) => {
   }
 
   const setClauses = [
-    'role       = ?',
-    'active     = ?',
-    'full_name  = ?',
-    'email      = ?',
-    'username   = ?',
-    'updated_at = CURRENT_TIMESTAMP',
+    'role               = ?',
+    'active             = ?',
+    'full_name          = ?',
+    'email              = ?',
+    'username           = ?',
+    'signature_filename = ?',
+    'updated_at         = CURRENT_TIMESTAMP',
   ];
   const runParams = [
     role      !== undefined ? role                              : existing.role,
@@ -441,10 +488,11 @@ router.put('/users/:id', requireAdmin, (req, res) => {
     full_name !== undefined ? full_name.trim()                   : existing.full_name,
     email     !== undefined ? email.trim().toLowerCase()         : existing.email,
     username  !== undefined ? username.trim()                    : existing.username,
+    sigFilename,
   ];
 
   if (password_hash) {
-    setClauses.splice(5, 0, 'password_hash = ?');
+    setClauses.splice(6, 0, 'password_hash      = ?');
     runParams.push(password_hash);
   }
 
@@ -457,15 +505,15 @@ router.put('/users/:id', requireAdmin, (req, res) => {
   `).run(...runParams);
 
   const updated = db.prepare(
-    'SELECT id, username, email, full_name, role, active, created_at, updated_at FROM users WHERE id = ?'
+    'SELECT id, username, email, full_name, role, active, signature_filename, created_at, updated_at FROM users WHERE id = ?'
   ).get(id);
 
   res.locals.logAudit({
     action:      'UPDATE',
     module:      'users',
     recordId:    parseInt(id, 10),
-    oldValue:    { role: existing.role, active: existing.active, full_name: existing.full_name, email: existing.email },
-    newValue:    { role: updated.role,  active: updated.active,  full_name: updated.full_name,  email: updated.email },
+    oldValue:    { role: existing.role, active: existing.active, full_name: existing.full_name, email: existing.email, signature_filename: existing.signature_filename },
+    newValue:    { role: updated.role,  active: updated.active,  full_name: updated.full_name,  email: updated.email,  signature_filename: updated.signature_filename },
     description: `User "${existing.username}" updated by admin`
   });
 

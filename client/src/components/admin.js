@@ -122,6 +122,11 @@ const Admin = (() => {
   async function _openUserModal(id) {
     let user = null;
     if (id) { try { const all = await Api.admin.users(); const list = all.data || all; user = list.find(u => u.id === id); } catch (e) {} }
+    // Load the available signature image filenames from /signatures/
+    let signatures = [];
+    try { signatures = await Api.settings.signatures(); }
+    catch (_) { signatures = []; }
+    if (!Array.isArray(signatures)) signatures = [];
     const container = document.getElementById('user-modal-container') || document.body;
     // Render INTO document.body (not the users-pane container) so clicking
     // anywhere within the page chrome does not bubble back up through a
@@ -157,6 +162,16 @@ const Admin = (() => {
                 <option value="1" ${user.active?'selected':''}>Active</option>
                 <option value="0" ${!user.active?'selected':''}>Inactive</option>
               </select></div>` : ''}
+            <div class="form-group">
+              <label>Email Signature <span style="font-weight:normal;color:var(--text-muted);font-size:.8rem;">(image file from <code>/signatures/</code>; appended to every email this user sends)</span></label>
+              <select class="form-control" id="u-signature">
+                <option value="">— No signature —</option>
+                ${signatures.map(f => `<option value="${esc(f)}"${String(f) === String(user?.signature_filename || '') ? ' selected' : ''}>${esc(f)}</option>`).join('')}
+              </select>
+              ${user?.signature_filename
+                ? `<div style="margin-top:.5rem;"><img src="/signatures/${encodeURIComponent(user.signature_filename)}" alt="signature preview" style="max-height:80px;max-width:300px;border:1px solid #eee;padding:4px;background:#fff;"></div>`
+                : ''}
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" onclick="Admin._closeModal()">Cancel</button>
@@ -251,6 +266,8 @@ const Admin = (() => {
     const data = { full_name: fullName, username, email, role };
     if (password) data.password = password;
     if (active !== undefined) data.active = parseInt(active);
+    const sigEl = document.getElementById('u-signature');
+    if (sigEl) data.signature_filename = sigEl.value || null;
 
     try {
       if (id) await Api.admin.updateUser(id, data);
