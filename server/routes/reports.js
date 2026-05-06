@@ -128,126 +128,280 @@ const COMPUTED_FIELDS = {
   },
 };
 
+// Source field lists. Kept comprehensive — every real column on each
+// reportable table is exposed (sensitive/encrypted columns excluded:
+// users.password_hash, policies.account_number_enc).
+//
+// Removed in this revision (these columns DO NOT exist in the live
+// schema and were producing crashes when selected):
+//   advice_records.client_understood_advice  (use client_understanding_confirmed)
+//   advice_records.client_decline_reason     (use client_rejection_reason)
+//   advice_records.replacement_product_involved
+//   advice_records.replacement_product_details
+//   advice_records.financial_interest_disclosed
+//   advice_records.financial_interest_details
+//   advice_records.fais_disclosure_given
+//   advice_records.popi_disclosure_given
+//   advice_records.status
+//   advice_records.advice_notes              (use notes)
 const SOURCE_FIELDS = {
   contacts: [
-    'id','full_name','first_name','last_name','email','mobile','work_number','date_of_birth',
-    'sa_id_number','contact_type','client_category','client_segment','existing_client',
-    'date_became_client','contact_status','popia_consent_obtained','popia_consent_date',
-    'fica_status','assigned_broker_id','assigned_admin_id','related_account_id',
-    'primary_client_record','conduct_risk_flag','conduct_risk_notes','last_review_date',
-    'next_review_date','physical_address','postal_address','source_of_lead','notes',
-    'created_by','created_at','updated_at',
+    'id','full_name','first_name','last_name','title','gender','language',
+    'marital_status','occupation','employer','income_band','nationality',
+    'email','mobile','work_number','preferred_communication',
+    'date_of_birth','sa_id_number','passport_number','alternative_id_type','next_of_kin',
+    'contact_type','client_category','client_segment','existing_client',
+    'date_became_client','contact_status','primary_client_record',
+    'assigned_broker_id','assigned_admin_id','related_account_id',
+    'source_of_lead',
+    // Address: free-text + structured
+    'physical_address','postal_address',
+    'phys_street_address','phys_complex_building','phys_suburb','phys_city','phys_province','phys_postal_code','phys_country','phys_gps_lat','phys_gps_lng',
+    'post_street_address','post_complex_building','post_suburb','post_city','post_province','post_postal_code','post_country',
+    // Driver licence
+    'dl_codes','dl_restrictions','dl_first_issue_date',
+    // POPIA / data processing
+    'data_processing_basis','consent_method','consent_scope','direct_marketing_consent',
+    'data_source','data_categories_held','third_party_sharing','third_party_sharing_notes',
+    'retention_period_years','retention_expiry_date','information_officer_id',
+    'privacy_notice_provided','privacy_notice_date',
+    'popia_consent_obtained','popia_consent_date',
+    // FICA
+    'fica_status','fica_verification_date','fica_verification_method','fica_document_reference',
+    'fica_verified_by_id','fica_five_year_expiry','fica_re_verification_date',
+    'fica_cipc_number','fica_beneficial_owner_confirmed','fica_pep_check','fica_pep_check_date',
+    // Conduct + reviews
+    'conduct_risk_flag','conduct_risk_notes',
+    'last_activity_date','last_review_date','next_review_date',
+    'notes','created_by','created_at','updated_at',
   ],
   accounts: [
     'id','account_name','registration_number','vat_number','industry','business_type',
-    'number_of_employees','annual_turnover_band','physical_address','postal_address',
+    'number_of_employees','annual_turnover_band',
     'main_contact_id','assigned_broker_id','assigned_admin_id','client_status',
-    'fica_status','date_became_client','last_review_date','next_review_date','notes',
-    'created_by','created_at','updated_at',
+    // Address: free-text + structured
+    'physical_address','postal_address',
+    'phys_street_address','phys_complex_building','phys_suburb','phys_city','phys_province','phys_postal_code','phys_country','phys_gps_lat','phys_gps_lng',
+    'post_street_address','post_complex_building','post_suburb','post_city','post_province','post_postal_code','post_country',
+    // POPIA / data processing
+    'data_processing_basis','popia_consent_obtained','popia_consent_date','consent_method','consent_scope',
+    'direct_marketing_consent','data_source','data_categories_held','third_party_sharing',
+    'third_party_sharing_notes','retention_period_years','retention_expiry_date',
+    'information_officer_id','privacy_notice_provided','privacy_notice_date',
+    // FICA
+    'fica_status','fica_verification_date','fica_verification_method','fica_document_reference',
+    'fica_verified_by_id','fica_five_year_expiry','fica_re_verification_date',
+    'fica_cipc_number','fica_beneficial_owner_confirmed','fica_pep_check','fica_pep_check_date',
+    'date_became_client','last_activity_date','last_review_date','next_review_date',
+    'notes','created_by','created_at','updated_at',
   ],
   policies: [
-    'id','policy_name','contact_id','account_id','engagement_id','advice_record_id',
-    'insurer','assigned_broker_id','assigned_admin_id','policy_number','product_category',
-    'policy_type','cover_description','premium','inception_date','renewal_date',
-    'policy_status','disclosure_completed','last_review_date','next_review_date',
-    'amendment_count','claims_count','cancellation_date','cancellation_reason',
-    'replacement_policy_id','notes','created_by','created_at','updated_at',
+    'id','policy_name','policy_number','contact_id','account_id','engagement_id','advice_record_id',
+    'co_insured','co_insured_id_number','co_insured_contact_id','other_contact_ids',
+    'insurer','product_id','product_category','policy_type','cover_description',
+    'premium','currency',
+    'inception_date','renewal_date','policy_status',
+    // Banking / debit-order (account_number_enc excluded — encrypted)
+    'payment_method','premium_frequency','debit_order_date',
+    'bank_name','branch_code','account_type','account_holder_name',
+    'mandate_status','mandate_auth_date','debit_order_reference',
+    // Broker code snapshot
+    'broker_code_id','broker_code_snapshot','broker_code_description_snapshot',
+    'assigned_broker_id','assigned_admin_id',
+    'disclosure_completed','last_review_date','next_review_date',
+    'amendment_count','claims_count',
+    'cancellation_date','cancellation_reason','replacement_policy_id',
+    'notes','created_by','created_at','updated_at',
   ],
-  // policy_sections now reads from the assets table (section data migrated to assets)
+  // policy_sections reads from the assets table (section data lives there).
   policy_sections: [
-    'id','asset_name','contact_id','account_id','policy_id','policy_section_id',
-    'asset_type','asset_status','asset_section','registration_number','vin_number','engine_number',
-    'make','model','year','serial_number','date_acquired','date_sold','mm_number',
-    'asset_value','premium','sasria','excess','notes','created_by','created_at','updated_at',
-    'use_type','gvm','tracking_device','territory','cover_type','regular_driver','credit_shortfall',
+    'id','asset_name','asset_type','asset_status','asset_section','item_number',
+    'contact_id','account_id','policy_id','policy_section_id','product_id','currency',
+    // Identifiers
+    'registration_number','vin_number','engine_number','make','model','year',
+    'serial_number','mm_number','fleet_number',
+    // Address
+    'address','complex_building','suburb','city','province','postal_code','country','gps_lat','gps_lng',
+    // Financials
+    'sum_insured','sum_insured_premium','asset_value','premium','sasria',
+    'excess','excess_pct_claim','excess_pct_insured','minimum_excess',
+    'date_acquired','date_sold',
+    // Vehicle
+    'use_type','vehicle_use','gvm','tracking_device','tracker_fitted','territory','cover_type','regular_driver','credit_shortfall',
+    'parking_type','parking_other',
+    // Buildings / structure
     'construction_type','roof_type','occupancy','flat_no_floors','perils_covered','subsidence_cover','geyser_cover','security_measures',
+    // Contents / electronics
     'contents_category','unspecified_items','specified_items','theft_extension','power_surge_cover',
+    // Stock
     'stock_category','declaration_basis','cold_storage','avg_stock_value','max_stock_value',
     'replacement_value','portable','maintenance_contract','breakdown_cover',
+    // Marine
     'vessel_name','vessel_type','hull_length','motor_details','mooring','navigational_limits','skipper_qualification',
+    // Animals
     'breed','gender','animal_count','identification_method','premises_address',
+    // GIT
     'commodity','conveyance_type','route','max_single_load',
+    // Liability
     'limit_of_indemnity','aggregate_limit','business_activity','turnover','employee_count','retroactive_date','trigger_basis','defence_costs',
-    'conditions','extensions','exclusions','sum_insured','basis_of_cover',
-    'fleet_number',
+    'basis_of_cover',
+    // Cover detail (JSON arrays — exposed as raw JSON)
+    'additional_covers','vehicle_extras','extras_in_total','excesses','related_contacts',
+    'conditions','extensions','exclusions',
+    // Financial interest
+    'financial_interest_noted','financial_institution','finance_contract_number','contract_expiry_date',
+    'notes','created_by','created_at','updated_at',
   ],
   assets: [
-    'id','asset_name','contact_id','account_id','policy_id','policy_section_id',
-    'asset_type','asset_status','asset_section','registration_number','vin_number','engine_number',
-    'make','model','year','serial_number','date_acquired','date_sold','mm_number',
-    'asset_value','premium','sasria','excess','notes','created_by','created_at','updated_at',
-    // Section-specific fields
-    'use_type','gvm','tracking_device','territory','cover_type','regular_driver','credit_shortfall',
+    'id','asset_name','asset_type','asset_status','asset_section','item_number',
+    'contact_id','account_id','policy_id','policy_section_id','product_id','currency',
+    // Identifiers
+    'registration_number','vin_number','engine_number','make','model','year',
+    'serial_number','mm_number','fleet_number',
+    // Address
+    'address','complex_building','suburb','city','province','postal_code','country','gps_lat','gps_lng',
+    // Financials
+    'sum_insured','sum_insured_premium','asset_value','premium','sasria',
+    'excess','excess_pct_claim','excess_pct_insured','minimum_excess',
+    'date_acquired','date_sold',
+    // Vehicle
+    'use_type','vehicle_use','gvm','tracking_device','tracker_fitted','territory','cover_type','regular_driver','credit_shortfall',
+    'parking_type','parking_other',
+    // Buildings / structure
     'construction_type','roof_type','occupancy','flat_no_floors','perils_covered','subsidence_cover','geyser_cover','security_measures',
+    // Contents / electronics
     'contents_category','unspecified_items','specified_items','theft_extension','power_surge_cover',
+    // Stock
     'stock_category','declaration_basis','cold_storage','avg_stock_value','max_stock_value',
     'replacement_value','portable','maintenance_contract','breakdown_cover',
+    // Marine
     'vessel_name','vessel_type','hull_length','motor_details','mooring','navigational_limits','skipper_qualification',
+    // Animals
     'breed','gender','animal_count','identification_method','premises_address',
+    // GIT
     'commodity','conveyance_type','route','max_single_load',
+    // Liability
     'limit_of_indemnity','aggregate_limit','business_activity','turnover','employee_count','retroactive_date','trigger_basis','defence_costs',
-    'conditions','extensions','exclusions','sum_insured','basis_of_cover',
-    'fleet_number',
+    'basis_of_cover',
+    // Cover detail (JSON arrays — exposed as raw JSON)
+    'additional_covers','vehicle_extras','extras_in_total','excesses','related_contacts',
+    'conditions','extensions','exclusions',
+    // Financial interest
+    'financial_interest_noted','financial_institution','finance_contract_number','contract_expiry_date',
+    'notes','created_by','created_at','updated_at',
   ],
   claims: [
-    'id','claim_number','contact_id','account_id','policy_id','policy_section_id',
-    'asset_id','broker_id','claims_handler_admin_id','claims_handler_name','claim_date','date_reported',
-    'claim_type','incident_description','estimated_value','claim_status',
-    'client_kept_informed','last_client_update_date','delay_flag','fair_process_concern',
-    'dispute_raised','dispute_details','settlement_amount','settlement_date',
-    'rejection_reason','outcome_notes','related_advice_record_id',
-    'created_by','created_at','updated_at',
+    'id','claim_number','claim_reference_number','claim_category','claim_type',
+    'contact_id','account_id','policy_id','policy_section_id','asset_id',
+    'broker_id','claims_handler_admin_id','claims_handler_name',
+    'claim_date','date_reported','insurer_assessment_date',
+    'incident_description','estimated_value','currency','claim_status',
+    'client_kept_informed','last_client_update_date',
+    'delay_flag','fair_process_concern',
+    'dispute_raised','dispute_details','broker_dispute_action',
+    'settlement_amount','settlement_date',
+    'rejection_reason','repudiation_reason','repudiation_reason_notes',
+    'outcome_notes','outcome_vs_roa_expectation',
+    'post_claim_satisfaction','complaint_arising','related_advice_record_id',
+    // Excess at claim time
+    'excess','excess_pct_claim','excess_pct_insured','minimum_excess',
+    // Driver details (Motor / GIT)
+    'driver_name','driver_id_number','driver_licence_number','driver_licence_code',
+    'driver_cell','driver_relationship','driver_date_of_birth','driver_years_experience',
+    // Cross-references (JSON)
+    'claim_related_contacts',
+    'notes','created_by','created_at','updated_at',
   ],
   client_engagements: [
-    'id','engagement_name','contact_id','account_id','assigned_broker_id',
-    'assigned_admin_id','stage','engagement_type','source_of_lead','current_insurer',
-    'current_premium','existing_cover_summary','identified_risks','client_needs_summary',
-    'risk_priority','fact_find_completed','needs_analysis_completed','proposal_prepared',
+    'id','engagement_name','contact_id','account_id','assigned_broker_id','assigned_admin_id',
+    'stage','engagement_type','source_of_lead','currency',
+    'current_insurer','current_premium','existing_cover_summary','identified_risks',
+    'client_needs_summary','risk_priority',
+    // Process gates
+    'fact_find_completed','needs_analysis_completed','proposal_prepared',
     'advice_presented','disclosure_completed','policy_wording_provided',
     'key_risks_explained','excess_explained','premium_explained','limitations_explained',
-    'client_questions_answered','client_decision','decline_reason','inception_date',
-    'expected_premium','suitability_confirmed','client_understanding_confirmed',
-    'alternative_options_considered','conduct_concern_flag','conduct_notes','notes',
-    'created_by','created_at','updated_at',
+    'client_questions_answered',
+    // COFI disclosure
+    'fsp_licence_disclosed','broker_identity_disclosed',
+    'product_costs_disclosed','product_costs_disclosed_notes',
+    'material_risks_disclosed','material_risks_disclosed_notes',
+    'complaints_process_disclosed','disclosure_method','disclosure_timestamp','disclosing_broker_id',
+    'client_decision','decline_reason','inception_date','expected_premium',
+    'suitability_confirmed','client_understanding_confirmed',
+    'alternative_options_considered',
+    'conduct_concern_flag','conduct_notes',
+    'notes','created_by','created_at','updated_at',
   ],
   risk_details: [
-    'id','risk_detail_name','policy_section_id','asset_id','policy_id','contact_id',
-    'account_id','risk_type','occupancy_use','security_details','construction_type',
+    'id','risk_detail_name','policy_section_id','asset_id','policy_id','contact_id','account_id',
+    'risk_type','occupancy_use','security_details','construction_type',
     'roof_construction','wall_construction','stored_parked_overnight',
     'tracking_device_fitted','route_operating_area','distance_to_water','flood_exposure',
-    'fire_exposure','goods_load_type','maximum_exposure_value','risk_notes',
-    'last_updated','created_by','created_at','updated_at',
+    'fire_exposure','goods_load_type','maximum_exposure_value',
+    'risk_notes','last_updated','created_by','created_at','updated_at',
   ],
   complaints: [
     'id','complaint_number','contact_id','account_id','policy_id','claim_id',
-    'broker_id','complaint_owner_id','complaint_date','received_via',
-    'complaint_category','complaint_summary','detailed_complaint','complaint_status',
-    'assigned_to_id','response_due_date','resolution_date','resolution_summary',
-    'fair_outcome_achieved','root_cause_identified','root_cause_category',
-    'corrective_action_taken','complaint_escalated_internally',
-    'external_ombud_escalation','notes','created_by','created_at','updated_at',
+    'broker_id','complaint_owner_id','assigned_handler_id','assigned_to_id',
+    'complaint_date','received_via','complaint_category','complaint_sub_category',
+    'severity_rating','complaint_summary','detailed_complaint','complaint_status',
+    // SLA / acknowledgement
+    'acknowledgment_date','acknowledgment_method','target_resolution_date','response_due_date',
+    'supervisor_notified','supervisor_notified_at','handler_notified_at',
+    'alert_day3_sent','alert_day3_sent_at','alert_day21_sent','alert_day21_sent_at',
+    'alert_day30_sent','alert_day30_sent_at','escalated_to_critical_at',
+    'senior_management_notified','senior_management_notified_at',
+    // Resolution
+    'resolution_date','resolution_summary','resolution_outcome','remedy_provided',
+    'compensation_paid','client_acceptance','fair_outcome_achieved',
+    // Root cause
+    'root_cause_identified','root_cause_category','corrective_action_taken',
+    'process_change_triggered','process_change_notes',
+    'complaint_escalated_internally','external_ombud_escalation','fsca_reportable',
+    'withdrawn','withdrawn_at','withdrawn_by_id','withdrawn_reason',
+    'notes','created_by','created_at','updated_at',
   ],
   reviews: [
-    'id','review_number','contact_id','account_id','policy_id','broker_id',
-    'assigned_admin_id','review_type','review_date','review_outcome',
+    'id','review_number','contact_id','account_id','policy_id','broker_id','assigned_admin_id',
+    'review_type','review_date','review_outcome',
     'changes_in_risk_profile','changes_in_assets_exposure','gaps_identified',
     'recommendations','follow_up_actions','next_review_date','review_completed',
-    'advice_record_required','linked_advice_record_id','notes',
-    'created_by','created_at','updated_at',
+    'advice_record_required','linked_advice_record_id',
+    'notes','created_by','created_at','updated_at',
   ],
   advice_records: [
-    'id','advice_record_number','contact_id','account_id','engagement_id','policy_id',
-    'broker_id','prepared_by_id','advice_date','advice_type','trigger_event',
-    'client_needs_identified','risk_analysis_summary','current_cover_considered',
-    'shortfalls_identified','recommendation_given','alternative_options_considered',
+    'id','advice_record_number','contact_id','account_id','engagement_id','policy_id','product_id',
+    'broker_id','prepared_by_id','advice_date','advice_type','trigger_event','currency',
+    // Risk + needs
+    'client_risk_appetite','total_financial_exposure','client_needs_identified',
+    'risk_analysis_summary','current_cover_considered','existing_cover_summary_auto',
+    'shortfalls_identified','identified_gaps','identified_gaps_notes',
+    'recommendation_given','recommendation_rationale',
+    'alternative_options_considered','alternatives_considered_list',
     'reason_product_suitable','consequences_of_not_proceeding',
+    'suitability_match_score','suitability_override_reason',
+    // Disclosure
     'risks_explained','costs_explained','excess_explained',
     'waiting_period_limitations_explained','exclusions_explained',
-    'client_understood_advice','client_decision','client_decline_reason',
-    'replacement_product_involved','replacement_product_details',
-    'financial_interest_disclosed','financial_interest_details',
-    'fais_disclosure_given','popi_disclosure_given',
-    'status','advice_notes','created_by','created_at','updated_at',
+    'client_understanding_confirmed','fair_outcome_considered',
+    // Conflict of interest + commission disclosure
+    'conflict_of_interest_flag','conflict_of_interest_description',
+    'commission_disclosed','commission_rate_type','commission_rate_value',
+    // Decision
+    'client_decision','decision_date','decision_notes',
+    'client_rejection_reason','client_rejection_notes',
+    // Target market
+    'target_market_status','target_market_mismatches',
+    // Acknowledgement
+    'roa_generated','roa_generation_date','final_document_issued','issue_date',
+    'roa_completed','roa_completed_at',
+    'client_acknowledgement_received','acknowledgement_date',
+    'client_acknowledgment_method','acknowledgment_witness_name',
+    // Supervision
+    'supervisor_co_approval_required','supervisor_co_approved_by_id','supervisor_co_approved_at',
+    're5_flag',
+    'notes','created_by','created_at','updated_at',
   ],
 };
 

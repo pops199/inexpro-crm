@@ -6,6 +6,60 @@ sits at the top.
 
 ---
 
+## v1.0.36 — 2026-05-06
+
+**Custom report builder — every column exposed, ghost-column crashes fixed**
+
+- **Bug fix:** `advice_records` exposed 10 columns that don't exist in
+  the schema (`client_understood_advice`, `client_decline_reason`,
+  `replacement_product_involved/_details`, `financial_interest_*`,
+  `fais_disclosure_given`, `popi_disclosure_given`, `status`,
+  `advice_notes`). Selecting any of them crashed the report at runtime.
+  Removed; replaced with the real columns (`client_understanding_confirmed`,
+  `client_rejection_reason`, plus the rest of the COFI-aligned set).
+- Every reportable source's field list expanded to cover **every real
+  column** on the underlying table. Encrypted columns
+  (`policies.account_number_enc`, `users.password_hash`) deliberately
+  excluded.
+  - **Contacts** 32 → 80 fields: title / gender / language / occupation
+    block, structured `phys_*` + `post_*` address, full POPIA detail
+    (consent method/scope, retention, info officer, privacy notice),
+    full FICA detail (verification, PEP, CIPC, beneficial owner),
+    driver-licence info, `last_activity_date`.
+  - **Accounts** 22 → 60: structured address, full POPIA + FICA detail.
+  - **Policies** 29 → 47: `co_insured*`, `currency`, `product_id`, full
+    debit-order / banking block, broker-code snapshot.
+  - **Assets / Policy Sections** 80 → 95: `item_number`, `product_id`,
+    `currency`, structured address (complex / country / gps), excess
+    percentage breakdown, `additional_covers`, `vehicle_extras`,
+    `extras_in_total`, `excesses`, `related_contacts`, financial-interest
+    fields, vehicle parking + tracker.
+  - **Claims** 29 → 51: `claim_category`, `claim_reference_number`,
+    `currency`, full driver-details block (Motor / GIT), repudiation
+    reason + notes, `outcome_vs_roa_expectation`,
+    `post_claim_satisfaction`, `complaint_arising`,
+    excess percentage breakdown, `claim_related_contacts`.
+  - **Client Engagements** 39 → 50: `currency`, full COFI disclosure
+    block (FSP licence / broker identity / product costs / material
+    risks / complaints process / method / timestamp).
+  - **Complaints** 28 → 56: `severity_rating`, `complaint_sub_category`,
+    full SLA tracking (acknowledgement / target / supervisor / handler /
+    Day-3/21/30 alerts / escalation / senior management), full resolution
+    block, withdrawal block, `fsca_reportable`.
+  - **Records of Advice** 36 (with 10 ghosts) → 60: `currency`,
+    `product_id`, `client_risk_appetite`, `total_financial_exposure`,
+    full conflict-of-interest + commission disclosure block, target-
+    market block, supervisor co-approval block, full acknowledgement
+    block, `re5_flag`, `fair_outcome_considered`.
+- All exposed fields validated against the live schema — every column
+  in the picker is queryable.
+- JOIN definitions checked; left unchanged (no broken joins found).
+  `policy_sections` source continues to alias the `assets` table
+  (section data lives on assets in this codebase; the real
+  `policy_sections` table is empty).
+
+---
+
 ## v1.0.35 — 2026-05-06
 
 **SASRIA assets: drop the building-address requirement**
