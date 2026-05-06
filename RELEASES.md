@@ -6,6 +6,21 @@ sits at the top.
 
 ---
 
+## v1.0.35 — 2026-05-06
+
+**SASRIA assets: drop the building-address requirement**
+
+- The asset address validator was matching the word "Fire" in section
+  names and was forcing SASRIA – Material Damage (Fire Coupon) assets
+  to have a street + city/suburb. SASRIA coupons (Material Damage /
+  Motor / Contract Works / Goods in Transit / Money) sit on top of an
+  underlying policy and don't have an asset-level address. The
+  validator now short-circuits when `asset_section` or `asset_type`
+  starts with "SASRIA". Other Property / Fire / Building / Homeowners
+  sections still require an address.
+
+---
+
 ## v1.0.34 — 2026-05-06
 
 **Asset amendment-mail: full-asset dump on create + range selector**

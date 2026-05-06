@@ -234,10 +234,16 @@ function normalise(val) {
 /**
  * True for asset types that are buildings/structures and therefore require
  * a physical address (street + city/suburb).
+ *
+ * SASRIA coupons (Material Damage / Motor / Contract Works / Goods in
+ * Transit / Money) sit on top of an underlying policy and don't need an
+ * asset-level address — even though the Material Damage Fire Coupon
+ * section name contains the word "Fire", it is not a building section.
  */
 function isBuildingAsset(b) {
   const t = String(b.asset_type || '').toLowerCase();
   const s = String(b.asset_section || '').toLowerCase();
+  if (s.startsWith('sasria') || t.startsWith('sasria')) return false;
   return /property|fire|building|structure|homeowners|farm building/.test(t)
       || /property|fire|building|structure|homeowners|farm building/.test(s);
 }
