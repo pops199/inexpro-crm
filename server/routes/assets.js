@@ -453,7 +453,13 @@ router.delete('/:id', canDelete, (req, res) => {
 });
 
 // ============================================================
-// GET /:id/amendment-changes — get recent changes for amendment email
+// GET /:id/amendment-changes — recent changes (or all current values)
+//   Query params:
+//     range = '24h'  (default) — UPDATE diffs from the last 24 hours
+//             'week'           — UPDATE diffs from the last 7 days
+//             'all'            — UPDATE diffs since the asset was created
+//             'new'            — current populated field values (used by
+//                                the post-create "send to insurer" popup)
 // ============================================================
 router.get('/:id/amendment-changes', (req, res) => {
   try {
@@ -472,15 +478,36 @@ router.get('/:id/amendment-changes', (req, res) => {
 
     if (!asset) return res.status(404).json({ error: 'Asset not found' });
 
-    // Get audit log entries from last 24 hours
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const auditRows = db.prepare(`
-      SELECT al.*, u.full_name AS user_name
-      FROM audit_log al
-      LEFT JOIN users u ON u.id = al.user_id
-      WHERE al.module = 'assets' AND al.record_id = ? AND al.action = 'UPDATE' AND al.timestamp >= ?
-      ORDER BY al.timestamp DESC
-    `).all(parseInt(req.params.id), since);
+    const range = ['24h', 'week', 'all', 'new'].includes(String(req.query.range))
+      ? String(req.query.range)
+      : '24h';
+    const RANGE_LABELS = {
+      '24h':  'in the last 24 hours',
+      'week': 'in the last 7 days',
+      'all':  'since the asset was created',
+      'new':  'on creation',
+    };
+
+    let auditRows = [];
+    if (range !== 'new') {
+      const sinceClause =
+        range === 'all'  ? '' :
+        range === 'week' ? 'AND al.timestamp >= ?' :
+                           'AND al.timestamp >= ?';
+      const sinceParam =
+        range === 'all'  ? null :
+        range === 'week' ? new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString() :
+                           new Date(Date.now() - 1  * 24 * 60 * 60 * 1000).toISOString();
+      const params = [parseInt(req.params.id, 10)];
+      if (sinceParam) params.push(sinceParam);
+      auditRows = db.prepare(`
+        SELECT al.*, u.full_name AS user_name
+        FROM audit_log al
+        LEFT JOIN users u ON u.id = al.user_id
+        WHERE al.module = 'assets' AND al.record_id = ? AND al.action = 'UPDATE' ${sinceClause}
+        ORDER BY al.timestamp DESC
+      `).all(...params);
+    }
 
     // Build human-readable change descriptions
     const FIELD_LABELS = {
@@ -534,29 +561,95 @@ router.get('/:id/amendment-changes', (req, res) => {
     ].filter(Boolean).join(', ')
       + (asset.registration_number ? ', Registration ' + asset.registration_number : '');
 
+    const humanize = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
     const changes = [];
-    auditRows.forEach(entry => {
-      if (!entry.old_value || !entry.new_value) return;
-      try {
-        const oldObj = typeof entry.old_value === 'string' ? JSON.parse(entry.old_value) : entry.old_value;
-        const newObj = typeof entry.new_value === 'string' ? JSON.parse(entry.new_value) : entry.new_value;
-        const keys = new Set([...Object.keys(oldObj || {}), ...Object.keys(newObj || {})]);
-        for (const key of keys) {
-          if (SKIP.has(key)) continue;
-          const norm = v => (v === null || v === undefined) ? '' : String(v);
-          if (norm(oldObj[key]) !== norm(newObj[key])) {
-            const label = FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            changes.push({
-              field: key,
-              label,
-              from: fmtVal(oldObj[key], key),
-              to: fmtVal(newObj[key], key),
-              description: `Amend ${label} of ${assetDesc} from ${fmtVal(oldObj[key], key)} to ${fmtVal(newObj[key], key)}`,
-            });
-          }
+    if (range === 'new') {
+      // Dump every populated field on the asset as a "Add Label: Value" line.
+      // The popup is opened straight after asset creation so this represents
+      // the full set of values entered.
+      const SECTION_NAME = asset.policy_section_name || asset.asset_section || null;
+      const DISPLAY_OVERRIDES = {
+        contact_id: () => asset.contact_name || null,
+        account_id: () => asset.account_name || null,
+        policy_id:  () => asset.policy_name || asset.policy_number || null,
+        policy_section_id: () => SECTION_NAME,
+      };
+      // Stable, sensible ordering — anything not listed appears at the end.
+      const ORDER = [
+        'asset_name', 'asset_type', 'asset_section', 'asset_status',
+        'contact_id', 'account_id', 'policy_id',
+        'make', 'model', 'year', 'registration_number', 'vin_number',
+        'engine_number', 'serial_number', 'mm_number',
+        'cover_type', 'use_type', 'territory', 'gvm', 'tracking_device',
+        'regular_driver', 'credit_shortfall',
+        'address', 'suburb', 'city', 'province', 'postal_code',
+        'sum_insured', 'asset_value', 'premium', 'sasria', 'excess',
+        'excess_pct_claim', 'excess_pct_insured', 'minimum_excess',
+        'basis_of_cover',
+        'financial_interest_noted', 'financial_institution',
+        'finance_contract_number', 'contract_expiry_date',
+        'date_acquired', 'date_sold',
+        'vehicle_extras', 'extras_in_total', 'excesses', 'additional_covers',
+        'conditions', 'extensions', 'exclusions',
+        'notes',
+      ];
+      const orderIndex = new Map(ORDER.map((k, i) => [k, i]));
+      const isEmpty = (v) => v === null || v === undefined || v === '' ||
+                              (Array.isArray(v) && v.length === 0);
+
+      const allKeys = Object.keys(asset)
+        // exclude joined/derived columns and internal SKIP set
+        .filter(k => !SKIP.has(k))
+        .filter(k => !['contact_name', 'account_name', 'policy_name', 'policy_number',
+                       'insurer', 'policy_section_name', 'policy_section_type'].includes(k))
+        .sort((a, b) => {
+          const ai = orderIndex.has(a) ? orderIndex.get(a) :  999;
+          const bi = orderIndex.has(b) ? orderIndex.get(b) :  999;
+          if (ai !== bi) return ai - bi;
+          return a.localeCompare(b);
+        });
+
+      for (const key of allKeys) {
+        let raw = asset[key];
+        if (DISPLAY_OVERRIDES[key]) {
+          const override = DISPLAY_OVERRIDES[key]();
+          if (override) raw = override;
         }
-      } catch (_) {}
-    });
+        if (isEmpty(raw)) continue;
+        const label = FIELD_LABELS[key] || humanize(key);
+        const value = fmtVal(raw, key);
+        changes.push({
+          field: key,
+          label,
+          to: value,
+          description: `${label}: ${value}`,
+        });
+      }
+    } else {
+      auditRows.forEach(entry => {
+        if (!entry.old_value || !entry.new_value) return;
+        try {
+          const oldObj = typeof entry.old_value === 'string' ? JSON.parse(entry.old_value) : entry.old_value;
+          const newObj = typeof entry.new_value === 'string' ? JSON.parse(entry.new_value) : entry.new_value;
+          const keys = new Set([...Object.keys(oldObj || {}), ...Object.keys(newObj || {})]);
+          for (const key of keys) {
+            if (SKIP.has(key)) continue;
+            const norm = v => (v === null || v === undefined) ? '' : String(v);
+            if (norm(oldObj[key]) !== norm(newObj[key])) {
+              const label = FIELD_LABELS[key] || humanize(key);
+              changes.push({
+                field: key,
+                label,
+                from: fmtVal(oldObj[key], key),
+                to: fmtVal(newObj[key], key),
+                description: `Amend ${label} of ${assetDesc} from ${fmtVal(oldObj[key], key)} to ${fmtVal(newObj[key], key)}`,
+              });
+            }
+          }
+        } catch (_) {}
+      });
+    }
 
     // Get broker name
     const broker = db.prepare('SELECT full_name FROM users WHERE id = ?').get(req.session.userId);
@@ -564,6 +657,9 @@ router.get('/:id/amendment-changes', (req, res) => {
     res.json({
       asset,
       changes,
+      range,
+      range_label: RANGE_LABELS[range],
+      is_new_asset: range === 'new',
       broker_name: broker?.full_name || '',
       client_name: asset.contact_name || asset.account_name || '',
       policy_number: asset.policy_number || '',

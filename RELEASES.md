@@ -6,6 +6,30 @@ sits at the top.
 
 ---
 
+## v1.0.34 — 2026-05-06
+
+**Asset amendment-mail: full-asset dump on create + range selector**
+
+- The "Send to insurer" popup that fires straight after creating a new
+  asset now lists **every populated field** as `Label: value` lines
+  instead of the (empty) last-24h diff. Body wording switches to
+  "Please add the following new asset…" with subject "New asset to
+  add to Policy …".
+- The **Create Amendment Mail** button on the asset detail page now has
+  a **Show** dropdown inside the popup with four options — Initial
+  creation (all field values) / Changes in the last 24 hours / Changes
+  in the last 7 days / All changes since asset created. Switching the
+  dropdown re-fetches and re-renders the body. Manually edited subjects
+  are preserved across switches.
+- Server: `GET /api/assets/:id/amendment-changes` now accepts
+  `?range=24h|week|all|new` (default `24h`, preserves existing
+  behaviour) and returns `range`, `range_label`, `is_new_asset`. The
+  `new` mode iterates every populated field, formatted in a sensible
+  order (identity → identifiers → cover/financials → dates → notes),
+  using the existing currency/JSON formatters.
+
+---
+
 ## v1.0.33 — 2026-05-05
 
 **Centered Roll back modal**

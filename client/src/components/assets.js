@@ -1855,7 +1855,7 @@ const Assets = (() => {
                 { title: 'Notify insurer?', okLabel: 'Send notification', cancelLabel: 'Not now' }
               );
               navigate(`assets/${newId}`);
-              if (sendNow) setTimeout(() => { Assets._amendmentMail(newId); }, 400);
+              if (sendNow) setTimeout(() => { Assets._amendmentMail(newId, { mode: 'new' }); }, 400);
             }
           } catch (err) {
             showToast('Save failed: ' + err.message, 'error');
@@ -2805,27 +2805,39 @@ const Assets = (() => {
 
   // ── Amendment Mail ────────────────────────────────────────────────────────
 
-  async function _amendmentMail(assetId) {
-    // Fetch amendment changes from server
-    let data = {};
-    try {
-      const res = await fetch(`/api/assets/${assetId}/amendment-changes`, { credentials: 'same-origin' });
-      if (res.ok) data = await res.json();
-    } catch (_) {}
-
+  // Build the email body for a given fetch result. `data.is_new_asset`
+  // tells us whether the popup was opened straight after creation
+  // (range=new) so we use the "Please add this new asset" wording.
+  function _buildAmendmentEmailBody(data) {
     const clientName = data.client_name || '';
-    const policyNum = data.policy_number || '';
+    const policyNum  = data.policy_number || '';
     const brokerName = data.broker_name || window.currentUser?.full_name || '';
-    const today = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' });
-    const changes = data.changes || [];
+    const today      = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' });
+    const changes    = data.changes || [];
+    const isNewAsset = !!data.is_new_asset;
 
-    // Build the amendment list
-    const changeLines = changes.length
+    const lineCount  = changes.length;
+    const changeLines = lineCount
       ? changes.map((c, i) => `${i + 1}. ${c.description}`).join('\n')
-      : '1. (No changes recorded in the last 24 hours — please describe the amendment manually)';
+      : (isNewAsset
+          ? '1. (No field values captured for this asset yet — please describe the new asset manually)'
+          : `1. (No changes recorded ${data.range_label || 'in the selected period'} — please describe the amendment manually)`);
 
-    const emailBody =
-`Good Day,
+    if (isNewAsset) {
+      return `Good Day,
+
+Please add the following new asset to the Policy of ${clientName}, Policy Number: ${policyNum} with effect of Today ${today}:
+
+${changeLines}
+
+Please confirm the addition.
+
+Regards,
+
+${brokerName}`;
+    }
+
+    return `Good Day,
 
 Please do the following Amendments to the Policy of ${clientName}, Policy Number: ${policyNum} with effect of Today ${today}:
 
@@ -2836,8 +2848,40 @@ Please confirm the Amendment.
 Regards,
 
 ${brokerName}`;
+  }
 
-    const subject = `Amendments to Policy ${policyNum}`;
+  async function _amendmentMail(assetId, opts = {}) {
+    // mode: 'new' (post-create popup) | 'amend' (detail-page button)
+    const mode = opts.mode === 'new' ? 'new' : 'amend';
+    const initialRange = mode === 'new' ? 'new' : '24h';
+
+    async function fetchData(range) {
+      try {
+        const res = await fetch(
+          `/api/assets/${assetId}/amendment-changes?range=${encodeURIComponent(range)}`,
+          { credentials: 'same-origin' }
+        );
+        if (res.ok) return await res.json();
+      } catch (_) {}
+      return {};
+    }
+
+    const data = await fetchData(initialRange);
+    const policyNum = data.policy_number || '';
+    const subject   = mode === 'new'
+      ? `New asset to add to Policy ${policyNum}`
+      : `Amendments to Policy ${policyNum}`;
+    const initialBody = _buildAmendmentEmailBody(data);
+
+    const rangeOptions = [
+      { value: 'new',  label: 'Initial creation (all field values)' },
+      { value: '24h',  label: 'Changes in the last 24 hours' },
+      { value: 'week', label: 'Changes in the last 7 days' },
+      { value: 'all',  label: 'All changes since asset created' },
+    ];
+    const optionsHtml = rangeOptions.map(o =>
+      `<option value="${esc(o.value)}"${o.value === initialRange ? ' selected' : ''}>${esc(o.label)}</option>`
+    ).join('');
 
     const modal = document.createElement('div');
     modal.id = 'amendment-modal';
@@ -2859,8 +2903,12 @@ ${brokerName}`;
             <input class="form-control" id="amend-subject" value="${esc(subject)}">
           </div>
           <div class="form-group">
+            <label class="form-label">Show <span style="font-size:.75rem;color:var(--text-muted);font-weight:normal;">(re-renders the body below)</span></label>
+            <select class="form-control" id="amend-range">${optionsHtml}</select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Email Body <span style="font-size:.75rem;color:var(--text-muted);font-weight:normal;">(editable)</span></label>
-            <textarea class="form-control" id="amend-body" rows="14" style="font-family:inherit;white-space:pre-wrap;">${esc(emailBody)}</textarea>
+            <textarea class="form-control" id="amend-body" rows="14" style="font-family:inherit;white-space:pre-wrap;">${esc(initialBody)}</textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -2869,8 +2917,31 @@ ${brokerName}`;
         </div>
       </div>`;
     modal.dataset.assetId = assetId;
-    /* backdrop-close disabled */
     document.body.appendChild(modal);
+
+    // When the user changes the range, re-fetch and re-fill the body.
+    // We refresh subject too if it still matches the auto-generated one
+    // for the previous range (so manually edited subjects are preserved).
+    let lastAutoSubject = subject;
+    document.getElementById('amend-range').addEventListener('change', async (e) => {
+      const newRange = e.target.value;
+      const bodyEl = document.getElementById('amend-body');
+      const subjEl = document.getElementById('amend-subject');
+      const sel = e.target;
+      sel.disabled = true;
+      try {
+        const fresh = await fetchData(newRange);
+        bodyEl.value = _buildAmendmentEmailBody(fresh);
+        const polNum = fresh.policy_number || '';
+        const newAutoSubject = newRange === 'new'
+          ? `New asset to add to Policy ${polNum}`
+          : `Amendments to Policy ${polNum}`;
+        if (subjEl.value === lastAutoSubject) subjEl.value = newAutoSubject;
+        lastAutoSubject = newAutoSubject;
+      } finally {
+        sel.disabled = false;
+      }
+    });
   }
 
   async function _sendAmendment() {

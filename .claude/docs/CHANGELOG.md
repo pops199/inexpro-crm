@@ -433,3 +433,11 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-05 19:14
 - Modified 3 files
 - Files: client/public/index.html, client/src/components/admin.js, server/db/sessions.db
+
+## 2026-05-05 19:15
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-06 08:59
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)

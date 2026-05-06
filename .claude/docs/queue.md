@@ -1120,3 +1120,23 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-05 19:15 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-06 08:59 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
