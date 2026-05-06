@@ -1180,3 +1180,19 @@ Files changed: 6
 - `server/routes/reports.js`
 Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-06 17:46 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: bde54e0c-12b1-41af-b6a9-4f0e6e06baab
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-06 17:51 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/sessions.db`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -3390,17 +3390,79 @@ ${brokerName}`;
     const INACTIVE = ['Sold', 'Decommissioned', 'Inactive', 'Cancelled'];
     const hiddenCount = rows.filter(a => INACTIVE.includes(a.asset_status)).length;
     let showInactive = false;
+    let searchQ = '';
+    let sortBy  = null;
+    let sortDir = 'asc';
+
+    function searchHaystack(a) {
+      return [
+        a.asset_name, a.asset_type, a.asset_section,
+        a.make, a.model, a.year,
+        a.registration_number, a.vin_number, a.serial_number,
+        a.item_number, a.fleet_number, a.asset_status,
+        a.contact_name, a.account_name,
+        a.policy_name, a.policy_number, a.policy_section_name,
+      ].filter(v => v != null).join(' ').toLowerCase();
+    }
+
+    function sortKeyFor(a, key) {
+      if (key === 'asset_value' || key === 'sum_insured' || key === 'premium') {
+        const n = Number(a[key]);
+        return Number.isFinite(n) ? n : -Infinity;
+      }
+      if (key === 'date_acquired' || key === 'created_at' || key === 'updated_at') {
+        return a[key] || '';
+      }
+      if (key === 'make_model_year') {
+        return [a.make, a.model, a.year].filter(Boolean).join(' ').toLowerCase();
+      }
+      if (key === 'party_name') {
+        return (a.contact_name || a.account_name || '').toLowerCase();
+      }
+      if (key === 'policy_name') {
+        return (a.policy_name || a.policy_number || '').toLowerCase();
+      }
+      if (key === 'policy_section_name') {
+        return (a.policy_section_name || a.asset_section || '').toLowerCase();
+      }
+      return String(a[key] ?? '').toLowerCase();
+    }
 
     function draw() {
       const visibleCols = _assetCatalog ? ViewPrefs.visibleColumns(_assetCatalog, _assetConfig) : [];
-      const visRows = showInactive ? rows : rows.filter(a => !INACTIVE.includes(a.asset_status));
+      let visRows = showInactive ? rows : rows.filter(a => !INACTIVE.includes(a.asset_status));
+
+      if (searchQ) {
+        const q = searchQ.toLowerCase();
+        visRows = visRows.filter(a => searchHaystack(a).includes(q));
+      }
+
+      if (sortBy) {
+        visRows = [...visRows].sort((a, b) => {
+          const av = sortKeyFor(a, sortBy);
+          const bv = sortKeyFor(b, sortBy);
+          if (av < bv) return sortDir === 'asc' ? -1 : 1;
+          if (av > bv) return sortDir === 'asc' ?  1 : -1;
+          return 0;
+        });
+      }
 
       const showTotalRow = visibleCols.some(c => c.id === 'asset_value') && visRows.some(a => a.asset_value != null);
       const totalValue = visRows.reduce((s, a) => s + (Number(a.asset_value) || 0), 0);
       const valueColIdx = visibleCols.findIndex(c => c.id === 'asset_value');
 
-      const headCells = visibleCols.map(c => `<th${c.id === 'asset_value' || c.id === 'sum_insured' || c.id === 'premium' ? ' style="text-align:right;"' : ''}>${esc(c.label)}</th>`).join('');
+      const headCells = visibleCols.map(c => {
+        const rightAlign = (c.id === 'asset_value' || c.id === 'sum_insured' || c.id === 'premium');
+        const sortable = !!c.sortable;
+        const active   = sortBy === c.id;
+        const arrow    = active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+        const cls      = sortable ? `sortable${active ? ' sort-active' : ''}` : '';
+        const style    = `${rightAlign ? 'text-align:right;' : ''}${sortable ? 'cursor:pointer;user-select:none;' : ''}`;
+        const dataAttr = sortable ? ` data-sort="${esc(c.id)}"` : '';
+        return `<th${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${dataAttr}>${esc(c.label)}${arrow}</th>`;
+      }).join('');
 
+      const emptyText = searchQ ? 'No matches.' : emptyMsg;
       const bodyRows = visRows.length ? visRows.map(a => {
         const dim = INACTIVE.includes(a.asset_status) ? ' style="opacity:.55;"' : '';
         return `<tr${dim}>${visibleCols.map(col => {
@@ -3409,7 +3471,7 @@ ${brokerName}`;
           const cls   = col.id === 'actions' ? ' class="actions-cell"' : '';
           return `<td${cls}${align}>${fn ? fn(a) : esc(String(a[col.id] ?? '—'))}</td>`;
         }).join('')}</tr>`;
-      }).join('') : `<tr><td colspan="${visibleCols.length || 1}" class="table-empty">${esc(emptyMsg)}</td></tr>`;
+      }).join('') : `<tr><td colspan="${visibleCols.length || 1}" class="table-empty">${esc(emptyText)}</td></tr>`;
 
       let tfoot = '';
       if (showTotalRow && valueColIdx >= 0) {
@@ -3438,6 +3500,11 @@ ${brokerName}`;
           <span style="flex:1;"></span>
           <button type="button" class="btn btn-sm btn-secondary tab-asset-columns-btn">⚙ Columns</button>
         </div>
+        <div style="display:flex;justify-content:center;margin:.5rem 0 .35rem;">
+          <input type="search" class="form-control tab-asset-search" placeholder="Search assets…"
+            value="${esc(searchQ)}"
+            style="max-width:280px;height:30px;font-size:.85rem;">
+        </div>
         <div class="table-responsive">
           <table class="table">
             <thead><tr>${headCells}</tr></thead>
@@ -3463,6 +3530,34 @@ ${brokerName}`;
             _assetConfig = newConfig;
             draw();
           },
+        });
+      });
+
+      const searchEl = tabEl.querySelector('.tab-asset-search');
+      if (searchEl) {
+        searchEl.addEventListener('input', (e) => {
+          searchQ = e.target.value;
+          const pos = searchEl.selectionStart;
+          draw();
+          const next = tabEl.querySelector('.tab-asset-search');
+          if (next) {
+            next.focus();
+            try { next.setSelectionRange(pos, pos); } catch (_) {}
+          }
+        });
+      }
+
+      tabEl.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const id = th.dataset.sort;
+          if (!id) return;
+          if (sortBy === id) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortBy = id;
+            sortDir = 'asc';
+          }
+          draw();
         });
       });
 

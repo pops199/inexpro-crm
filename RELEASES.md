@@ -6,6 +6,25 @@ sits at the top.
 
 ---
 
+## v1.0.37 — 2026-05-06
+
+**Policy → Assets tab: search box + sortable columns**
+
+- Added a centered **search box** above the column headers on the Assets
+  tab. Filters across asset name, type, section, make/model/year,
+  registration, VIN, serial, item, fleet, status, contact/account,
+  policy, and policy section. Empty-state message switches to
+  "No matches." while a query is active.
+- **Sortable columns** — clicking any sortable header (per the column
+  catalog) toggles asc/desc with a ▲/▼ indicator. Numeric columns
+  (Value, Sum Insured, Premium) sort numerically; date columns by
+  ISO date; composite fields (Make/Model/Year, Contact/Account, Policy,
+  Policy Section) sort by their displayed value.
+- Because the Assets tab uses a shared renderer, the same search and
+  sort also light up on the **Claims** module's Assets tab and the
+  **policy section** "Assets in this Section" view — no duplicate
+  wiring.
+
 ## v1.0.36 — 2026-05-06
 
 **Custom report builder — every column exposed, ghost-column crashes fixed**
