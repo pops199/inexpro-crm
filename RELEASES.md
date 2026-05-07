@@ -6,6 +6,26 @@ sits at the top.
 
 ---
 
+## v1.0.40 — 2026-05-07
+
+**Fresh-policy save → Commission Entry modal pops automatically**
+
+- Saving a new policy for the first time now navigates to the policy
+  detail with the Commission tab pre-selected and the
+  **+ Add Commission Entry** modal already open. The broker captures
+  remuneration in the same flow as the policy itself instead of having
+  to find the tab.
+- Wired via a `?openCommission=1` flag on the navigation hash. The
+  router strips query strings before matching, so the existing route
+  still resolves; the policy detail reads the flag with the existing
+  `getFiltersFromHash()` helper, switches to the commission tab, and
+  programmatically clicks the same Add button the user would. The flag
+  is then `replaceState`-stripped so a refresh doesn't re-pop the modal.
+- The Commission tab itself, the modal HTML, the save handler, and the
+  follow-up **+ Add Commission Entry** button are all unchanged — saving
+  still writes to the commission table the same way, and additional
+  entries are added through the existing button.
+
 ## v1.0.39 — 2026-05-07
 
 **POPIA + FICA search & sortable columns · supplier visibility · claim form cross-filter & auto-fill**

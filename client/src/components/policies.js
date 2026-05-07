@@ -1528,7 +1528,7 @@ const Policies = (() => {
             }
 
             showToast('Policy created.', 'success');
-            navigate(`policies/${newId}`);
+            navigate(`policies/${newId}?openCommission=1`);
           }
         } catch (err) {
           showToast('Save failed: ' + err.message, 'error');
@@ -1801,6 +1801,27 @@ const Policies = (() => {
         loadPolicyTab(id, 'commission');
         document.querySelector('.detail-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+
+      // Fresh-create flow: navigate() lands here with ?openCommission=1 right
+      // after a new policy is saved. Switch to the commission tab and pop the
+      // same modal the "+ Add Commission Entry" button shows, so the broker
+      // captures remuneration immediately instead of bouncing through tabs.
+      if (getFiltersFromHash().openCommission === '1') {
+        const header = document.getElementById('pol-tabs-header');
+        if (header) {
+          header.querySelectorAll('.tab-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.tab === 'commission'));
+        }
+        await loadPolicyTab(id, 'commission');
+        document.getElementById('add-commission-btn')?.click();
+        // Strip the flag so a refresh (or back-then-forward) doesn't re-pop.
+        if (typeof window.history?.replaceState === 'function') {
+          try {
+            const baseUrl = window.location.href.split('#')[0];
+            window.history.replaceState(null, '', baseUrl + '#/policies/' + id);
+          } catch (_) {}
+        }
+      }
 
     } catch (err) {
       el.innerHTML = `<div class="alert alert-danger">Failed to load policy: ${esc(err.message)}</div>`;

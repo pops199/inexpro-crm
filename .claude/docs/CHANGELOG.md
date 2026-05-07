@@ -505,3 +505,11 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-07 18:41
 - Modified 7 files
 - Files: client/public/index.html, client/src/components/claims.js, client/src/utils.js, server/db/inexpro.db, server/db/inexpro.db-shm (+2 more)
+
+## 2026-05-07 18:45
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-07 19:03
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db-wal, server/db/sessions.db
