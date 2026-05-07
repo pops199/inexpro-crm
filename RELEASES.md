@@ -6,6 +6,22 @@ sits at the top.
 
 ---
 
+## v1.0.42 — 2026-05-07
+
+**Commission tab: Delete button with centred confirm modal**
+
+- Each row in the policy Commission tab now has a red **Delete** button
+  next to **Edit**. Click → centred confirm modal asks "Delete the
+  {type} commission entry? This cannot be undone." with **Delete** /
+  **Cancel** buttons. On confirm: `Api.commissionLog.delete(id)`,
+  toast, and the commission table refreshes.
+- The confirm uses `confirmDialogAsync` (already in `utils.js`) — an
+  in-page centred overlay rather than the native browser `confirm()`
+  popup. Enter confirms, Escape cancels.
+- Server route `DELETE /api/commission-log/:id` already existed and is
+  gated by the `canDelete` middleware, so non-deleter roles get a clean
+  error toast instead of a partial state.
+
 ## v1.0.41 — 2026-05-07
 
 **Commission modal: + Add More button & stale-banner fix**

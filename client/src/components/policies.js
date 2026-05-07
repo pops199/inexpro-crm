@@ -2272,6 +2272,7 @@ const Policies = (() => {
                   <td>${esc(r.last_review_date || '—')}</td>
                   <td style="white-space:nowrap;">
                     <button class="btn btn-xs btn-outline js-edit-commission" data-id="${r.id}">Edit</button>
+                    <button class="btn btn-xs btn-danger js-delete-commission" data-id="${r.id}" data-type="${esc(r.commission_type || 'commission entry')}">Delete</button>
                   </td>
                 </tr>`;
               }).join('')}</tbody>
@@ -2477,6 +2478,24 @@ const Policies = (() => {
             btn.addEventListener('click', () => {
               const entry = rows.find(r => String(r.id) === btn.dataset.id);
               if (entry) openCommissionModal(entry);
+            });
+          });
+          tabEl.querySelectorAll('.js-delete-commission').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const id   = btn.dataset.id;
+              const type = btn.dataset.type || 'commission entry';
+              const ok = await confirmDialogAsync(
+                `Delete the ${type} commission entry? This cannot be undone.`,
+                { title: 'Delete commission entry', okLabel: 'Delete', cancelLabel: 'Cancel', variant: 'danger' }
+              );
+              if (!ok) return;
+              try {
+                await Api.commissionLog.delete(id);
+                showToast('Commission entry deleted.', 'success');
+                loadPolicyTab(policyId, 'commission');
+              } catch (err) {
+                showToast('Delete failed: ' + (err.message || String(err)), 'error');
+              }
             });
           });
           break;
