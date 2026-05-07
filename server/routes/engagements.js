@@ -15,6 +15,7 @@ router.use(requireAuth);
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 1000;
 
 function parsePage(query) {
   const page = parseInt(query.page, 10);
@@ -65,7 +66,11 @@ router.get('/', (req, res, next) => {
     const db = getDb();
     const { search, stage, broker_id, type, contact_id, account_id } = req.query;
     const page = parsePage(req.query);
-    const offset = (page - 1) * PAGE_SIZE;
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const pageSize = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, MAX_PAGE_SIZE)
+      : PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
 
     const conditions = [];
     const params = [];
@@ -140,7 +145,7 @@ router.get('/', (req, res, next) => {
       ${where}
       ${orderBy}
       LIMIT ? OFFSET ?
-    `).all(...params, PAGE_SIZE, offset);
+    `).all(...params, pageSize, offset);
 
     // Decorate every row with the derived Pre-Sale Disclosure Status
     rows.forEach(r => { r.presale_disclosure_status = evalDisclosureStatus(r); });
@@ -149,9 +154,9 @@ router.get('/', (req, res, next) => {
       data: rows,
       pagination: {
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         total,
-        totalPages: Math.ceil(total / PAGE_SIZE),
+        totalPages: Math.ceil(total / pageSize),
       },
     });
   } catch (err) {

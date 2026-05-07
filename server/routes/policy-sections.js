@@ -13,6 +13,7 @@ router.use(requireAuth);
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 1000;
 
 function parsePage(query) {
   const page = parseInt(query.page, 10);
@@ -39,7 +40,11 @@ router.get('/', (req, res, next) => {
     const db = getDb();
     const { policy_id, gap_identified, contact_id, account_id, section_type } = req.query;
     const page = parsePage(req.query);
-    const offset = (page - 1) * PAGE_SIZE;
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const pageSize = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, MAX_PAGE_SIZE)
+      : PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
 
     const conditions = [];
     const params = [];
@@ -99,15 +104,15 @@ router.get('/', (req, res, next) => {
       ${where}
       ORDER BY ps.updated_at DESC
       LIMIT ? OFFSET ?
-    `).all(...params, PAGE_SIZE, offset);
+    `).all(...params, pageSize, offset);
 
     res.json({
       data: rows,
       pagination: {
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         total,
-        totalPages: Math.ceil(total / PAGE_SIZE),
+        totalPages: Math.ceil(total / pageSize),
       },
     });
   } catch (err) {

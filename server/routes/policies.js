@@ -64,6 +64,7 @@ router.use(requireAuth);
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 1000;
 
 /**
  * Validate that the contact/account selected for a policy has FICA verified
@@ -380,7 +381,11 @@ router.get('/', (req, res, next) => {
     const db = getDb();
     const { search, status, broker_id, type, renewal_from, renewal_to, contact_id, account_id, engagement_id } = req.query;
     const page = parsePage(req.query);
-    const offset = (page - 1) * PAGE_SIZE;
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const pageSize = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, MAX_PAGE_SIZE)
+      : PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
 
     const conditions = [];
     const params = [];
@@ -472,7 +477,7 @@ router.get('/', (req, res, next) => {
       ${where}
       ${orderBy}
       LIMIT ? OFFSET ?
-    `).all(...params, PAGE_SIZE, offset);
+    `).all(...params, pageSize, offset);
 
     for (const row of rows) {
       row.total_premium = computePolicyTotalPremium(db, row.id);
@@ -482,9 +487,9 @@ router.get('/', (req, res, next) => {
       data: rows,
       pagination: {
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         total,
-        totalPages: Math.ceil(total / PAGE_SIZE),
+        totalPages: Math.ceil(total / pageSize),
       },
     });
   } catch (err) {

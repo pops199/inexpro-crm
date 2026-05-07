@@ -6,6 +6,30 @@ sits at the top.
 
 ---
 
+## v1.0.38 — 2026-05-07
+
+**Pagination fix: dropdowns no longer truncate at 25 records · new asset type "Speciality" · two new policy sections**
+
+- **Bug fix (load-bearing):** the policies, engagements, and policy-sections
+  list endpoints hardcoded a page size of 25 and silently ignored the
+  `?limit=` query parameter. Symptom in the wild: the Belogix CC account
+  has two active policies, but the New Claim form's policy dropdown only
+  showed one — because the second sat at rank 26 in the global
+  `updated_at DESC` order. Same truncation lurked in every dropdown that
+  fetches engagements or policy sections.
+  - All three routes now honour `?limit=` (capped at 1000), default 25.
+  - Existing front-end calls already pass `limit: 500`, so the fix is
+    transparent — every dropdown that previously truncated now returns
+    the full set.
+- **Asset catalog:**
+  - New asset type **Speciality** added to the asset-type dropdown.
+  - New policy section **Motor – Heavy Commercial Trailer > 7 500kg**,
+    surfaced when the Motor asset type is selected.
+  - New policy section **Value Added Services**, surfaced when the new
+    Speciality asset type is selected.
+  - DB schema unchanged — `assets.asset_type` and `assets.asset_section`
+    are plain TEXT, no CHECK constraint.
+
 ## v1.0.37 — 2026-05-06
 
 **Policy → Assets tab: search box + sortable columns**

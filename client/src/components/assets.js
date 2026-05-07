@@ -14,6 +14,7 @@ const Assets = (() => {
       'Motor \u2013 Light Delivery Vehicle',
       'Motor \u2013 Light Commercial 3 500 \u2013 7 500kg',
       'Motor \u2013 Heavy Commercial > 7 500kg',
+      'Motor \u2013 Heavy Commercial Trailer > 7 500kg',
       'Motor \u2013 Commercial Vehicle',
       'Motor \u2013 Fleet',
       'Motor \u2013 Motorcycles',
@@ -237,6 +238,9 @@ const Assets = (() => {
       'SASRIA \u2013 Goods in Transit Coupon',
       'SASRIA \u2013 Money Coupon',
       'SASRIA \u2013 Construction & Plant Risk',
+    ],
+    'Speciality': [
+      'Value Added Services',
     ],
   };
 
