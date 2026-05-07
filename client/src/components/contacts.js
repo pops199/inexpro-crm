@@ -116,12 +116,24 @@ const Contacts = (() => {
       _catalog = prefs.catalog;
       _config  = prefs.config;
 
+      // Default the broker filter to the logged-in admin so they land on
+      // *their own* contacts first — admins can see everyone but the day-to-day
+      // working set is their own book. The dropdown still lets them pick
+      // another broker or use the Clear button to show all.
+      // Brokers and admin_only roles fall through unchanged: brokers are
+      // already broker-isolated server-side; admin_only isn't in the broker
+      // dropdown so a self-filter would return zero matches.
+      const isAdmin = window.currentUser?.role === 'admin';
+      const defaultBroker = (isAdmin && params.broker_id === undefined && window.currentUser?.id)
+        ? String(window.currentUser.id)
+        : '';
+
       // Current filter state (sort comes from prefs now)
       let state = {
         search:    params.search    || '',
         status:    params.status    || '',
         category:  params.category  || '',
-        broker_id: params.broker_id || '',
+        broker_id: params.broker_id !== undefined ? params.broker_id : defaultBroker,
         page:      params.page      || 1,
         sort:      _config.sortBy,
         dir:       _config.sortDir,

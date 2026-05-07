@@ -6,6 +6,19 @@ sits at the top.
 
 ---
 
+## v1.0.43 — 2026-05-07
+
+**Contacts list: admins default to "my contacts"**
+
+- Admins (`role === 'admin'`) now land on the Contacts page with the
+  Broker filter pre-set to their own user — so they see their own book
+  first instead of the full multi-broker list. The dropdown still lets
+  them pick another broker, and the **Clear** button explicitly resets
+  to All Brokers (passes `broker_id: ''`, which overrides the default).
+- Brokers fall through unchanged — they're already broker-isolated
+  server-side. `admin_only` users keep the all-contacts view (they
+  aren't selectable as brokers, so a self-filter would return zero).
+
 ## v1.0.42 — 2026-05-07
 
 **Commission tab: Delete button with centred confirm modal**
