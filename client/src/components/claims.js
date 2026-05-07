@@ -832,9 +832,119 @@ const Claims = (() => {
 
       bindFormEvents(id, isEdit, d);
       wireClaimGate(policies, assets);
+      wireClaimCrossFilters(d, isEdit, policies, assets);
 
     } catch (err) {
       el.innerHTML = `<div class="alert alert-danger">Failed to load form: ${esc(err.message)}</div>`;
+    }
+  }
+
+  // ── Cross-filter: keep policy ↔ asset ↔ contact/account in sync ─────────
+  // Selecting any of policy/contact/account narrows the asset dropdown to
+  // only the matching assets. Selecting an asset auto-fills the policy plus
+  // the asset's account or contact. The filter only kicks in when a
+  // selection is made — defaults still expose every option.
+  function wireClaimCrossFilters(d, isEdit, policies, assets) {
+    const formEl = document.getElementById('claim-form');
+    if (!formEl) return;
+    const polSel = formEl.querySelector('[name="policy_id"]');
+    const ctcSel = formEl.querySelector('[name="contact_id"]');
+    const accSel = formEl.querySelector('[name="account_id"]');
+    const astSel = formEl.querySelector('[name="asset_id"]');
+    if (!polSel || !ctcSel || !accSel || !astSel) return;
+
+    // Searchable wrappers (applied earlier by wireContactAccountToggle for
+    // policy/contact/account) freeze their option cache and visible text,
+    // so any programmatic value/option change must be followed by a sync.
+    const sync = (s) => { if (typeof s._searchableSync === 'function') s._searchableSync(); };
+
+    let _suppressLoop = false;
+
+    function refilterAssets() {
+      const polId = polSel.value;
+      const ctcId = ctcSel.value;
+      const accId = accSel.value;
+      let filtered = assets;
+      if (polId) filtered = filtered.filter(a => String(a.policy_id)  === String(polId));
+      if (ctcId) filtered = filtered.filter(a => String(a.contact_id) === String(ctcId));
+      if (accId) filtered = filtered.filter(a => String(a.account_id) === String(accId));
+      const currentAst = astSel.value;
+      astSel.innerHTML = assetOptions(filtered, currentAst);
+      if (currentAst && !filtered.some(a => String(a.id) === String(currentAst))) {
+        astSel.value = '';
+      }
+      sync(astSel);
+    }
+
+    function refilterPolicies() {
+      const ctcId = ctcSel.value;
+      const accId = accSel.value;
+      let filtered = policies;
+      if (ctcId) filtered = filtered.filter(p => String(p.contact_id) === String(ctcId));
+      if (accId) filtered = filtered.filter(p => String(p.account_id) === String(accId));
+      const currentPol = polSel.value;
+      polSel.innerHTML = policyOptions(filtered, currentPol);
+      if (currentPol && !filtered.some(p => String(p.id) === String(currentPol))) {
+        polSel.value = '';
+      }
+      sync(polSel);
+    }
+
+    function autoFillFromAsset(assetId) {
+      if (!assetId) return;
+      const a = assets.find(x => String(x.id) === String(assetId));
+      if (!a) return;
+      if (a.policy_id  && polSel.value !== String(a.policy_id))  { polSel.value = String(a.policy_id);  sync(polSel); }
+      if (a.account_id && accSel.value !== String(a.account_id)) { accSel.value = String(a.account_id); sync(accSel); }
+      if (a.contact_id && ctcSel.value !== String(a.contact_id)) { ctcSel.value = String(a.contact_id); sync(ctcSel); }
+    }
+
+    function autoFillFromPolicy(policyId) {
+      if (!policyId) return;
+      const p = policies.find(x => String(x.id) === String(policyId));
+      if (!p) return;
+      if (p.account_id && accSel.value !== String(p.account_id)) { accSel.value = String(p.account_id); sync(accSel); }
+      if (p.contact_id && ctcSel.value !== String(p.contact_id)) { ctcSel.value = String(p.contact_id); sync(ctcSel); }
+    }
+
+    polSel.addEventListener('change', () => {
+      if (_suppressLoop) return;
+      _suppressLoop = true;
+      autoFillFromPolicy(polSel.value);
+      refilterAssets();
+      _suppressLoop = false;
+    });
+    astSel.addEventListener('change', () => {
+      if (_suppressLoop) return;
+      _suppressLoop = true;
+      autoFillFromAsset(astSel.value);
+      refilterPolicies();
+      refilterAssets();
+      _suppressLoop = false;
+    });
+    ctcSel.addEventListener('change', () => {
+      if (_suppressLoop) return;
+      _suppressLoop = true;
+      refilterPolicies();
+      refilterAssets();
+      _suppressLoop = false;
+    });
+    accSel.addEventListener('change', () => {
+      if (_suppressLoop) return;
+      _suppressLoop = true;
+      refilterPolicies();
+      refilterAssets();
+      _suppressLoop = false;
+    });
+
+    // Initial pass — apply prefills from hash params (policy_id, asset_id, etc.)
+    if (!isEdit) {
+      _suppressLoop = true;
+      if (d.policy_id) autoFillFromPolicy(d.policy_id);
+      if (d.asset_id)  autoFillFromAsset(d.asset_id);
+      refilterPolicies();
+      refilterAssets();
+      _suppressLoop = false;
     }
   }
 

@@ -22,8 +22,16 @@ function notSupplierSql(alias = 'c') {
            OR ${alias}.client_category IS NULL OR ${alias}.client_category != 'Supplier')`;
 }
 
+// Inverse of notSupplierSql — predicate matches only rows where both columns
+// equal 'Supplier'. Suppliers are shared infrastructure (panel-beaters,
+// assessors, etc.) and are visible across broker isolation boundaries.
+function isSupplierSql(alias = 'c') {
+  return `(${alias}.contact_type = 'Supplier' AND ${alias}.client_category = 'Supplier')`;
+}
+
 module.exports = {
   isSupplierContact,
   notSupplierSql,
+  isSupplierSql,
   SUPPLIER_VALUE,
 };

@@ -3317,12 +3317,15 @@
       if (headerActions) {
         headerActions.innerHTML = `<button class="btn btn-secondary btn-sm" id="popia-report-btn">📄 Compliance Report</button>`;
       }
+      const ctrlStyle = 'height:28px;padding:.15rem .4rem;font-size:.78rem;line-height:1;';
       const headerCenter = document.getElementById('header-center');
       if (headerCenter) {
         headerCenter.innerHTML = `
-          <input type="text" id="popia-search" class="form-control"
-            placeholder="Search contacts &amp; accounts…"
-            style="width:340px;max-width:50vw;font-size:.85rem;">`;
+          <div style="display:flex;gap:.5rem;align-items:center;background:var(--bg);padding:.3rem .55rem;border-radius:6px;">
+            <input type="search" id="popia-search" class="form-control"
+              placeholder="Search…"
+              style="${ctrlStyle}width:200px;">
+          </div>`;
       }
       renderInto(`<div class="page-wrapper"><div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div></div>`);
       try {
@@ -3333,18 +3336,97 @@
         _popiaCatalog = prefs.catalog;
         _popiaConfig  = prefs.config;
 
-        const visibleCols = ViewPrefs.visibleColumns(_popiaCatalog, _popiaConfig);
-        const colCount = visibleCols.length || 1;
-        const headCells = visibleCols.map(col => `<th>${esc(col.label)}</th>`).join('');
+        let searchQ = '';
+        let sortBy  = null;
+        let sortDir = 'asc';
+
+        const sortKey = (r, key) => {
+          switch (key) {
+            case 'name':
+              return ((r.display_name || `${r.first_name || ''} ${r.last_name || ''}`).trim()).toLowerCase();
+            case 'status_badge':
+              return (r.status_badge || 'Red').toLowerCase();
+            case 'direct_marketing_consent':
+            case 'third_party_sharing':
+            case 'privacy_notice_provided':
+              return r[key] ? 1 : 0;
+            default:
+              return String(r[key] ?? '').toLowerCase();
+          }
+        };
+
+        const searchHaystack = (r) => [
+          r.display_name, r.first_name, r.last_name, r.account_name,
+          r.email, r.mobile, r.data_processing_basis,
+          r.information_officer_name, r.kind, r.status_badge,
+          r.consent_method, r.data_source,
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        const applyFilters = () => {
+          let v = rows;
+          if (searchQ) {
+            const q = searchQ.toLowerCase();
+            v = v.filter(r => searchHaystack(r).includes(q));
+          }
+          if (sortBy) {
+            v = [...v].sort((a, b) => {
+              const av = sortKey(a, sortBy);
+              const bv = sortKey(b, sortBy);
+              if (av < bv) return sortDir === 'asc' ? -1 : 1;
+              if (av > bv) return sortDir === 'asc' ?  1 : -1;
+              return 0;
+            });
+          }
+          return v;
+        };
+
+        const renderHead = () => {
+          const visibleCols = ViewPrefs.visibleColumns(_popiaCatalog, _popiaConfig);
+          return visibleCols.map(col => {
+            const sortable = !!col.sortable;
+            const active   = sortBy === col.id;
+            const arrow    = active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+            const cls      = sortable ? `sortable${active ? ' sort-active' : ''}` : '';
+            const style    = sortable ? 'cursor:pointer;user-select:none;' : '';
+            const dataAttr = sortable ? ` data-sort="${esc(col.id)}"` : '';
+            return `<th${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${dataAttr}>${esc(col.label)}${arrow}</th>`;
+          }).join('');
+        };
 
         const renderRows = (filtered) => {
+          const visibleCols = ViewPrefs.visibleColumns(_popiaCatalog, _popiaConfig);
+          const colCount = visibleCols.length || 1;
           if (!filtered.length) {
-            return `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:1rem;">No matches.</td></tr>`;
+            return `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:1rem;">${searchQ ? 'No matches.' : 'No contacts or accounts yet.'}</td></tr>`;
           }
           return filtered.map(r => `<tr>${visibleCols.map(col => {
             const fn = POPIA_CELLS[col.id];
             return `<td${col.id === 'actions' ? ' class="actions-cell"' : ''}>${fn ? fn(r) : esc(String(r[col.id] ?? '—'))}</td>`;
           }).join('')}</tr>`).join('');
+        };
+
+        const wireSortHandlers = () => {
+          document.querySelectorAll('#popia-thead-row th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+              const id = th.dataset.sort;
+              if (!id) return;
+              if (sortBy === id) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+              } else {
+                sortBy = id;
+                sortDir = 'asc';
+              }
+              redraw();
+            });
+          });
+        };
+
+        const redraw = () => {
+          const theadRow = document.getElementById('popia-thead-row');
+          const tbodyEl  = document.getElementById('popia-tbody');
+          if (theadRow) theadRow.innerHTML = renderHead();
+          if (tbodyEl)  tbodyEl.innerHTML  = renderRows(applyFilters());
+          wireSortHandlers();
         };
 
         renderInto(`
@@ -3354,39 +3436,30 @@
             </p>
             <div class="card" style="padding:0;overflow-x:auto;">
               <table class="table">
-                <thead><tr>${headCells}</tr></thead>
-                <tbody id="popia-tbody">
-                  ${rows.length ? renderRows(rows) : `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:1rem;">No contacts or accounts yet.</td></tr>`}
-                </tbody>
+                <thead><tr id="popia-thead-row">${renderHead()}</tr></thead>
+                <tbody id="popia-tbody">${renderRows(rows)}</tbody>
               </table>
             </div>
           </div>
         `);
 
+        wireSortHandlers();
+
         ViewPrefs.attachButton({
           moduleKey: 'popia',
           catalog:   _popiaCatalog,
           current:   _popiaConfig,
-          onChange:  (newCfg) => { _popiaConfig = newCfg; Popia.list(); },
+          onChange:  (newCfg) => { _popiaConfig = newCfg; redraw(); },
         });
 
         document.getElementById('popia-report-btn')?.addEventListener('click', () => Popia._openComplianceReportModal());
 
         // Wire search filter (client-side)
         const searchEl = document.getElementById('popia-search');
-        const tbody    = document.getElementById('popia-tbody');
-        if (searchEl && tbody) {
+        if (searchEl) {
           searchEl.addEventListener('input', () => {
-            const q = (searchEl.value || '').trim().toLowerCase();
-            const filtered = !q ? rows : rows.filter(r => {
-              const hay = [
-                r.display_name, r.first_name, r.last_name, r.account_name,
-                r.email, r.mobile, r.data_processing_basis,
-                r.information_officer_name, r.kind,
-              ].filter(Boolean).join(' ').toLowerCase();
-              return hay.includes(q);
-            });
-            tbody.innerHTML = renderRows(filtered);
+            searchQ = (searchEl.value || '').trim();
+            redraw();
           });
         }
       } catch (err) {
@@ -3901,6 +3974,16 @@
       if (headerActions) {
         headerActions.innerHTML = `<button class="btn btn-secondary btn-sm" id="fica-report-btn">📄 Compliance Report</button>`;
       }
+      const ctrlStyle = 'height:28px;padding:.15rem .4rem;font-size:.78rem;line-height:1;';
+      const headerCenter = document.getElementById('header-center');
+      if (headerCenter) {
+        headerCenter.innerHTML = `
+          <div style="display:flex;gap:.5rem;align-items:center;background:var(--bg);padding:.3rem .55rem;border-radius:6px;">
+            <input type="search" id="fica-search" class="form-control"
+              placeholder="Search…"
+              style="${ctrlStyle}width:200px;">
+          </div>`;
+      }
       renderInto(`<div class="page-wrapper"><div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div></div>`);
       try {
         const [prefs, rows] = await Promise.all([
@@ -3910,9 +3993,94 @@
         _ficaCatalog = prefs.catalog;
         _ficaConfig  = prefs.config;
 
-        const visibleCols = ViewPrefs.visibleColumns(_ficaCatalog, _ficaConfig);
-        const colCount = visibleCols.length || 1;
-        const headCells = visibleCols.map(col => `<th>${esc(col.label)}</th>`).join('');
+        let searchQ = '';
+        let sortBy  = null;
+        let sortDir = 'asc';
+
+        const sortKey = (r, key) => {
+          switch (key) {
+            case 'name':
+              return ((r.display_name || `${r.first_name || ''} ${r.last_name || ''}`).trim()).toLowerCase();
+            case 'sa_id_number':
+              return (r.kind === 'account' ? (r.registration_number || '') : (r.sa_id_number || '')).toLowerCase();
+            default:
+              return String(r[key] ?? '').toLowerCase();
+          }
+        };
+
+        const searchHaystack = (r) => [
+          r.display_name, r.first_name, r.last_name, r.account_name,
+          r.email, r.kind, r.derived_status, r.fica_verification_method,
+          r.fica_verified_by_name, r.fica_pep_check, r.fica_cipc_number,
+          r.sa_id_number, r.registration_number,
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        const applyFilters = () => {
+          let v = rows;
+          if (searchQ) {
+            const q = searchQ.toLowerCase();
+            v = v.filter(r => searchHaystack(r).includes(q));
+          }
+          if (sortBy) {
+            v = [...v].sort((a, b) => {
+              const av = sortKey(a, sortBy);
+              const bv = sortKey(b, sortBy);
+              if (av < bv) return sortDir === 'asc' ? -1 : 1;
+              if (av > bv) return sortDir === 'asc' ?  1 : -1;
+              return 0;
+            });
+          }
+          return v;
+        };
+
+        const renderHead = () => {
+          const visibleCols = ViewPrefs.visibleColumns(_ficaCatalog, _ficaConfig);
+          return visibleCols.map(col => {
+            const sortable = !!col.sortable;
+            const active   = sortBy === col.id;
+            const arrow    = active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+            const cls      = sortable ? `sortable${active ? ' sort-active' : ''}` : '';
+            const style    = sortable ? 'cursor:pointer;user-select:none;' : '';
+            const dataAttr = sortable ? ` data-sort="${esc(col.id)}"` : '';
+            return `<th${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${dataAttr}>${esc(col.label)}${arrow}</th>`;
+          }).join('');
+        };
+
+        const renderRows = (filtered) => {
+          const visibleCols = ViewPrefs.visibleColumns(_ficaCatalog, _ficaConfig);
+          const colCount = visibleCols.length || 1;
+          if (!filtered.length) {
+            return `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:1rem;">${searchQ ? 'No matches.' : 'No contacts yet — add a contact to get started.'}</td></tr>`;
+          }
+          return filtered.map(r => `<tr>${visibleCols.map(col => {
+            const fn = FICA_CELLS[col.id];
+            return `<td${col.id === 'actions' ? ' class="actions-cell"' : ''}>${fn ? fn(r) : esc(String(r[col.id] ?? '—'))}</td>`;
+          }).join('')}</tr>`).join('');
+        };
+
+        const wireSortHandlers = () => {
+          document.querySelectorAll('#fica-thead-row th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+              const id = th.dataset.sort;
+              if (!id) return;
+              if (sortBy === id) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+              } else {
+                sortBy = id;
+                sortDir = 'asc';
+              }
+              redraw();
+            });
+          });
+        };
+
+        const redraw = () => {
+          const theadRow = document.getElementById('fica-thead-row');
+          const tbodyEl  = document.getElementById('fica-tbody');
+          if (theadRow) theadRow.innerHTML = renderHead();
+          if (tbodyEl)  tbodyEl.innerHTML  = renderRows(applyFilters());
+          wireSortHandlers();
+        };
 
         renderInto(`
           <div class="page-wrapper">
@@ -3921,26 +4089,31 @@
             </p>
             <div class="card" style="padding:0;overflow-x:auto;">
               <table class="table">
-                <thead><tr>${headCells}</tr></thead>
-                <tbody id="fica-tbody">
-                  ${rows.length ? rows.map(r => `<tr>${visibleCols.map(col => {
-                    const fn = FICA_CELLS[col.id];
-                    return `<td${col.id === 'actions' ? ' class="actions-cell"' : ''}>${fn ? fn(r) : esc(String(r[col.id] ?? '—'))}</td>`;
-                  }).join('')}</tr>`).join('') : `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:1rem;">No contacts yet — add a contact to get started.</td></tr>`}
-                </tbody>
+                <thead><tr id="fica-thead-row">${renderHead()}</tr></thead>
+                <tbody id="fica-tbody">${renderRows(rows)}</tbody>
               </table>
             </div>
           </div>
         `);
 
+        wireSortHandlers();
+
         ViewPrefs.attachButton({
           moduleKey: 'fica',
           catalog:   _ficaCatalog,
           current:   _ficaConfig,
-          onChange:  (newCfg) => { _ficaConfig = newCfg; Fica.list(); },
+          onChange:  (newCfg) => { _ficaConfig = newCfg; redraw(); },
         });
 
         document.getElementById('fica-report-btn')?.addEventListener('click', () => Fica._openComplianceReportModal());
+
+        const searchEl = document.getElementById('fica-search');
+        if (searchEl) {
+          searchEl.addEventListener('input', () => {
+            searchQ = (searchEl.value || '').trim();
+            redraw();
+          });
+        }
       } catch (err) {
         renderInto(`<div class="alert alert-danger">${esc(err.message)}</div>`);
       }

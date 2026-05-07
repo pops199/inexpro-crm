@@ -1159,7 +1159,12 @@ function makeSearchable(nameOrEl) {
   const sel = typeof nameOrEl === 'string'
     ? document.querySelector(`select[name="${nameOrEl}"]`)
     : nameOrEl;
-  if (!sel || sel.dataset.searchable) return;
+  if (!sel) return;
+  if (sel.dataset.searchable) {
+    // Already wrapped — just resync to the current value/options
+    if (typeof sel._searchableSync === 'function') sel._searchableSync();
+    return;
+  }
   sel.dataset.searchable = '1';
 
   const allOptions = Array.from(sel.options)
@@ -1238,6 +1243,19 @@ function makeSearchable(nameOrEl) {
       input.blur();
     }
   });
+
+  // Resync the wrapper to the underlying <select>. Callers must invoke this
+  // after any programmatic change to sel.value or sel.innerHTML, since the
+  // option cache and visible text are otherwise frozen at first wrap.
+  sel._searchableSync = function() {
+    const fresh = Array.from(sel.options)
+      .filter(o => o.value)
+      .map(o => ({ value: o.value, text: o.textContent }));
+    allOptions.length = 0;
+    fresh.forEach(o => allOptions.push(o));
+    const current = allOptions.find(o => o.value === sel.value);
+    input.value = current ? current.text : '';
+  };
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

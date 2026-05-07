@@ -4,7 +4,7 @@ const { requireAuth, canDelete, getBrokerId } = require('../middleware/auth');
 const { resolveSort } = require('./view-prefs');
 const { isFicaRecordComplete, computeFicaStatus } = require('./fica');
 const { computePopiaStatus } = require('./popia');
-const { isSupplierContact } = require('../lib/supplier');
+const { isSupplierContact, isSupplierSql } = require('../lib/supplier');
 const { encrypt, decrypt, mask, isEncrypted, redactForAudit } = require('../lib/crypto');
 
 /**
@@ -116,10 +116,11 @@ router.get('/', (req, res) => {
   const conditions = [];
   const params     = [];
 
-  // Broker isolation: brokers can only see their own contacts
+  // Broker isolation: brokers see their own contacts plus all suppliers
+  // (shared infrastructure — panel-beaters, assessors, service providers).
   const scopedBrokerId = getBrokerId(req);
   if (scopedBrokerId) {
-    conditions.push('c.assigned_broker_id = ?');
+    conditions.push(`(c.assigned_broker_id = ? OR ${isSupplierSql('c')})`);
     params.push(scopedBrokerId);
   } else if (broker_id) {
     conditions.push('c.assigned_broker_id = ?');
@@ -215,9 +216,12 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ error: 'Contact not found' });
   }
 
-  // Broker isolation: brokers can only view their own contacts
+  // Broker isolation: brokers can only view their own contacts, except
+  // supplier contacts which are shared infrastructure visible to all.
   const scopedBrokerId = getBrokerId(req);
-  if (scopedBrokerId && contact.assigned_broker_id !== scopedBrokerId) {
+  if (scopedBrokerId
+      && contact.assigned_broker_id !== scopedBrokerId
+      && !isSupplierContact(contact)) {
     return res.status(403).json({ error: 'Access denied' });
   }
 

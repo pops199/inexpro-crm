@@ -6,6 +6,47 @@ sits at the top.
 
 ---
 
+## v1.0.39 — 2026-05-07
+
+**POPIA + FICA search & sortable columns · supplier visibility · claim form cross-filter & auto-fill**
+
+- **POPIA / FICA modules**
+  - Search box now lives in the top header, centred, styled to match the
+    Assets module (same `height:28px;font-size:.78rem;width:200px;` pill).
+    FICA gains a search box (it had none); POPIA's wider 340px input was
+    replaced.
+  - Every non-`actions` column is now sortable. Click a header to toggle
+    asc/desc with ▲/▼. The encrypted `fica_document_reference` column is
+    deliberately left non-sortable (sorting on ciphertext is meaningless).
+  - Catalog flags in `view-prefs.js` flipped to `sortable: true` to match.
+- **Supplier visibility (cross-broker)**
+  - Supplier contacts (`contact_type = 'Supplier' AND client_category =
+    'Supplier'`) are now visible to every broker regardless of who owns
+    them. Suppliers are shared infrastructure — panel-beaters, assessors,
+    service providers — and brokers need to be able to pick them as the
+    Contact on a claim or in a related-contacts row.
+  - `GET /api/contacts` broker-isolation predicate widened to
+    `(assigned_broker_id = ? OR is-supplier)`. `GET /api/contacts/:id` 403
+    check bypassed for suppliers.
+  - **Edit / Delete** on a supplier still gates on broker ownership — only
+    the assigned broker can change supplier contact details. POPIA / FICA
+    / TCF dashboards continue to exclude suppliers (they're not data
+    subjects).
+- **Claim form cross-filter & auto-fill**
+  - Selecting **Policy / Contact / Account** narrows the **Asset**
+    dropdown to assets that match all selections. Selecting **Asset**
+    auto-fills Policy + Account/Contact based on the asset's links and
+    re-narrows the dropdowns.
+  - Opening the form from `?policy_id=X` (Policy → Claims tab),
+    `?account_id=X`, `?contact_id=X`, or `?asset_id=X` (Asset → Claims
+    tab) now correctly prefills every related field.
+  - **Bug fix:** `makeSearchable` in `utils.js` froze its option cache
+    and visible text on first wrap, so programmatic `sel.value =` and
+    `sel.innerHTML =` updates from the cross-filter logic were invisible
+    on screen. Added `sel._searchableSync()` that rebuilds the option
+    cache and rewrites the visible input text. Cross-filter calls sync
+    after every mutation.
+
 ## v1.0.38 — 2026-05-07
 
 **Pagination fix: dropdowns no longer truncate at 25 records · new asset type "Speciality" · two new policy sections**

@@ -1235,3 +1235,54 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-07 18:08 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-07 18:15 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/compliance.js`
+- `server/db/sessions.db`
+- `server/routes/view-prefs.js`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-07 18:26 — auto-detected change
+Files changed: 6
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/supplier.js`
+- `server/routes/contacts.js`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-07 18:36 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-07 18:41 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `client/src/utils.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: cf0b69e0-c21b-47b5-84df-b0d84410efe0
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
