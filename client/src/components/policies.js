@@ -1571,7 +1571,7 @@ const Policies = (() => {
 
           <!-- Commission Missing Banner -->
           ${d.commission_entry_missing ? `
-          <div class="alert alert-danger" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.75rem 1rem;margin-bottom:1rem;">
+          <div id="commission-missing-banner" class="alert alert-danger" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.75rem 1rem;margin-bottom:1rem;">
             <div>
               <strong>⚠ Commission entry missing</strong> — No commission has been logged for this policy yet.
               Please record the commission type, rate, and arrangement.
@@ -2358,8 +2358,11 @@ const Policies = (() => {
                   <textarea class="form-control" name="notes" rows="2">${esc(entry.notes || '')}</textarea>
                 </div>
               </form>`;
-            _openModal(isEdit ? 'Edit Commission Entry' : 'Add Commission Entry', body,
-              `<button class="btn btn-primary" id="save-cl-btn">${isEdit ? 'Update' : 'Save'}</button>`);
+            const footerBtns = isEdit
+              ? `<button class="btn btn-primary" id="save-cl-btn">Update</button>`
+              : `<button class="btn btn-secondary" id="add-more-cl-btn" style="margin-right:auto;">+ Add More</button>
+                 <button class="btn btn-primary" id="save-cl-btn">Save</button>`;
+            _openModal(isEdit ? 'Edit Commission Entry' : 'Add Commission Entry', body, footerBtns);
 
             // ── R / % toggle wiring ──
             let rateMode = initialMode;
@@ -2428,7 +2431,7 @@ const Policies = (() => {
               otherChk.addEventListener('change', sync);
             }
 
-            document.getElementById('save-cl-btn').addEventListener('click', async () => {
+            async function performSave({ keepOpen }) {
               syncHidden();
               const form = document.getElementById('cl-modal-form');
               const fd = new FormData(form);
@@ -2448,11 +2451,25 @@ const Policies = (() => {
               try {
                 if (isEdit) await Api.commissionLog.update(entry.id, payload);
                 else        await Api.commissionLog.create(payload);
-                _closeModal();
                 showToast(isEdit ? 'Commission entry updated.' : 'Commission entry added.', 'success');
+                // The "Commission entry missing" banner above the tabs is rendered
+                // from a server-computed flag at detail-load time; clear it now
+                // that an entry exists so the broker doesn't see a stale warning.
+                document.getElementById('commission-missing-banner')?.remove();
                 loadPolicyTab(policyId, 'commission');
+                if (keepOpen) {
+                  // Reset for the next entry without tearing down the modal.
+                  form.reset();
+                  applyRateMode('%');                 // also clears rateInput + syncs hidden fields
+                  if (otherWrap) otherWrap.style.display = 'none';
+                  if (typeSel) typeSel.focus();
+                } else {
+                  _closeModal();
+                }
               } catch (err) { showToast(err.message, 'error'); }
-            });
+            }
+            document.getElementById('save-cl-btn').addEventListener('click', () => performSave({ keepOpen: false }));
+            document.getElementById('add-more-cl-btn')?.addEventListener('click', () => performSave({ keepOpen: true }));
           }
 
           document.getElementById('add-commission-btn').addEventListener('click', () => openCommissionModal());

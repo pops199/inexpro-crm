@@ -6,6 +6,27 @@ sits at the top.
 
 ---
 
+## v1.0.41 — 2026-05-07
+
+**Commission modal: + Add More button & stale-banner fix**
+
+- **+ Add More button** added to the Commission Entry popup (Add mode
+  only — hidden when editing). Positioned on the far left of the modal
+  footer via `margin-right:auto`, with Save and Close clustered on the
+  right. Click saves the current entry, refreshes the commission table
+  behind the modal, then resets the form (R/% toggle back to %, "Other"
+  business-class panel collapsed) and re-focuses the Commission Type
+  dropdown so the broker can keep entering rows without re-opening the
+  popup.
+- Both **Save** and **+ Add More** share a single `performSave({
+  keepOpen })` function so the create/update path stays consistent.
+- **Bug fix:** the red "Commission entry missing" banner above the tabs
+  was rendered from a server-computed flag at detail-load time and never
+  updated after the first save — so the warning lingered even though
+  the entry was visible in the Commission table. The save handler now
+  removes the banner from the DOM as soon as a commission entry is
+  successfully created or updated.
+
 ## v1.0.40 — 2026-05-07
 
 **Fresh-policy save → Commission Entry modal pops automatically**
