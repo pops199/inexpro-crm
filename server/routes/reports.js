@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { requireAuth, getBrokerId } = require('../middleware/auth');
 const { getDb } = require('../db/database');
+const { decrypt, mask } = require('../lib/crypto');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createObjectCsvWriter } = require('csv-writer');
 const PDFDocument = require('pdfkit');
@@ -77,6 +78,11 @@ const PREDEFINED_REPORTS = [
     key: 'broker_fitness',
     name: 'Broker Fitness Report',
     description: 'Per-broker activity summary: active clients, policies, advice records, claims, complaints, conduct flags, and overdue reviews.',
+  },
+  {
+    key: 'broker_cpd_report',
+    name: 'Broker CPD Activity Report',
+    description: 'Every CPD activity recorded against each broker — certificate title, points awarded, activity date, CPD cycle — alongside broker profile context (FSCA registration, qualification, RE1/RE5, Class of Business, good-standing status). Filterable by activity date and broker.',
   },
   {
     key: 'claims_report',
@@ -1087,6 +1093,74 @@ function runPredefinedQuery(key, { date_from, date_to, broker_id } = {}) {
         ${where}
         ORDER BY u.full_name ASC
       `).all(...params);
+    }
+
+    case 'broker_cpd_report': {
+      const conditions = [];
+      const params = [];
+      if (date_from) { conditions.push('ca.activity_date >= ?'); params.push(date_from); }
+      if (date_to)   { conditions.push('ca.activity_date <= ?'); params.push(date_to); }
+      if (broker_id) { conditions.push('u.id = ?');              params.push(broker_id); }
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const rows = db.prepare(`
+        SELECT
+          u.id                          AS broker_id,
+          u.full_name                   AS broker_name,
+          u.username                    AS broker_username,
+          u.email                       AS broker_email,
+          u.role                        AS broker_role,
+          u.active                      AS broker_active,
+          bp.id_number                  AS id_number_enc,
+          bp.fsca_registration_number,
+          bp.appointment_date,
+          bp.categories_authorised,
+          bp.qualification_name,
+          bp.qualification_nqf_level,
+          bp.qualification_provider,
+          bp.re1_status,
+          bp.re1_pass_date,
+          bp.re5_status,
+          bp.re5_pass_date,
+          bp.re5_deadline,
+          bp.cob_personal_lines,
+          bp.cob_personal_lines_date,
+          bp.cob_commercial_lines,
+          bp.cob_commercial_lines_date,
+          bp.cob_deadline,
+          bp.good_standing_status,
+          bp.debarment_date,
+          bp.debarment_reason,
+          ca.id                         AS cpd_activity_id,
+          ca.activity_date,
+          ca.activity_type,
+          ca.activity_provider,
+          ca.activity_title,
+          ca.points_awarded             AS cpd_points_earned,
+          ca.cpd_cycle,
+          ca.certificate_path,
+          ca.notes                      AS cpd_notes
+        FROM cpd_activities ca
+        JOIN broker_profiles bp ON ca.broker_profile_id = bp.id
+        JOIN users           u  ON bp.user_id           = u.id
+        ${where}
+        ORDER BY u.full_name ASC, ca.activity_date DESC
+      `).all(...params);
+
+      // Decrypt id_number per row (stored as AES-GCM ciphertext). Surface both
+      // the full plain value (for the CPD register layout, which mirrors the
+      // FSCA-style printed register and shows full IDs) and a masked form.
+      // certificate_present is a Yes/No convenience for the register's
+      // "Certificate" column — true when an evidence path is set.
+      return rows.map(r => {
+        const plain = r.id_number_enc ? (decrypt(r.id_number_enc) || '') : '';
+        const { id_number_enc, ...rest } = r;
+        return {
+          ...rest,
+          id_number:           plain || null,
+          id_number_masked:    plain ? mask(plain) : null,
+          certificate_present: r.certificate_path ? 'Yes' : 'No',
+        };
+      });
     }
 
     case 'claims_report': {

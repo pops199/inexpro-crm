@@ -6,6 +6,32 @@ sits at the top.
 
 ---
 
+## v1.0.44 — 2026-05-14
+
+**Broker CPD register · default-broker filters · Assets pagination + search**
+
+- **New report — Broker CPD Activity Report.** Predefined report rendering an
+  FSCA-style CPD register: per broker a `Surname / Name / ID Number /
+  Current CPD Cycle / CPD Required / CPD Outstanding / Compliant` header
+  block, followed by an `Activity / CPD Provider / Reference No / Date /
+  Certificate / CPD Hours` table. ID numbers are decrypted server-side;
+  packed `activity_title` strings are split into one line per sub-activity
+  using the embedded reference (FPI / EVT formats with whitespace-tolerant
+  matching). Print and Excel export from the report window.
+- **Default broker filter for admins** now also applies to **Policies**,
+  **Claims**, and **Accounts** (matching the Contacts behaviour shipped in
+  v1.0.43). Admins land on their own book; the dropdown still allows
+  picking another broker and the Clear button shows All Brokers.
+- **Assets — pagination.** Switched from a single 200-row pull to true
+  server pagination (50 per page) with Prev / Next controls and a "Page X
+  of Y · N assets" footer; filter changes reset to page 1.
+- **Assets — search fix.** Client previously sent `q=` while the server
+  expected `search=`, so search silently fell back to JS-filtering the
+  first 200 rows. Search now goes server-side and matches across
+  `asset_name`, `registration_number`, `vin_number`, `serial_number`,
+  `make`, `model`, **contact first/last name**, **account name**, and
+  **policy name / number**.
+
 ## v1.0.43 — 2026-05-07
 
 **Contacts list: admins default to "my contacts"**

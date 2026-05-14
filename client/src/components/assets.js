@@ -384,6 +384,24 @@ const Assets = (() => {
   let _assetCatalog = null;
   let _assetConfig  = null;
 
+  // Render the pagination footer for the assets list.
+  function paginationHtml(page, pages, total) {
+    if (pages <= 1 && !total) return '';
+    const prev = page > 1
+      ? `<button class="btn btn-sm btn-outline" data-page="${page - 1}">← Prev</button>`
+      : `<button class="btn btn-sm btn-outline" disabled>← Prev</button>`;
+    const next = page < pages
+      ? `<button class="btn btn-sm btn-outline" data-page="${page + 1}">Next →</button>`
+      : `<button class="btn btn-sm btn-outline" disabled>Next →</button>`;
+    const totalLabel = total ? ` · ${total} asset${total !== 1 ? 's' : ''}` : '';
+    return `
+      <div class="pagination" style="display:flex;align-items:center;gap:.5rem;justify-content:center;padding:.6rem 0;">
+        ${prev}
+        <span class="pagination-info">Page ${page} of ${Math.max(pages, 1)}${totalLabel}</span>
+        ${next}
+      </div>`;
+  }
+
   async function list() {
     const el = document.getElementById('content-area');
     el.innerHTML = `<div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>`;
@@ -403,17 +421,37 @@ const Assets = (() => {
       _assetCatalog = prefs.catalog;
       _assetConfig  = prefs.config;
 
-      const res = await Api.assets.list({
-        ...filters,
-        limit: 200,
-        sort: _assetConfig.sortBy,
-        dir:  _assetConfig.sortDir,
-      });
-      const assets = res.data || res || [];
+      // Local state — mutated by filter widgets and pagination clicks; survives
+      // for the lifetime of this list() invocation.
+      const state = {
+        // Accept either `search` (current) or legacy `q` from hash for back-compat.
+        search:     filters.search || filters.q || '',
+        asset_type: filters.asset_type || '',
+        status:     filters.status || '',
+        page:       parseInt(filters.page, 10) || 1,
+      };
 
-      const typeFilter    = filters.asset_type || '';
-      const statusFilter  = filters.status || '';
-      const searchFilter  = filters.q          || '';
+      const PAGE_SIZE = 50;
+
+      function buildListParams() {
+        const p = {
+          limit: PAGE_SIZE,
+          page:  state.page,
+          sort:  _assetConfig.sortBy,
+          dir:   _assetConfig.sortDir,
+        };
+        // NB: server expects `search` (not `q`) — sending `q` previously made
+        // search a no-op on the server and silently clipped results to the
+        // first page of unfiltered rows.
+        if (state.search)     p.search     = state.search;
+        if (state.asset_type) p.asset_type = state.asset_type;
+        if (state.status)     p.status     = state.status;
+        return p;
+      }
+
+      const initialRes = await Api.assets.list(buildListParams());
+      const initialAssets = initialRes.data || [];
+      const initialPg = initialRes.pagination || { page: state.page, pages: 1, total: initialAssets.length };
 
       const visibleCols = ViewPrefs.visibleColumns(_assetCatalog, _assetConfig);
       const colCount = visibleCols.length || 1;
@@ -440,6 +478,7 @@ const Assets = (() => {
                 </tbody>
               </table>
             </div>
+            <div id="asset-pagination"></div>
           </div>
         </div>
       `;
@@ -454,15 +493,15 @@ const Assets = (() => {
         wrap.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:.5rem;align-items:center;z-index:2;background:var(--bg);padding:.3rem .55rem;border-radius:6px;';
         wrap.innerHTML = `
           <input type="search" id="asset-search" class="form-control" placeholder="Search…"
-            value="${esc(searchFilter)}"
+            value="${esc(state.search)}"
             style="${ctrlStyle}width:160px;">
           <select id="asset-filter-type" class="form-control" style="${ctrlStyle}max-width:140px;">
             <option value="">Type</option>
-            ${ASSET_TYPES.map(t => `<option value="${esc(t)}" ${typeFilter === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+            ${ASSET_TYPES.map(t => `<option value="${esc(t)}" ${state.asset_type === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
           </select>
           <select id="asset-filter-status" class="form-control" style="${ctrlStyle}max-width:140px;">
             <option value="">Status</option>
-            ${ASSET_STATUSES.map(s => `<option value="${esc(s)}" ${statusFilter === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+            ${ASSET_STATUSES.map(s => `<option value="${esc(s)}" ${state.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
           </select>
           <button id="asset-filter-clear" class="btn btn-secondary" style="${ctrlStyle}">Clear</button>`;
         topHeader.appendChild(wrap);
@@ -476,8 +515,33 @@ const Assets = (() => {
         onChange:  (newCfg) => { _assetConfig = newCfg; list(); },
       });
 
-      renderTableRows(assets, searchFilter);
-      bindFilterEvents();
+      function renderPagination(pg) {
+        const root = document.getElementById('asset-pagination');
+        if (!root) return;
+        root.innerHTML = paginationHtml(pg.page || 1, pg.pages || 1, pg.total || 0);
+        root.querySelectorAll('[data-page]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.page = parseInt(btn.dataset.page, 10) || 1;
+            reload();
+          });
+        });
+      }
+
+      async function reload() {
+        try {
+          const res = await Api.assets.list(buildListParams());
+          const rows = res.data || [];
+          const pg = res.pagination || { page: state.page, pages: 1, total: rows.length };
+          renderTableRows(rows);
+          renderPagination(pg);
+        } catch (err) {
+          showToast('Filter error: ' + err.message, 'error');
+        }
+      }
+
+      renderTableRows(initialAssets);
+      renderPagination(initialPg);
+      bindFilterEvents(state, reload);
 
       el.querySelectorAll('#asset-thead-row th.sortable').forEach(th => {
         th.addEventListener('click', async () => {
@@ -498,31 +562,21 @@ const Assets = (() => {
     }
   }
 
-  function renderTableRows(assets, search) {
+  // Server already applies the search + filters, so this only paints what the
+  // server returned (no client-side narrowing — that previously hid rows from
+  // pages 2+ during search).
+  function renderTableRows(assets) {
     const tbody = document.getElementById('asset-tbody');
     if (!tbody) return;
     const visibleCols = _assetCatalog ? ViewPrefs.visibleColumns(_assetCatalog, _assetConfig) : [];
     const colCount = visibleCols.length || 1;
 
-    let rows = assets;
-    if (search) {
-      const q = search.toLowerCase();
-      rows = rows.filter(a =>
-        (a.asset_name          || '').toLowerCase().includes(q) ||
-        (a.registration_number || '').toLowerCase().includes(q) ||
-        (a.make                || '').toLowerCase().includes(q) ||
-        (a.model               || '').toLowerCase().includes(q) ||
-        (a.contact_name        || '').toLowerCase().includes(q) ||
-        (a.account_name        || '').toLowerCase().includes(q)
-      );
-    }
-
-    if (!rows.length) {
+    if (!assets.length) {
       tbody.innerHTML = `<tr><td colspan="${colCount}" class="table-empty">No assets found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = rows.map(a => `<tr>${visibleCols.map(col => {
+    tbody.innerHTML = assets.map(a => `<tr>${visibleCols.map(col => {
       const fn = ASSET_CELLS[col.id];
       return `<td${col.id === 'actions' ? ' class="actions-cell"' : ''}>${fn ? fn(a) : esc(String(a[col.id] ?? '—'))}</td>`;
     }).join('')}</tr>`).join('');
@@ -543,36 +597,33 @@ const Assets = (() => {
     });
   }
 
-  function bindFilterEvents() {
+  function bindFilterEvents(state, reload) {
     const searchEl  = document.getElementById('asset-search');
     const typeEl    = document.getElementById('asset-filter-type');
     const statusEl  = document.getElementById('asset-filter-status');
     const clearEl   = document.getElementById('asset-filter-clear');
 
-    const applyFilters = debounce(async () => {
-      const params = {};
-      if (searchEl.value.trim()) params.q          = searchEl.value.trim();
-      if (typeEl.value)          params.asset_type  = typeEl.value;
-      if (statusEl.value)        params.status      = statusEl.value;
-      if (_assetConfig) { params.sort = _assetConfig.sortBy; params.dir = _assetConfig.sortDir; }
-      try {
-        const res = await Api.assets.list({ ...params, limit: 200 });
-        renderTableRows(res.data || res || [], params.q || '');
-      } catch (err) {
-        showToast('Filter error: ' + err.message, 'error');
-      }
+    // Any filter change jumps back to page 1 so the user actually sees the
+    // matching rows (otherwise a search from page 3 would land on a now-empty
+    // page).
+    const apply = debounce(() => {
+      state.search     = searchEl ? searchEl.value.trim() : '';
+      state.asset_type = typeEl   ? typeEl.value          : '';
+      state.status     = statusEl ? statusEl.value        : '';
+      state.page = 1;
+      reload();
     }, 350);
 
-    if (searchEl) searchEl.addEventListener('input', applyFilters);
-    if (typeEl)   typeEl.addEventListener('change', applyFilters);
-    if (statusEl) statusEl.addEventListener('change', applyFilters);
+    if (searchEl) searchEl.addEventListener('input', apply);
+    if (typeEl)   typeEl.addEventListener('change', apply);
+    if (statusEl) statusEl.addEventListener('change', apply);
 
     if (clearEl) {
       clearEl.addEventListener('click', () => {
         if (searchEl) searchEl.value = '';
         if (typeEl)   typeEl.value   = '';
         if (statusEl) statusEl.value = '';
-        applyFilters();
+        apply();
       });
     }
   }

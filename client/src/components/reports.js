@@ -638,9 +638,333 @@ const Reports = (() => {
     });
   }
 
+  // ── CPD Register helpers ─────────────────────────────────────────────────
+
+  // Convert "YYYY-MM – YYYY-MM" stored cycle to "01/06/YYYY – 31/05/YYYY".
+  function _cpdCycleDmy(cycle) {
+    if (!cycle) return '';
+    const m = String(cycle).match(/(\d{4})-(\d{2})\s*[–-]\s*(\d{4})-(\d{2})/);
+    if (!m) return cycle;
+    return `01/${m[2]}/${m[1]} – 31/${m[4]}/${m[3]}`;
+  }
+
+  // Format ISO date "2024-09-19" → "19 September 2024".
+  function _formatLongDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // Compute the current CPD cycle for today (1 June → 31 May).
+  function _currentCpdCycle() {
+    const now = new Date();
+    const startYear = (now.getMonth() + 1 >= 6) ? now.getFullYear() : now.getFullYear() - 1;
+    return `${startYear}-06 – ${startYear + 1}-05`;
+  }
+
+  // Split a stored `activity_title` (which packs multiple sub-activities,
+  // each followed by " - REF") into the list of sub-titles plus the reference.
+  // Recognises FPI<digits> and EVT-<digits>-<digits> reference forms.
+  // Build a TOLERANT split pattern so variants like "EVT-20240605-0015" vs
+  // "EVT- 20240605-0015" vs "EVT 20240605 0015" all split on the same logical
+  // reference. Falls back to the whole string when no reference is detected.
+  function _parseCpdActivityTitle(raw) {
+    if (!raw) return { reference: '', items: [] };
+    const refRe = /(FPI\d{6,}|EVT[\s-]*\d{4,}[\s-]*\d{0,6})/i;
+    const refMatch = raw.match(refRe);
+    if (!refMatch) return { reference: '', items: [String(raw).trim()] };
+    const ref = refMatch[0];
+    const prefixMatch = ref.match(/^([A-Za-z]+)/);
+    const prefix = prefixMatch ? prefixMatch[1] : '';
+    const digitGroups = ref.replace(/^[A-Za-z]+/, '').split(/[\s-]+/).filter(Boolean);
+    const fuzzyRef = prefix + digitGroups.map(g => '[\\s-]*' + g).join('');
+    const splitRe = new RegExp('\\s*[-–]\\s*' + fuzzyRef + '\\s*', 'gi');
+    const items = String(raw)
+      .split(splitRe)
+      .map(s => s.replace(/^[\s\-–]+|[\s\-–]+$/g, '').trim())
+      .filter(Boolean);
+    return { reference: ref.replace(/\s+/g, ''), items };
+  }
+
+  // Render the FSCA-style per-broker CPD register pop-up window. Each broker
+  // gets a one-row "Surname / Name / ID / Cycle / Required / Outstanding /
+  // Compliant" header table followed by an Activity table whose Activity cell
+  // breaks the stored title into one line per sub-activity.
+  function _openCpdRegisterWindow(title, rows, dateFrom, dateTo) {
+    // Group rows by broker_id, preserving SQL order (full_name ASC, then date DESC).
+    const groups = new Map();
+    rows.forEach(r => {
+      const key = String(r.broker_id);
+      if (!groups.has(key)) groups.set(key, { broker: r, activities: [] });
+      groups.get(key).activities.push(r);
+    });
+
+    const currentCycle = _currentCpdCycle();
+    const subtitle = [dateFrom, dateTo].filter(Boolean).join(' → ') || 'All Dates';
+
+    // Build per-broker sections.
+    const sections = Array.from(groups.values()).map(({ broker, activities }) => {
+      const fullName = broker.broker_name || '';
+      const parts   = fullName.split(/\s+/);
+      const surname = parts.length > 1 ? parts.slice(-1).join('') : fullName;
+      const given   = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+      const idNum   = broker.id_number || '';
+
+      // Use this broker's most recently filed cycle if available, otherwise today's cycle.
+      const cycle = activities.find(a => a.cpd_cycle)?.cpd_cycle || currentCycle;
+      const cycleDisplay = _cpdCycleDmy(cycle);
+
+      const required = 18;
+      const earned = activities
+        .filter(a => a.cpd_cycle === cycle)
+        .reduce((sum, a) => sum + (Number(a.cpd_points_earned) || 0), 0);
+      const outstanding = Math.max(0, required - earned);
+      const compliant = outstanding === 0 ? 'Yes' : 'No';
+
+      const summaryTable = `
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Surname</th><th>Name</th><th>ID Number</th>
+              <th>Current CPD Cycle</th>
+              <th>CPD Required</th><th>CPD Outstanding</th><th>Compliant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${esc(surname)}</td>
+              <td>${esc(given)}</td>
+              <td>${esc(idNum) || '—'}</td>
+              <td>${esc(cycleDisplay)}</td>
+              <td>${required.toFixed(1)}</td>
+              <td>${outstanding === Math.floor(outstanding) ? outstanding : outstanding.toFixed(1)}</td>
+              <td>${compliant}</td>
+            </tr>
+          </tbody>
+        </table>`;
+
+      const activityRows = activities.map(a => {
+        const parsed = _parseCpdActivityTitle(a.activity_title);
+        const activityCell = parsed.items.length
+          ? parsed.items.map(it => `<div>${esc(it)}</div>`).join('')
+          : '—';
+        const reference = parsed.reference || '—';
+        const cert = a.certificate_present || (a.certificate_path ? 'Yes' : 'No');
+        const pts = Number(a.cpd_points_earned);
+        const ptsDisplay = Number.isFinite(pts)
+          ? (pts === Math.floor(pts) ? String(pts) : pts.toFixed(1))
+          : '—';
+        return `
+          <tr>
+            <td class="activity-cell">${activityCell}</td>
+            <td>${esc(a.activity_provider || '—')}</td>
+            <td>${esc(reference)}</td>
+            <td class="nowrap">${esc(_formatLongDate(a.activity_date))}</td>
+            <td>${esc(cert)}</td>
+            <td class="points-cell">${ptsDisplay}</td>
+          </tr>`;
+      }).join('');
+
+      const activitiesTable = activities.length
+        ? `
+          <table class="activity-table">
+            <thead>
+              <tr>
+                <th>Activity</th><th>CPD Provider</th><th>Reference No</th>
+                <th>Date Completed</th><th>Certificate</th><th>CPD Hours</th>
+              </tr>
+            </thead>
+            <tbody>${activityRows}</tbody>
+          </table>`
+        : `<p class="no-activities">No CPD activities recorded for this broker in the selected period.</p>`;
+
+      return `
+        <section class="broker-section">
+          <h2 class="section-title">CONTINUOUS PROFESSIONAL DEVELOPMENT (CPD) — ${esc(fullName)}</h2>
+          ${summaryTable}
+          ${activitiesTable}
+        </section>`;
+    }).join('');
+
+    // Build an Excel-friendly mirror so the .xls export retains the layout.
+    const escXml = s => String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const xlsSections = Array.from(groups.values()).map(({ broker, activities }) => {
+      const fullName = broker.broker_name || '';
+      const parts   = fullName.split(/\s+/);
+      const surname = parts.length > 1 ? parts.slice(-1).join('') : fullName;
+      const given   = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+      const cycle = activities.find(a => a.cpd_cycle)?.cpd_cycle || currentCycle;
+      const cycleDisplay = _cpdCycleDmy(cycle);
+      const required = 18;
+      const earned = activities.filter(a => a.cpd_cycle === cycle)
+        .reduce((sum, a) => sum + (Number(a.cpd_points_earned) || 0), 0);
+      const outstanding = Math.max(0, required - earned);
+      const compliant = outstanding === 0 ? 'Yes' : 'No';
+      const summary = `
+        <h3>CONTINUOUS PROFESSIONAL DEVELOPMENT (CPD) — ${escXml(fullName)}</h3>
+        <table border="1" style="border-collapse:collapse;font-family:Arial;font-size:11pt;margin-bottom:10px;">
+          <tr style="background:#2980b9;color:#fff;">
+            <th>Surname</th><th>Name</th><th>ID Number</th>
+            <th>Current CPD Cycle</th><th>CPD Required</th><th>CPD Outstanding</th><th>Compliant</th>
+          </tr>
+          <tr>
+            <td>${escXml(surname)}</td>
+            <td>${escXml(given)}</td>
+            <td>${escXml(broker.id_number || '')}</td>
+            <td>${escXml(cycleDisplay)}</td>
+            <td>${required.toFixed(1)}</td>
+            <td>${outstanding === Math.floor(outstanding) ? outstanding : outstanding.toFixed(1)}</td>
+            <td>${compliant}</td>
+          </tr>
+        </table>`;
+      const actRows = activities.map(a => {
+        const parsed = _parseCpdActivityTitle(a.activity_title);
+        const activityCell = parsed.items.length
+          ? parsed.items.map(escXml).join('<br/>')
+          : '';
+        const reference = parsed.reference || '';
+        const cert = a.certificate_present || (a.certificate_path ? 'Yes' : 'No');
+        const pts = Number(a.cpd_points_earned);
+        const ptsDisplay = Number.isFinite(pts)
+          ? (pts === Math.floor(pts) ? String(pts) : pts.toFixed(1))
+          : '';
+        return `<tr>
+          <td>${activityCell}</td>
+          <td>${escXml(a.activity_provider || '')}</td>
+          <td>${escXml(reference)}</td>
+          <td>${escXml(_formatLongDate(a.activity_date))}</td>
+          <td>${escXml(cert)}</td>
+          <td style="text-align:right;">${ptsDisplay}</td>
+        </tr>`;
+      }).join('');
+      const actTable = activities.length ? `
+        <table border="1" style="border-collapse:collapse;font-family:Arial;font-size:11pt;margin-bottom:20px;">
+          <tr style="background:#2980b9;color:#fff;">
+            <th>Activity</th><th>CPD Provider</th><th>Reference No</th>
+            <th>Date Completed</th><th>Certificate</th><th>CPD Hours</th>
+          </tr>
+          ${actRows}
+        </table>` : '<p>No CPD activities recorded.</p>';
+      return summary + actTable;
+    }).join('');
+
+    const xlsHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${escXml(title).slice(0,31)}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>td{mso-number-format:"\\@";}</style>
+</head><body>
+<h2>${escXml(title)}</h2>
+<p>Period: ${escXml(subtitle)} | Generated: ${escXml(new Date().toLocaleString())}</p>
+${xlsSections}
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=1280,height=820,menubar=yes,toolbar=yes,scrollbars=yes');
+    if (!win) { showToast('Pop-up blocked — please allow pop-ups for this site.', 'error'); return; }
+
+    win.document.write(`<!DOCTYPE html><html lang="en"><head>
+      <meta charset="UTF-8">
+      <title>${esc(title)}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; color: #222; background: #fff;
+          padding: 28px 32px;
+        }
+        .report-header {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin-bottom: 20px; border-bottom: 2px solid #2980b9; padding-bottom: 14px;
+        }
+        .report-header h1 { font-size: 20px; color: #2980b9; }
+        .report-header .meta { font-size: 11pt; color: #666; margin-top: 6px; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+        .btn {
+          padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;
+          font-size: 12.5px; font-weight: 600; white-space: nowrap;
+        }
+        .btn-primary { background: #2980b9; color: #fff; }
+        .btn-primary:hover { background: #2471a3; }
+        .btn-excel  { background: #1f6e43; color: #fff; }
+        .btn-excel:hover  { background: #185635; }
+        .broker-section { margin-bottom: 32px; page-break-inside: avoid; }
+        .section-title {
+          font-size: 13pt; font-weight: 700; color: #1a1a1a;
+          margin-bottom: 10px; padding: 6px 10px; background: #eaf3fb;
+          border-left: 4px solid #2980b9;
+        }
+        table { border-collapse: collapse; width: 100%; font-size: 10.5pt; }
+        .summary-table, .activity-table {
+          border: 1px solid #999; margin-bottom: 12px;
+        }
+        .summary-table th, .activity-table th {
+          background: #2980b9; color: #fff; padding: 7px 10px;
+          text-align: left; font-weight: 600; border: 1px solid #1f6491;
+        }
+        .summary-table td, .activity-table td {
+          padding: 6px 10px; border: 1px solid #cfd8e0; vertical-align: top;
+        }
+        .activity-table .activity-cell div { margin-bottom: 2px; }
+        .activity-table .activity-cell div:last-child { margin-bottom: 0; }
+        .activity-table .nowrap { white-space: nowrap; }
+        .activity-table .points-cell { text-align: right; font-variant-numeric: tabular-nums; }
+        .no-activities { color: #888; font-style: italic; padding: 6px 0 14px; }
+        @media print {
+          .toolbar { display: none !important; }
+          body { padding: 12px; font-size: 9.5pt; }
+          .section-title { background: #ddd !important; -webkit-print-color-adjust: exact; }
+          th { background: #ddd !important; color: #000 !important; -webkit-print-color-adjust: exact; }
+        }
+      </style>
+    </head><body>
+      <div class="report-header">
+        <div>
+          <h1>${esc(title)}</h1>
+          <div class="meta">Period: ${esc(subtitle)} &nbsp;|&nbsp; Brokers: ${groups.size} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="window.print()">🖨 Print / Save PDF</button>
+        <button class="btn btn-excel"   id="xls-btn">↓ Download Excel</button>
+      </div>
+      ${sections}
+      <script>
+        function _download(blob, filename) {
+          const url = URL.createObjectURL(blob);
+          const a   = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+        document.getElementById('xls-btn').addEventListener('click', function() {
+          const xls = ${JSON.stringify(xlsHtml)};
+          _download(new Blob(['﻿' + xls], { type: 'application/vnd.ms-excel;charset=utf-8;' }),
+                    'cpd-register.xls');
+        });
+      <\/script>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+  }
+
   function _openReportWindow(key, title, rows, dateFrom, dateTo) {
     if (!rows.length) {
       showToast('No data found for the selected filters.', 'warning');
+      return;
+    }
+
+    // The Broker CPD Activity Report mirrors the FSCA-style printed CPD
+    // register: per-broker header block + activity table with multi-line
+    // titles. Hand off to the dedicated renderer before the generic flat-table
+    // path runs.
+    if (key === 'broker_cpd_report') {
+      _openCpdRegisterWindow(title, rows, dateFrom, dateTo);
       return;
     }
 

@@ -110,10 +110,21 @@ const Accounts = (() => {
       _acctCatalog = prefs.catalog;
       _acctConfig  = prefs.config;
 
+      // Default the broker filter to the logged-in admin so they land on
+      // *their own* accounts first — admins can see everyone but the day-to-day
+      // working set is their own book. The Clear button passes broker_id:''
+      // explicitly to override the default and show every broker.
+      // Brokers fall through unchanged (broker-isolated server-side); admin_only
+      // isn't in the broker dropdown so a self-filter would return zero.
+      const isAdmin = window.currentUser?.role === 'admin';
+      const defaultBroker = (isAdmin && params.broker_id === undefined && window.currentUser?.id)
+        ? String(window.currentUser.id)
+        : '';
+
       let state = {
         search:    params.search    || '',
         status:    params.status    || '',
-        broker_id: params.broker_id || '',
+        broker_id: params.broker_id !== undefined ? params.broker_id : defaultBroker,
         page:      params.page      || 1,
         sort:      _acctConfig.sortBy,
         dir:       _acctConfig.sortDir,

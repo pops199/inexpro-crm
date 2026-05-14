@@ -549,3 +549,35 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-07 19:41
 - Modified 3 files
 - Files: client/public/index.html, client/src/components/contacts.js, server/db/sessions.db
+
+## 2026-05-07 19:42
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-14 07:03
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/reports.js
+
+## 2026-05-14 07:16
+- Modified 8 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/assets.js, client/src/components/claims.js, client/src/components/policies.js (+3 more)
+
+## 2026-05-14 07:19
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/assets.js
+
+## 2026-05-14 07:20
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-14 07:31
+- Modified 8 files
+- Files: CPD_Register - Sybil - Steph - Hannes-1.docx, client/public/index.html, client/src/components/reports.js, server/db/inexpro.db, server/db/inexpro.db-shm (+3 more)
+
+## 2026-05-14 07:33
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-14 07:33
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db

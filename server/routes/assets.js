@@ -74,11 +74,25 @@ router.get('/', (req, res) => {
       params.push(status);
     }
     if (search) {
-      conditions.push(
-        '(a.asset_name LIKE ? OR a.registration_number LIKE ? OR a.vin_number LIKE ? OR a.serial_number LIKE ? OR a.make LIKE ? OR a.model LIKE ?)'
-      );
+      // Search spans asset identity fields plus the joined contact / account /
+      // policy context so users can find an asset by client name or policy
+      // number as well as reg/VIN/serial/make/model.
       const like = `%${search}%`;
-      params.push(like, like, like, like, like, like);
+      conditions.push(`(
+        a.asset_name           LIKE ? OR
+        a.registration_number  LIKE ? OR
+        a.vin_number           LIKE ? OR
+        a.serial_number        LIKE ? OR
+        a.make                 LIKE ? OR
+        a.model                LIKE ? OR
+        c.first_name           LIKE ? OR
+        c.last_name            LIKE ? OR
+        (c.first_name || ' ' || c.last_name) LIKE ? OR
+        ac.account_name        LIKE ? OR
+        p.policy_name          LIKE ? OR
+        p.policy_number        LIKE ?
+      )`);
+      params.push(like, like, like, like, like, like, like, like, like, like, like, like);
     }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';

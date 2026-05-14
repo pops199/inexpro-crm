@@ -187,6 +187,16 @@ const Claims = (() => {
 
     const filters = getFiltersFromHash();
 
+    // Default the broker filter to the logged-in admin so they land on
+    // *their own* claims first. The dropdown still lets them pick another
+    // broker, and the Clear button resets the in-page dropdown to All Brokers.
+    // Brokers fall through unchanged (broker-isolated server-side); admin_only
+    // isn't in the broker dropdown so a self-filter would return zero.
+    const isAdmin = window.currentUser?.role === 'admin';
+    if (isAdmin && filters.broker_id === undefined && window.currentUser?.id) {
+      filters.broker_id = String(window.currentUser.id);
+    }
+
     try {
       const prefs = await ViewPrefs.load('claims');
       _claimCatalog = prefs.catalog;
