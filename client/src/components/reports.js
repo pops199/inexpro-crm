@@ -781,11 +781,55 @@ const Reports = (() => {
           </table>`
         : `<p class="no-activities">No CPD activities recorded for this broker in the selected period.</p>`;
 
+      // Build the per-broker Certificate Addendum: one block per linked
+      // certificate file. PDFs are embedded as inline iframes (browsers will
+      // attempt to render them and include them in print output, though
+      // multi-page PDFs may print only their first page — a known browser
+      // limitation we accept here in lieu of server-side PDF merging).
+      const certBlocks = [];
+      activities.forEach(a => {
+        const certs = Array.isArray(a.certificates) ? a.certificates : [];
+        if (!certs.length) return;
+        const parsed = _parseCpdActivityTitle(a.activity_title);
+        const label  = parsed.items[0] || a.activity_provider || `Activity ${a.cpd_activity_id || ''}`;
+        const dateLong = _formatLongDate(a.activity_date);
+        certs.forEach(doc => {
+          const type = (doc.file_type || '').toLowerCase();
+          const url  = doc.view_url || (doc.id ? `/api/documents/${doc.id}/view` : null);
+          if (!url) return;
+          let embed;
+          if (type.startsWith('image/')) {
+            embed = `<img class="cert-image" src="${esc(url)}" alt="${esc(doc.name || 'Certificate')}" />`;
+          } else if (type === 'application/pdf') {
+            // The #toolbar=0 hint hides Chrome's PDF chrome inside the iframe.
+            embed = `<iframe class="cert-pdf" src="${esc(url)}#toolbar=0&amp;navpanes=0" loading="eager"></iframe>`;
+          } else {
+            embed = `<p class="cert-fallback">
+              File type <code>${esc(type || 'unknown')}</code> can't be inlined.
+              <a href="${esc(url)}" target="_blank">Open ${esc(doc.name || 'certificate')} in a new tab</a>.
+            </p>`;
+          }
+          certBlocks.push(`
+            <div class="cert-block">
+              <h4 class="cert-title">${esc(label)} — ${esc(dateLong)}</h4>
+              <p class="cert-meta">${esc(doc.name || '')}</p>
+              ${embed}
+            </div>`);
+        });
+      });
+
+      const addendum = certBlocks.length ? `
+        <section class="cert-addendum">
+          <h3 class="addendum-title">Certificate Addendum — ${esc(fullName)}</h3>
+          ${certBlocks.join('')}
+        </section>` : '';
+
       return `
         <section class="broker-section">
           <h2 class="section-title">CONTINUOUS PROFESSIONAL DEVELOPMENT (CPD) — ${esc(fullName)}</h2>
           ${summaryTable}
           ${activitiesTable}
+          ${addendum}
         </section>`;
     }).join('');
 
@@ -915,11 +959,36 @@ ${xlsSections}
         .activity-table .nowrap { white-space: nowrap; }
         .activity-table .points-cell { text-align: right; font-variant-numeric: tabular-nums; }
         .no-activities { color: #888; font-style: italic; padding: 6px 0 14px; }
+        .cert-addendum {
+          margin-top: 18px; padding-top: 14px; border-top: 1px dashed #b0bec5;
+        }
+        .addendum-title {
+          font-size: 12pt; color: #1f6491; margin-bottom: 12px;
+          text-transform: uppercase; letter-spacing: .04em;
+        }
+        .cert-block {
+          margin-bottom: 22px; padding: 10px 12px;
+          border: 1px solid #cfd8e0; border-radius: 4px; background: #fafbfc;
+          page-break-inside: avoid; break-inside: avoid;
+        }
+        .cert-title {
+          font-size: 11pt; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;
+        }
+        .cert-meta { font-size: 9.5pt; color: #666; margin-bottom: 8px; }
+        .cert-image { display: block; max-width: 100%; height: auto; border: 1px solid #ddd; }
+        .cert-pdf {
+          display: block; width: 100%; height: 820px;
+          border: 1px solid #ddd; background: #fff;
+        }
+        .cert-fallback { font-size: 10pt; color: #555; padding: 8px 0; }
         @media print {
           .toolbar { display: none !important; }
           body { padding: 12px; font-size: 9.5pt; }
           .section-title { background: #ddd !important; -webkit-print-color-adjust: exact; }
           th { background: #ddd !important; color: #000 !important; -webkit-print-color-adjust: exact; }
+          .cert-block { break-before: page; page-break-before: always; }
+          .cert-block:first-of-type { break-before: auto; page-break-before: auto; }
+          .cert-pdf { height: 95vh; }
         }
       </style>
     </head><body>

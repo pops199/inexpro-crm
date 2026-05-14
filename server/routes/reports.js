@@ -1151,6 +1151,32 @@ function runPredefinedQuery(key, { date_from, date_to, broker_id } = {}) {
       // FSCA-style printed register and shows full IDs) and a masked form.
       // certificate_present is a Yes/No convenience for the register's
       // "Certificate" column — true when an evidence path is set.
+
+      // Batch-load every linked certificate document for the activities in this
+      // result set so the CPD register can render a per-broker "Addendum" of
+      // the actual certificate files. Joining documents directly into the
+      // activity SQL would multiply rows when an activity has multiple files;
+      // group them here instead.
+      const activityIds = [...new Set(rows.map(r => r.cpd_activity_id).filter(Boolean))];
+      const docsByActivity = {};
+      if (activityIds.length) {
+        const placeholders = activityIds.map(() => '?').join(',');
+        const docs = db.prepare(`
+          SELECT id, cpd_activity_id, original_name, file_name, file_type
+          FROM documents
+          WHERE cpd_activity_id IN (${placeholders})
+        `).all(...activityIds);
+        docs.forEach(d => {
+          const key = String(d.cpd_activity_id);
+          (docsByActivity[key] = docsByActivity[key] || []).push({
+            id:        d.id,
+            name:      d.original_name || d.file_name,
+            file_type: d.file_type,
+            view_url:  `/api/documents/${d.id}/view`,
+          });
+        });
+      }
+
       return rows.map(r => {
         const plain = r.id_number_enc ? (decrypt(r.id_number_enc) || '') : '';
         const { id_number_enc, ...rest } = r;
@@ -1159,6 +1185,7 @@ function runPredefinedQuery(key, { date_from, date_to, broker_id } = {}) {
           id_number:           plain || null,
           id_number_masked:    plain ? mask(plain) : null,
           certificate_present: r.certificate_path ? 'Yes' : 'No',
+          certificates:        docsByActivity[String(r.cpd_activity_id)] || [],
         };
       });
     }

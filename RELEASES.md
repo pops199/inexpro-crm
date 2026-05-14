@@ -6,6 +6,28 @@ sits at the top.
 
 ---
 
+## v1.0.45 — 2026-05-14
+
+**Broker CPD register — inline Certificate Addendum**
+
+- Each broker section in the **Broker CPD Activity Report** now ends with
+  a **Certificate Addendum** listing every certificate file linked to
+  that broker's CPD activities, embedded inline:
+  - PDFs render in an `<iframe>` (scroll inside to view all pages).
+  - Images (jpg/png/etc.) render via `<img>` full-width.
+  - Other file types fall back to a "Open in new tab" link.
+- Each block is labelled with the sub-activity title + activity date and
+  the original filename. Print rules force a page break before each
+  certificate so on-screen review and print order stay clean.
+- Backend bundles certificates per activity (`documents.cpd_activity_id`
+  → grouped post-query) to avoid row-multiplication when an activity has
+  multiple files.
+
+**Browser-print note:** Chrome inlines each embedded PDF in the print
+output but typically captures only its first page — a long-standing
+browser limitation. Server-side multi-page PDF merging is a future
+option if exact printed addenda are needed.
+
 ## v1.0.44 — 2026-05-14
 
 **Broker CPD register · default-broker filters · Assets pagination + search**
