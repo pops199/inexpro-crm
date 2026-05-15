@@ -27,6 +27,7 @@ server/sessions.db*
 
 # ─── Generated / runtime artefacts (PII risk) ─────────────────
 uploads/
+client/uploads/
 reports/
 signatures/
 *.log

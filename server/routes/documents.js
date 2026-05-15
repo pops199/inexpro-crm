@@ -69,9 +69,13 @@ const upload = multer({
 // ─── Helpers ─────────────────────────────────────────────────
 
 function getUploadRoot() {
+  // Default root: <repo>/client/uploads. Override with UPLOAD_PATH env
+  // var. Keep this function the single source of truth — other routes
+  // either call it via `require('./documents').getUploadRoot` or mirror
+  // the same logic.
   return process.env.UPLOAD_PATH
     ? path.resolve(process.env.UPLOAD_PATH)
-    : path.resolve(__dirname, '../../uploads');
+    : path.resolve(__dirname, '../../client/uploads');
 }
 
 function ensureDir(dirPath) {

@@ -9,7 +9,7 @@ const { resolveSort } = require('./view-prefs');
 function _amendmentUploadRoot() {
   return process.env.UPLOAD_PATH
     ? path.resolve(process.env.UPLOAD_PATH)
-    : path.resolve(__dirname, '../../uploads');
+    : path.resolve(__dirname, '../../client/uploads');
 }
 
 // All routes require authentication

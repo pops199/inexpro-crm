@@ -6,6 +6,36 @@ sits at the top.
 
 ---
 
+## v1.0.49 — 2026-05-15
+
+**ROA library entries become per-record e-sign requests; uploads move to `client/uploads/`**
+
+- **Email composer library**: the generic "Record of Advice" signable
+  template is no longer shown on every contact / account. ROAs now
+  only surface as **per-record entries under the Engagements group**
+  (already filtered to *this* contact / account). Picking one and
+  sending creates a per-ROA `signature_request` and embeds a styled
+  "Click here to review and sign" link in the email body (labelled
+  with the ROA's reference number). Replaces the older "attach
+  pre-generated ROA PDF as email attachment" behaviour.
+- **`/send-email` payload**: now accepts a richer `signable_templates:
+  [{template_key, form_data?}]` field alongside the existing
+  `signable_template_keys`. For ROA picks, the server looks up the
+  advice record and uses its actual contact / account / policy FKs
+  as the request destination so the signed PDF lands on every linked
+  record (including the ROA's own Documents tab).
+- **Upload directory moved to `client/uploads/`**. `getUploadRoot()`
+  in `server/routes/documents.js` and the parallel helpers in
+  `assets.js`, `broker-profiles.js`, `policies.js`,
+  `public-signing.js` and `settings.js` now default to
+  `<repo>/client/uploads` (still overridable via the `UPLOAD_PATH`
+  env var). `.gitignore` updated to keep `client/uploads/` out of
+  version control.
+
+**Migration note**: existing deployments with files at `<repo>/uploads`
+must either move that directory to `<repo>/client/uploads/`, or set
+`UPLOAD_PATH=./uploads` in their `.env` to keep the old location.
+
 ## v1.0.48 — 2026-05-15
 
 **Record of Advice: e-sign flow via the existing Send ROA button**

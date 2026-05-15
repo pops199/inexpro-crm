@@ -20,7 +20,9 @@ const { writeEncryptedFile } = require('../lib/file-encryption');
 // Resolve the upload root the same way the documents route does so the
 // signed PDF lands beside other client documents.
 function uploadRoot() {
-  return path.join(__dirname, '..', '..', 'uploads');
+  return process.env.UPLOAD_PATH
+    ? path.resolve(process.env.UPLOAD_PATH)
+    : path.resolve(__dirname, '..', '..', 'client', 'uploads');
 }
 
 function escHtml(s) {

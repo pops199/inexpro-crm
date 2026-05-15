@@ -35,7 +35,7 @@ const quoteUpload = multer({
 function quoteUploadRoot() {
   return process.env.UPLOAD_PATH
     ? path.resolve(process.env.UPLOAD_PATH)
-    : path.resolve(__dirname, '../../uploads');
+    : path.resolve(__dirname, '../../client/uploads');
 }
 function ensureDir(dir) { fs.mkdirSync(dir, { recursive: true }); }
 function quoteExtFromMime(m) {

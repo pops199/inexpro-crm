@@ -1796,9 +1796,16 @@ const Contacts = (() => {
     // "POPIA / FICA"). Picking one embeds a "Click to review and sign"
     // link in the email rather than attaching a static PDF; the signed
     // PDF lands under this contact's documents automatically.
+    //
+    // The ROA ("Advice") template is intentionally hidden here — ROAs
+    // are signed via the per-advice-record entries under Engagements
+    // (one per actual record on this contact), not via a generic
+    // template that would otherwise show on every contact regardless of
+    // whether they have any ROAs.
     if (signableTemplates.length) {
       const byCategory = {};
       signableTemplates.forEach(t => {
+        if (t.category === 'Advice') return;
         const cat = t.category || 'POPIA / FICA';
         (byCategory[cat] = byCategory[cat] || []).push(t);
       });
@@ -1982,30 +1989,34 @@ const Contacts = (() => {
 
     // Route each library pick into the right payload field based on `type`.
     // Library picks now cover library docs, claim-form templates, the Policy
-    // Schedule generator, ROA generators, and signable e-sign templates.
+    // Schedule generator, per-ROA e-sign requests, and signable templates.
     const docIds = [];
-    const roaIds = [];
     const claimFormNames = [];
-    const signableKeys = [];
+    const signablePicks = [];   // [{template_key, form_data?}]
     (modal?._libraryDocs || []).forEach(d => {
       switch (d.type) {
         case 'doc':                docIds.push(parseInt(d.value, 10)); break;
-        case 'roa':                roaIds.push(parseInt(d.value, 10)); break;
+        case 'roa':
+          // Per-ROA pick → create a signature_request for THIS specific
+          // advice record. Replaces the older "attach pre-generated ROA
+          // PDF" behaviour with the e-sign flow.
+          signablePicks.push({
+            template_key: 'roa_confirmation',
+            form_data:    { advice_record_id: parseInt(d.value, 10) },
+          });
+          break;
         case 'schedule_contact':   payload.schedule_contact_id = parseInt(d.value, 10); break;
         case 'schedule_account':   payload.schedule_account_id = parseInt(d.value, 10); break;
         case 'claim_form':         claimFormNames.push(String(d.value)); break;
-        case 'signable_template':  signableKeys.push(String(d.value)); break;
+        case 'signable_template':  signablePicks.push({ template_key: String(d.value) }); break;
         default:                   docIds.push(parseInt(d.value, 10));
       }
     });
     if (docIds.length)         payload.document_ids     = docIds;
-    if (roaIds.length)         payload.roa_ids          = roaIds;
     if (claimFormNames.length) payload.claim_form_names = claimFormNames;
-    if (signableKeys.length) {
-      // Signature requests need a destination so the signed PDF lands on
-      // the right record. The contact view always provides a contact id.
-      payload.signable_template_keys = signableKeys;
-      payload.signable_contact_id    = modal?._contactId || null;
+    if (signablePicks.length) {
+      payload.signable_templates  = signablePicks;
+      payload.signable_contact_id = modal?._contactId || null;
     }
 
     if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }

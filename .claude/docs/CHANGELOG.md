@@ -693,3 +693,15 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-15 13:59
 - Modified 7 files
 - Files: client/public/index.html, client/src/components/advice-records.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)
+
+## 2026-05-15 14:02
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-15 17:07
+- Modified 8 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm (+3 more)
+
+## 2026-05-15 17:25
+- Modified 10 files
+- Files: .gitignore, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/routes/assets.js (+5 more)

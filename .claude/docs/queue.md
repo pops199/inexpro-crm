@@ -1776,3 +1776,40 @@ Files changed: 7
 - `server/routes/public-signing.js`
 Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 14:02 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 17:07 — auto-detected change
+Files changed: 8
+- `client/public/index.html`
+- `client/src/components/accounts.js`
+- `client/src/components/contacts.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/settings.js`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 17:25 — auto-detected change
+Files changed: 10
+- `.gitignore`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/routes/assets.js`
+- `server/routes/broker-profiles.js`
+- `server/routes/documents.js`
+- `server/routes/policies.js`
+- `server/routes/public-signing.js`
+- `server/routes/settings.js`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

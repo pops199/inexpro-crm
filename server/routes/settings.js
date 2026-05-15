@@ -44,7 +44,7 @@ const {
   readDecryptedFile,
   writeEncryptedFile,
 } = require('../lib/file-encryption');
-const COMPANY_UPLOAD_DIR = pathMod.join(__dirname, '..', '..', 'uploads', 'company');
+const COMPANY_UPLOAD_DIR = pathMod.join(__dirname, '..', '..', 'client', 'uploads', 'company');
 const CLAIM_FORMS_DIR = pathMod.join(__dirname, '..', '..', 'client', 'public', 'claim_forms');
 if (!fsMod.existsSync(COMPANY_UPLOAD_DIR)) {
   try { fsMod.mkdirSync(COMPANY_UPLOAD_DIR, { recursive: true }); } catch (_) {}
@@ -943,6 +943,10 @@ router.post('/send-email', requireAuth, async (req, res) => {
     // server creates a signature_request, embeds the public signing link
     // in the email body, and saves the row so we can track signed status.
     signable_template_keys,
+    // Richer signable picks that carry per-request form_data
+    // (e.g. one signature_request per Record of Advice). Each entry:
+    // { template_key, form_data?: object }.
+    signable_templates,
     // Destination override for the signature_request rows (so we can
     // attach the eventual signed PDF to the right contact / account).
     signable_contact_id,
@@ -971,7 +975,9 @@ router.post('/send-email', requireAuth, async (req, res) => {
       const path = require('path');
       const fs = require('fs');
       const { readDecryptedFile } = require('../lib/file-encryption');
-      const uploadRoot = path.join(__dirname, '..', '..', 'uploads');
+      const uploadRoot = process.env.UPLOAD_PATH
+        ? path.resolve(process.env.UPLOAD_PATH)
+        : path.resolve(__dirname, '..', '..', 'client', 'uploads');
       for (const docId of document_ids) {
         const doc = db.prepare('SELECT original_name, file_path, file_type FROM documents WHERE id = ?').get(docId);
         if (!doc) continue;
@@ -1057,63 +1063,100 @@ router.post('/send-email', requireAuth, async (req, res) => {
     const sig = buildSignature(req.session.userId, { db });
     const fromAddress = sig.fromAddress || settings.smtp_from || settings.smtp_user;
 
-    // ── Signable templates (POPIA Consent, etc.) ──
-    // For each template key, create a pending signature_request linked to
-    // the destination contact/account/policy, then append a clearly-styled
-    // "Click to sign" block to the email body.
+    // ── Signable templates ──
+    // Accepts two payload shapes (unified internally into `picks`):
+    //   signable_template_keys: ['popia_consent']                   ← simple
+    //   signable_templates:     [{ template_key, form_data? }, ...] ← rich
+    // For each pick we create a pending signature_request, then append a
+    // styled "Click to sign" block to the email body so the recipient
+    // can click and complete signing on the public page.
     const createdSignatureRequests = [];
     let signLinksHtml = '';
-    if (Array.isArray(signable_template_keys) && signable_template_keys.length) {
-      const crypto = require('crypto');
-      const { getTemplate } = require('../lib/signable-templates');
-      const insertReq = db.prepare(`
-        INSERT INTO signature_requests
-          (token, template_key, status, contact_id, account_id, policy_id,
-           created_by, expires_at, recipient_name, recipient_email)
-        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
-      `);
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const recipientName = (() => {
-        if (signable_contact_id) {
-          const c = db.prepare('SELECT first_name, last_name FROM contacts WHERE id = ?').get(signable_contact_id);
-          if (c) return `${c.first_name || ''} ${c.last_name || ''}`.trim();
-        }
-        if (signable_account_id) {
-          const a = db.prepare('SELECT account_name FROM accounts WHERE id = ?').get(signable_account_id);
-          if (a) return a.account_name;
-        }
-        return null;
-      })();
-
-      const linkBlocks = [];
-      for (const key of signable_template_keys) {
-        const tpl = getTemplate(key);
-        if (!tpl) continue;
-        if (!signable_contact_id && !signable_account_id) continue;
-        const token = crypto.randomBytes(24).toString('base64url');
-        const result = insertReq.run(
-          token, tpl.key,
-          signable_contact_id || null,
-          signable_account_id || null,
-          signable_policy_id  || null,
-          req.session.userId,
-          expiresAt,
-          recipientName,
-          typeof to === 'string' ? to : Array.isArray(to) ? to[0] : null
-        );
-        const publicUrl = `${req.protocol}://${req.get('host')}/sign/${token}`;
-        createdSignatureRequests.push({ id: result.lastInsertRowid, template_key: tpl.key, url: publicUrl });
-        linkBlocks.push(
-          `<p style="margin:8px 0;"><strong>${tpl.label}:</strong><br>` +
-          `<a href="${publicUrl}" style="display:inline-block;padding:10px 18px;margin-top:6px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;font-weight:600;">Click here to review and sign</a><br>` +
-          `<span style="font-size:12px;color:#666;">Or copy this link: ${publicUrl}</span></p>`
-        );
+    {
+      const picks = [];
+      if (Array.isArray(signable_template_keys)) {
+        signable_template_keys.forEach(k => picks.push({ template_key: k, form_data: null }));
       }
-      if (linkBlocks.length) {
-        signLinksHtml =
-          `<hr style="margin:24px 0;border:none;border-top:1px solid #ccc;">` +
-          `<h3 style="color:#1a5276;font-family:Arial,Helvetica,sans-serif;font-size:16px;margin:0 0 12px;">Documents that need your signature</h3>` +
-          linkBlocks.join('');
+      if (Array.isArray(signable_templates)) {
+        signable_templates.forEach(t => {
+          if (t && t.template_key) picks.push({ template_key: t.template_key, form_data: t.form_data || null });
+        });
+      }
+
+      if (picks.length) {
+        const crypto = require('crypto');
+        const { getTemplate } = require('../lib/signable-templates');
+        const insertReq = db.prepare(`
+          INSERT INTO signature_requests
+            (token, template_key, status, contact_id, account_id, policy_id,
+             created_by, expires_at, recipient_name, recipient_email, form_data)
+          VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const recipientName = (() => {
+          if (signable_contact_id) {
+            const c = db.prepare('SELECT first_name, last_name FROM contacts WHERE id = ?').get(signable_contact_id);
+            if (c) return `${c.first_name || ''} ${c.last_name || ''}`.trim();
+          }
+          if (signable_account_id) {
+            const a = db.prepare('SELECT account_name FROM accounts WHERE id = ?').get(signable_account_id);
+            if (a) return a.account_name;
+          }
+          return null;
+        })();
+
+        const linkBlocks = [];
+        for (const { template_key, form_data } of picks) {
+          const tpl = getTemplate(template_key);
+          if (!tpl) continue;
+          if (!signable_contact_id && !signable_account_id) continue;
+          const token = crypto.randomBytes(24).toString('base64url');
+
+          // For ROAs, prefer the actual ROA's contact/account/policy
+          // FKs so the signed PDF lands on the right records — fall
+          // back to the email's signable_* hints when not an ROA.
+          let reqContactId = signable_contact_id || null;
+          let reqAccountId = signable_account_id || null;
+          let reqPolicyId  = signable_policy_id  || null;
+          let labelOverride = null;
+          if (template_key === 'roa_confirmation' && form_data && form_data.advice_record_id) {
+            const ar = db.prepare(
+              'SELECT contact_id, account_id, policy_id, advice_record_number FROM advice_records WHERE id = ?'
+            ).get(form_data.advice_record_id);
+            if (ar) {
+              reqContactId = ar.contact_id || reqContactId;
+              reqAccountId = ar.account_id || reqAccountId;
+              reqPolicyId  = ar.policy_id  || reqPolicyId;
+              if (ar.advice_record_number) labelOverride = `${tpl.label} — ${ar.advice_record_number}`;
+            }
+          }
+
+          const result = insertReq.run(
+            token, tpl.key,
+            reqContactId,
+            reqAccountId,
+            reqPolicyId,
+            req.session.userId,
+            expiresAt,
+            recipientName,
+            typeof to === 'string' ? to : Array.isArray(to) ? to[0] : null,
+            form_data ? JSON.stringify(form_data) : null
+          );
+          const publicUrl = `${req.protocol}://${req.get('host')}/sign/${token}`;
+          createdSignatureRequests.push({ id: result.lastInsertRowid, template_key: tpl.key, url: publicUrl });
+          const displayLabel = labelOverride || tpl.label;
+          linkBlocks.push(
+            `<p style="margin:8px 0;"><strong>${displayLabel}:</strong><br>` +
+            `<a href="${publicUrl}" style="display:inline-block;padding:10px 18px;margin-top:6px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;font-weight:600;">Click here to review and sign</a><br>` +
+            `<span style="font-size:12px;color:#666;">Or copy this link: ${publicUrl}</span></p>`
+          );
+        }
+        if (linkBlocks.length) {
+          signLinksHtml =
+            `<hr style="margin:24px 0;border:none;border-top:1px solid #ccc;">` +
+            `<h3 style="color:#1a5276;font-family:Arial,Helvetica,sans-serif;font-size:16px;margin:0 0 12px;">Documents that need your signature</h3>` +
+            linkBlocks.join('');
+        }
       }
     }
 
