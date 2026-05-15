@@ -3078,7 +3078,8 @@ ${brokerName}`;
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" id="git-cancel">Cancel</button>
-          <button class="btn btn-primary" id="git-generate">Generate PDF</button>
+          <button class="btn btn-secondary" id="git-generate">Download Unsigned PDF</button>
+          <button class="btn btn-primary" id="git-send-signature">Send for Signature</button>
         </div>
       </div>`;
     document.body.appendChild(modal);
@@ -3122,21 +3123,19 @@ ${brokerName}`;
     modal.querySelector('#git-close').addEventListener('click', close);
     modal.querySelector('#git-cancel').addEventListener('click', close);
 
-    // ── Generate ─────────────────────────────────────────────────
-    modal.querySelector('#git-generate').addEventListener('click', async () => {
+    // Shared form-reader: builds the GIT payload from the modal's
+    // inputs. Returns null + shows the error banner on validation fail.
+    function _readGitForm() {
       const errEl = modal.querySelector('#git-error');
       errEl.style.display = 'none';
-
       const insuredName = modal.querySelector('#git-insured').value.trim();
       const policyNumber = modal.querySelector('#git-policy-number').value.trim();
       if (!insuredName || !policyNumber) {
         errEl.textContent = 'Insured name and Policy Number are required.';
         errEl.style.display = 'block';
-        return;
+        return null;
       }
-
       const coverTypes = Array.from(modal.querySelectorAll('.git-cover-type:checked')).map(cb => cb.value);
-
       const vehicleGroups = Array.from(modal.querySelectorAll('.git-group-row')).map(row => {
         const description = row.querySelector('.git-grp-desc').value.trim();
         const limit = parseFloat(row.querySelector('.git-grp-limit').value);
@@ -3144,13 +3143,11 @@ ${brokerName}`;
           .split(/\r?\n/).map(s => s.trim()).filter(Boolean);
         return { description, limit, vehicles };
       }).filter(g => Number.isFinite(g.limit));
-
       const numVal = (sel) => {
         const v = parseFloat(modal.querySelector(sel).value);
         return Number.isFinite(v) ? v : null;
       };
-
-      const body = {
+      return {
         date:              modal.querySelector('#git-date').value || null,
         insured_name:      insuredName,
         insured_address:   modal.querySelector('#git-address').value.trim(),
@@ -3174,7 +3171,13 @@ ${brokerName}`;
         territorial_limits: modal.querySelector('#git-territory').value.trim(),
         prepared_by_name:   modal.querySelector('#git-prepared-by').value.trim(),
       };
+    }
 
+    // ── Download Unsigned PDF (preview for the broker) ───────────
+    modal.querySelector('#git-generate').addEventListener('click', async () => {
+      const body = _readGitForm();
+      if (!body) return;
+      const errEl = modal.querySelector('#git-error');
       const btn = modal.querySelector('#git-generate');
       btn.disabled = true;
       btn.textContent = 'Generating…';
@@ -3183,18 +3186,102 @@ ${brokerName}`;
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `git-confirmation-${policyNumber}.pdf`;
+        a.download = `git-confirmation-${body.policy_number}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast('GIT Confirmation generated.', 'success');
-        close();
+      } catch (err) {
+        errEl.textContent = err.message || String(err);
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download Unsigned PDF';
+      }
+    });
+
+    // ── Send for Signature ───────────────────────────────────────
+    // Creates a pending signature_request linked to this policy +
+    // contact/account, stores the form payload, returns the public URL
+    // the broker shares with the client. When the client signs the
+    // server stamps their signature onto the same GIT document and
+    // files it under the policy automatically.
+    modal.querySelector('#git-send-signature').addEventListener('click', async () => {
+      const body = _readGitForm();
+      if (!body) return;
+      const errEl = modal.querySelector('#git-error');
+      const btn = modal.querySelector('#git-send-signature');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      try {
+        const r = await fetch(`/api/policies/${policyId}/git-confirmation/sign-request`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+          let msg = 'Failed to create signature request';
+          try { const j = await r.json(); if (j.error) msg = j.error; } catch (_) {}
+          throw new Error(msg);
+        }
+        const j = await r.json();
+        _showGitSignSuccess(close, j.public_url, j.recipient_email);
       } catch (err) {
         errEl.textContent = err.message || String(err);
         errEl.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = 'Generate PDF';
+        btn.textContent = 'Send for Signature';
+      }
+    });
+  }
+
+  // Success modal shown after a GIT signature request is created. Lets
+  // the broker copy the link or open the contact email composer with
+  // the link prefilled.
+  function _showGitSignSuccess(closeParent, publicUrl, recipientEmail) {
+    if (closeParent) closeParent();
+    const existing = document.getElementById('git-sign-success');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'git-sign-success';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" style="width:560px;max-width:95vw;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">Signature link created</h3>
+          <button class="modal-close" id="git-success-close">×</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:.9rem;margin-bottom:.75rem;">
+            Send the link below to ${recipientEmail ? `<strong>${esc(recipientEmail)}</strong>` : 'the client'} to review and sign the GIT Confirmation.
+            When they submit, the signed PDF is filed under this policy automatically.
+          </p>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label class="form-label" style="font-size:.78rem;">Signing link (valid for 30 days)</label>
+            <input class="form-control" id="git-success-url" readonly value="${esc(publicUrl)}" style="font-size:.8rem;">
+          </div>
+        </div>
+        <div class="modal-footer" style="gap:.5rem;">
+          <button class="btn btn-secondary" id="git-success-copy">Copy link</button>
+          <a class="btn btn-secondary" id="git-success-open" href="${esc(publicUrl)}" target="_blank" rel="noopener">Open / preview</a>
+          <button class="btn btn-primary" id="git-success-done">Done</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const closeIt = () => overlay.remove();
+    overlay.querySelector('#git-success-close').addEventListener('click', closeIt);
+    overlay.querySelector('#git-success-done').addEventListener('click', closeIt);
+    overlay.querySelector('#git-success-copy').addEventListener('click', async () => {
+      const input = overlay.querySelector('#git-success-url');
+      input.select();
+      try {
+        await navigator.clipboard.writeText(publicUrl);
+        showToast('Link copied to clipboard.', 'success');
+      } catch (_) {
+        document.execCommand('copy');
+        showToast('Link copied.', 'success');
       }
     });
   }

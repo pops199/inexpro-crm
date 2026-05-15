@@ -1698,8 +1698,17 @@ const Admin = (() => {
     } catch (_) { _templateCache = []; }
     const sel = document.getElementById('template-select');
     if (!sel) return;
+    // Group templates by category so the dropdown mirrors the email
+    // composer's grouped view (General, POPIA / FICA, etc.).
+    const buckets = {};
+    _templateCache.forEach(t => {
+      const cat = t.category || 'Other';
+      (buckets[cat] = buckets[cat] || []).push(t);
+    });
     sel.innerHTML = '<option value="">— Select Template —</option>' +
-      _templateCache.map(t => `<option value="${esc(t.key)}">${esc(t.label)}</option>`).join('');
+      Object.entries(buckets).map(([cat, items]) =>
+        `<optgroup label="${esc(cat)}">${items.map(t => `<option value="${esc(t.key)}">${esc(t.label)}</option>`).join('')}</optgroup>`
+      ).join('');
     document.getElementById('template-editor').style.display = 'none';
   }
 
@@ -1741,7 +1750,12 @@ const Admin = (() => {
     if (!key) return;
     const tpl = _templateCache.find(t => t.key === key);
     try {
-      await Api.settings.saveTemplate(key, { subject, body, label: tpl?.label || key });
+      await Api.settings.saveTemplate(key, {
+        subject,
+        body,
+        label:    tpl?.label    || key,
+        category: tpl?.category || 'Other',
+      });
       showToast('Template saved', 'success');
       // Update cache
       if (tpl) { tpl.subject = subject; tpl.body = body; }

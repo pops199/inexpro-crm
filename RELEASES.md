@@ -6,6 +6,72 @@ sits at the top.
 
 ---
 
+## v1.0.47 — 2026-05-15
+
+**e-Signature flow · POPIA notices & GIT Confirmation**
+
+A new server-hosted e-signature flow lets a broker email a client a
+one-time link, the client signs on a public page, and the signed PDF
+is automatically filed under the right record. No third-party service.
+
+- **Signable templates** registered server-side
+  (`server/lib/signable-templates.js`). Three templates shipped:
+  - **New Prospect / First Time Enquiries / New Onboarding** (POPIA)
+  - **Existing Clients / Lapsed Clients / Anyone Already on File** (POPIA)
+  - **GIT Confirmation of Insurance** (Transport policies; dynamic —
+    body content comes from a broker-filled form)
+- **`signature_requests` table** (migration `0005`) tracks each pending
+  / signed / expired request with a 24-byte URL-safe token, 30-day
+  expiry, destination linkage (contact / account / policy), signer
+  audit fields (IP, user-agent, typed name, timestamp), marketing
+  consent, and the resulting `document_id`. Migration `0006` adds a
+  nullable `form_data` JSON column for templates that carry per-request
+  payload (currently GIT).
+- **Email composer (Contacts + Accounts)**: the **+ Add Attachment**
+  library now lists signable templates under a **POPIA / FICA** group.
+  Picking one creates the request on send and embeds a styled
+  "Click here to review and sign" button in the email body. Templates
+  are fetched dynamically from `/api/signature-requests/templates`
+  so future templates surface without a frontend change.
+- **Public signing page** (`/sign/<token>`): clean, mobile-friendly
+  page renders the notice, YES/NO marketing consent radios when
+  applicable, a touch / mouse signature canvas, name + date inputs.
+  For dynamic templates (GIT) it builds the document HTML from the
+  stored `form_data` so the client reviews the exact terms.
+- **Signed PDF generator** uses the Inexpro letterhead on page 1 and
+  the branded footer (`letterhead-footer.jpg`) on every page. Long
+  notices automatically wrap to extra pages without overlapping the
+  footer. Friendly filename `POPIA Consent - <Client Name>.pdf` or
+  `GIT Confirmation - <Client Name>.pdf` (taken from the typed signer
+  name, sanitised for filesystem / header safety). The signed PDF
+  lands in the encrypted `documents/` store, linked to the right
+  contact / account / policy, and immediately appears in the Add
+  Attachment library for future emails.
+- **GIT Confirmation** (Transport policies): the modal now offers
+  **Download Unsigned PDF** (preview) AND **Send for Signature**.
+  Send creates the signature request with the captured form payload
+  (insured, addresses, coverage limits, vehicle groups, etc.) and
+  shows the public URL with copy + preview buttons. The shared
+  PDF renderer (`server/lib/git-confirmation-pdf.js`) is used for
+  both the unsigned preview and the signed output — the only
+  difference is the optional `signature` argument that replaces
+  the printed Acknowledgement page with a stamped signature.
+
+**Fixes incidental to the new flow**
+
+- `/send-email` was attaching documents by raw file path, bundling
+  encrypted ciphertext into outgoing emails — now decrypts via
+  `readDecryptedFile` before nodemailer sees the buffer.
+- PDF generator: proper `margins.top` / `margins.bottom` so long
+  text auto-wraps before the footer instead of running into it.
+- Page-2 font no longer shrank to footer size — `drawFooter` now
+  saves and restores font name + font size around the footer draw
+  (PDFKit's `save()`/`restore()` only covers graphics state, not
+  font state).
+- `drawFooter` now restores `pdfDoc.x` / `pdfDoc.y` too — fixed a
+  cascade of 50+ blank pages caused by the cursor being left at
+  the bottom of the page after a footer draw.
+
 ## v1.0.46 — 2026-05-15
 
 **Email composer document library · GIT Confirmation generator**

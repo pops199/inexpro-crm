@@ -39,6 +39,8 @@ const commissionLogRoutes  = require('./routes/commission-log');
 const tcfDashboardRoutes   = require('./routes/tcf-dashboard');
 const notificationsRoutes  = require('./routes/notifications');
 const systemUpdateRoutes   = require('./routes/system-update');
+const signatureRequestRoutes = require('./routes/signature-requests');
+const publicSigningRoutes    = require('./routes/public-signing');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -152,6 +154,10 @@ app.use('/api/commission-log',   commissionLogRoutes);
 app.use('/api/tcf',              tcfDashboardRoutes);
 app.use('/api/notifications',    notificationsRoutes);
 app.use('/api/admin/system',     systemUpdateRoutes);
+app.use('/api/signature-requests', signatureRequestRoutes);
+
+// Public e-signing pages (no auth) — client follows /sign/<token> from email
+app.use('/sign', publicSigningRoutes);
 
 // ─── SPA fallback ───────────────────────────────────────────
 app.get('*', (req, res) => {

@@ -1194,7 +1194,19 @@ const Accounts = (() => {
             <label class="form-label">Template</label>
             <select class="form-control" id="mail-template" onchange="Accounts._applyMailTemplate(this.value)">
               <option value="">— No Template —</option>
-              ${templates.map(t => `<option value="${Utils.esc(t.key)}">${Utils.esc(t.label)}</option>`).join('')}
+              ${(() => {
+                // Group templates by category for the dropdown.
+                const buckets = {};
+                templates.forEach(t => {
+                  const cat = t.category || 'Other';
+                  (buckets[cat] = buckets[cat] || []).push(t);
+                });
+                return Object.entries(buckets).map(([cat, items]) =>
+                  `<optgroup label="${Utils.esc(cat)}">
+                    ${items.map(t => `<option value="${Utils.esc(t.key)}">${Utils.esc(t.label)}</option>`).join('')}
+                  </optgroup>`
+                ).join('');
+              })()}
             </select>
           </div>
           <div class="form-group">
@@ -1398,21 +1410,24 @@ const Accounts = (() => {
     overlay.querySelector('#lib-close').addEventListener('click', close);
     overlay.querySelector('#lib-cancel').addEventListener('click', close);
 
-    // Fetch real documents AND advice records in parallel so the picker is
-    // authoritative regardless of what the email modal preloaded.
+    // Fetch real documents, advice records, AND signable templates in
+    // parallel so the picker is authoritative.
     let res;
     let liveAdviceRecords = adviceRecords;
+    let signableTemplates = [];
     try {
       const arQuery = parentModule === 'accounts' ? { account_id: parentId } : { contact_id: parentId };
-      const [docsRes, arRes] = await Promise.all([
+      const [docsRes, arRes, sigTplRes] = await Promise.all([
         Api.documents.related(parentModule, parentId),
         Api.adviceRecords.list({ ...arQuery, limit: 100 }).catch(() => null),
+        Api.signatureRequests.templates().catch(() => null),
       ]);
       res = docsRes;
       if (arRes) {
         const list = arRes.data || arRes || [];
         if (Array.isArray(list) && list.length) liveAdviceRecords = list;
       }
+      if (Array.isArray(sigTplRes)) signableTemplates = sigTplRes;
     } catch (err) {
       overlay.querySelector('#lib-content').innerHTML =
         `<div class="alert alert-danger">Failed to load related documents: ${Utils.esc(err.message || err)}</div>`;
@@ -1478,6 +1493,32 @@ const Accounts = (() => {
         synthetic_value: ar.id,
       }));
       g.count = g.docs.length;
+    }
+
+    // Signable templates → group by server-declared category. Picks become
+    // e-sign links in the outgoing email; the signed PDF is filed under
+    // this account automatically.
+    if (signableTemplates.length) {
+      const byCategory = {};
+      signableTemplates.forEach(t => {
+        const cat = t.category || 'POPIA / FICA';
+        (byCategory[cat] = byCategory[cat] || []).push(t);
+      });
+      const sigGroups = Object.entries(byCategory).map(([label, items]) => {
+        const docs = items.map(t => ({
+          id:              'signable:' + t.key,
+          original_name:   t.label + ' (e-sign link)',
+          description:     'Sends a link the client clicks to review and sign on a secure page. The signed PDF is filed under this account automatically.',
+          file_type:       'application/pdf',
+          synthetic_type:  'signable_template',
+          synthetic_value: t.key,
+        }));
+        return { label, count: docs.length, docs };
+      });
+      const groupsArr = Array.from(groupMap.values());
+      groupsArr.splice(1, 0, ...sigGroups);
+      groupMap.clear();
+      groupsArr.forEach(g => groupMap.set(g.label, g));
     }
 
     const groups = Array.from(groupMap.values());
@@ -1635,23 +1676,29 @@ const Accounts = (() => {
     if (modal?._userAttachments?.length) payload.user_attachments = modal._userAttachments;
 
     // Library picks now cover docs, claim-form templates, the Policy Schedule
-    // generator, and ROA generators — route each by `type`.
+    // generator, ROA generators, and signable e-sign templates.
     const docIds = [];
     const roaIds = [];
     const claimFormNames = [];
+    const signableKeys = [];
     (modal?._libraryDocs || []).forEach(d => {
       switch (d.type) {
-        case 'doc':              docIds.push(parseInt(d.value, 10)); break;
-        case 'roa':              roaIds.push(parseInt(d.value, 10)); break;
-        case 'schedule_contact': payload.schedule_contact_id = parseInt(d.value, 10); break;
-        case 'schedule_account': payload.schedule_account_id = parseInt(d.value, 10); break;
-        case 'claim_form':       claimFormNames.push(String(d.value)); break;
-        default:                 docIds.push(parseInt(d.value, 10));
+        case 'doc':                docIds.push(parseInt(d.value, 10)); break;
+        case 'roa':                roaIds.push(parseInt(d.value, 10)); break;
+        case 'schedule_contact':   payload.schedule_contact_id = parseInt(d.value, 10); break;
+        case 'schedule_account':   payload.schedule_account_id = parseInt(d.value, 10); break;
+        case 'claim_form':         claimFormNames.push(String(d.value)); break;
+        case 'signable_template':  signableKeys.push(String(d.value)); break;
+        default:                   docIds.push(parseInt(d.value, 10));
       }
     });
     if (docIds.length)         payload.document_ids     = docIds;
     if (roaIds.length)         payload.roa_ids          = roaIds;
     if (claimFormNames.length) payload.claim_form_names = claimFormNames;
+    if (signableKeys.length) {
+      payload.signable_template_keys = signableKeys;
+      payload.signable_account_id    = modal?._accountId || null;
+    }
 
     if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
     try {

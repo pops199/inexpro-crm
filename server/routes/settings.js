@@ -340,11 +340,30 @@ router.post('/test-email', requireAuth, requireAdminAny, async (req, res) => {
 
 // ─── Email Template endpoints (all authenticated users) ─────────
 
-// GET /api/settings/templates — list all templates
+// Built-in templates. The `category` groups them in the email composer's
+// template dropdown (rendered as <optgroup>s in the client). Default body /
+// subject is returned when the user hasn't customised the template yet —
+// once edited, the saved version overrides this.
+const DEFAULT_TEMPLATES = [
+  { key: 'policy_summary',           label: 'Policy Summary',           category: 'General' },
+  { key: 'general',                  label: 'General Communication',    category: 'General' },
+  { key: 'data_breach_notification', label: 'Data Breach Notification', category: 'POPIA / FICA' },
+];
+
+// Default bodies seeded when a template hasn't been customised by the admin.
+const DEFAULT_BODIES = {
+  data_breach_notification: {
+    subject: 'Important: Data breach notification',
+    body: '<p>Dear {{recipient_name}},</p>\n<p>We are notifying you immediately after discovering a data breach that may affect information we hold.</p>\n<p><strong>Date of breach:</strong> {{breach_date}}<br><strong>Date discovered:</strong> {{discovered_date}}<br><strong>Nature of breach:</strong> {{nature}}<br><strong>Data affected:</strong> {{data_affected}}</p>\n<p><strong>Remediation:</strong> {{remediation}}</p>\n<p>We will provide further updates as our investigation progresses.</p>',
+  },
+};
+
+// GET /api/settings/templates — list all templates (grouped by category in
+// the client). Returns each template's saved subject/body if customised,
+// otherwise falls back to the built-in default for that key.
 router.get('/templates', requireAuth, (req, res) => {
   const db = getDb();
   const rows = db.prepare("SELECT key, value FROM system_settings WHERE key LIKE 'template_%'").all();
-  // Build template map: { key: { subject, body } }
   const templates = {};
   rows.forEach(r => {
     const match = r.key.match(/^template_(.+)_(subject|body)$/);
@@ -353,39 +372,45 @@ router.get('/templates', requireAuth, (req, res) => {
     if (!templates[name]) templates[name] = { key: name, subject: '', body: '' };
     try { templates[name][field] = JSON.parse(r.value); } catch { templates[name][field] = r.value; }
   });
-  // Also load the custom template list to preserve ordering/names
+
   const listRow = db.prepare("SELECT value FROM system_settings WHERE key = 'template_list'").get();
   let templateList = [];
   if (listRow) {
     try { templateList = JSON.parse(listRow.value); } catch {}
   }
-  // Merge: ensure default templates are always present
-  const defaults = [
-    { key: 'policy_summary', label: 'Policy Summary' },
-    { key: 'general', label: 'General Communication' },
-    { key: 'data_breach_notification', label: 'Data Breach Notification' },
-  ];
+
+  // Ensure every built-in default is in the list (without disturbing user
+  // ordering). Backfill the `category` on existing list entries if they were
+  // saved before categories were introduced.
   const allKeys = new Set(templateList.map(t => t.key));
-  defaults.forEach(d => { if (!allKeys.has(d.key)) templateList.unshift(d); });
-  // Attach subject/body to list entries
-  const result = templateList.map(t => ({
-    key: t.key,
-    label: t.label || t.key,
-    subject: templates[t.key]?.subject || (
-      t.key === 'data_breach_notification' ? 'Important: Data breach notification' : ''
-    ),
-    body: templates[t.key]?.body || (
-      t.key === 'data_breach_notification'
-        ? '<p>Dear {{recipient_name}},</p>\n<p>We are notifying you immediately after discovering a data breach that may affect information we hold.</p>\n<p><strong>Date of breach:</strong> {{breach_date}}<br><strong>Date discovered:</strong> {{discovered_date}}<br><strong>Nature of breach:</strong> {{nature}}<br><strong>Data affected:</strong> {{data_affected}}</p>\n<p><strong>Remediation:</strong> {{remediation}}</p>\n<p>We will provide further updates as our investigation progresses.</p>'
-        : ''
-    ),
-  }));
-  // Also include any orphaned templates not in the list
-  Object.keys(templates).forEach(k => {
-    if (!allKeys.has(k) && !defaults.some(d => d.key === k)) {
-      result.push({ key: k, label: k, subject: templates[k].subject, body: templates[k].body });
+  DEFAULT_TEMPLATES.forEach(d => {
+    if (!allKeys.has(d.key)) {
+      templateList.unshift(d);
+    } else {
+      const idx = templateList.findIndex(t => t.key === d.key);
+      if (idx >= 0 && !templateList[idx].category) templateList[idx].category = d.category;
     }
   });
+
+  const result = templateList.map(t => {
+    const defaultEntry = DEFAULT_TEMPLATES.find(d => d.key === t.key) || {};
+    const fallback = DEFAULT_BODIES[t.key] || {};
+    return {
+      key:      t.key,
+      label:    t.label    || defaultEntry.label    || t.key,
+      category: t.category || defaultEntry.category || 'Other',
+      subject:  templates[t.key]?.subject || fallback.subject || '',
+      body:     templates[t.key]?.body    || fallback.body    || '',
+    };
+  });
+
+  // Surface any orphaned saved templates that aren't in the list (rare).
+  Object.keys(templates).forEach(k => {
+    if (!allKeys.has(k) && !DEFAULT_TEMPLATES.some(d => d.key === k)) {
+      result.push({ key: k, label: k, category: 'Other', subject: templates[k].subject, body: templates[k].body });
+    }
+  });
+
   res.json(result);
 });
 
@@ -393,7 +418,7 @@ router.get('/templates', requireAuth, (req, res) => {
 router.put('/templates/:key', requireAuth, (req, res) => {
   const db = getDb();
   const { key } = req.params;
-  const { subject, body, label } = req.body;
+  const { subject, body, label, category } = req.body;
   const safeKey = key.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
   const upsert = db.prepare(`
     INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -402,13 +427,17 @@ router.put('/templates/:key', requireAuth, (req, res) => {
   const tx = db.transaction(() => {
     if (subject !== undefined) upsert.run(`template_${safeKey}_subject`, JSON.stringify(subject));
     if (body !== undefined) upsert.run(`template_${safeKey}_body`, JSON.stringify(body));
-    // Update template list
+    // Update template list (preserves label, category, ordering)
     const listRow = db.prepare("SELECT value FROM system_settings WHERE key = 'template_list'").get();
     let list = [];
     if (listRow) { try { list = JSON.parse(listRow.value); } catch {} }
     const idx = list.findIndex(t => t.key === safeKey);
-    if (idx >= 0) { if (label) list[idx].label = label; }
-    else list.push({ key: safeKey, label: label || safeKey });
+    if (idx >= 0) {
+      if (label)    list[idx].label = label;
+      if (category) list[idx].category = category;
+    } else {
+      list.push({ key: safeKey, label: label || safeKey, category: category || 'Other' });
+    }
     upsert.run('template_list', JSON.stringify(list));
   });
   tx();
@@ -903,7 +932,23 @@ router.get('/claim-forms', requireAuth, (req, res) => {
 
 // POST /api/settings/send-email — send an email (with optional attachments)
 router.post('/send-email', requireAuth, async (req, res) => {
-  const { to, cc, subject, html, text, document_ids, roa_ids, schedule_contact_id, schedule_account_id, amendment_pdf, audit_module, audit_record_id, user_attachments, claim_form_names } = req.body;
+  const {
+    to, cc, subject, html, text,
+    document_ids, roa_ids,
+    schedule_contact_id, schedule_account_id,
+    amendment_pdf,
+    audit_module, audit_record_id,
+    user_attachments, claim_form_names,
+    // Signable template keys (e.g. ['popia_consent']) — for each, the
+    // server creates a signature_request, embeds the public signing link
+    // in the email body, and saves the row so we can track signed status.
+    signable_template_keys,
+    // Destination override for the signature_request rows (so we can
+    // attach the eventual signed PDF to the right contact / account).
+    signable_contact_id,
+    signable_account_id,
+    signable_policy_id,
+  } = req.body;
   if (!to || !subject || (!html && !text)) {
     return res.status(400).json({ error: 'to, subject, and html or text are required' });
   }
@@ -1012,8 +1057,69 @@ router.post('/send-email', requireAuth, async (req, res) => {
     const sig = buildSignature(req.session.userId, { db });
     const fromAddress = sig.fromAddress || settings.smtp_from || settings.smtp_user;
 
+    // ── Signable templates (POPIA Consent, etc.) ──
+    // For each template key, create a pending signature_request linked to
+    // the destination contact/account/policy, then append a clearly-styled
+    // "Click to sign" block to the email body.
+    const createdSignatureRequests = [];
+    let signLinksHtml = '';
+    if (Array.isArray(signable_template_keys) && signable_template_keys.length) {
+      const crypto = require('crypto');
+      const { getTemplate } = require('../lib/signable-templates');
+      const insertReq = db.prepare(`
+        INSERT INTO signature_requests
+          (token, template_key, status, contact_id, account_id, policy_id,
+           created_by, expires_at, recipient_name, recipient_email)
+        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const recipientName = (() => {
+        if (signable_contact_id) {
+          const c = db.prepare('SELECT first_name, last_name FROM contacts WHERE id = ?').get(signable_contact_id);
+          if (c) return `${c.first_name || ''} ${c.last_name || ''}`.trim();
+        }
+        if (signable_account_id) {
+          const a = db.prepare('SELECT account_name FROM accounts WHERE id = ?').get(signable_account_id);
+          if (a) return a.account_name;
+        }
+        return null;
+      })();
+
+      const linkBlocks = [];
+      for (const key of signable_template_keys) {
+        const tpl = getTemplate(key);
+        if (!tpl) continue;
+        if (!signable_contact_id && !signable_account_id) continue;
+        const token = crypto.randomBytes(24).toString('base64url');
+        const result = insertReq.run(
+          token, tpl.key,
+          signable_contact_id || null,
+          signable_account_id || null,
+          signable_policy_id  || null,
+          req.session.userId,
+          expiresAt,
+          recipientName,
+          typeof to === 'string' ? to : Array.isArray(to) ? to[0] : null
+        );
+        const publicUrl = `${req.protocol}://${req.get('host')}/sign/${token}`;
+        createdSignatureRequests.push({ id: result.lastInsertRowid, template_key: tpl.key, url: publicUrl });
+        linkBlocks.push(
+          `<p style="margin:8px 0;"><strong>${tpl.label}:</strong><br>` +
+          `<a href="${publicUrl}" style="display:inline-block;padding:10px 18px;margin-top:6px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;font-weight:600;">Click here to review and sign</a><br>` +
+          `<span style="font-size:12px;color:#666;">Or copy this link: ${publicUrl}</span></p>`
+        );
+      }
+      if (linkBlocks.length) {
+        signLinksHtml =
+          `<hr style="margin:24px 0;border:none;border-top:1px solid #ccc;">` +
+          `<h3 style="color:#1a5276;font-family:Arial,Helvetica,sans-serif;font-size:16px;margin:0 0 12px;">Documents that need your signature</h3>` +
+          linkBlocks.join('');
+      }
+    }
+
     // ── Compose final HTML: body + (optional letterhead wrap) + signature ──
     let finalHtml = normaliseEmailHtml(html || text);
+    if (signLinksHtml) finalHtml = (finalHtml || '') + signLinksHtml;
     let finalText = text;
     const includeLetterhead = !!scheduleEmailContext && fsMod.existsSync(INEXPRO_LETTERHEAD_PATH);
     if (includeLetterhead) {

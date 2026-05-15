@@ -629,3 +629,55 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-15 08:53
 - Modified 5 files
 - Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/policies.js
+
+## 2026-05-15 08:55
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-15 10:49
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-15 10:58
+- Modified 9 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/admin.js, client/src/components/contacts.js, server/db/inexpro.db (+4 more)
+
+## 2026-05-15 11:10
+- Modified 13 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/app.js, server/db/inexpro.db (+8 more)
+
+## 2026-05-15 12:31
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 12:34
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 12:35
+- Modified 8 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm (+3 more)
+
+## 2026-05-15 12:40
+- Modified 9 files
+- Files: client/public/index.html, client/src/api.js, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db (+4 more)
+
+## 2026-05-15 12:49
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 12:53
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 13:06
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 13:19
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-15 13:34
+- Modified 11 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+6 more)

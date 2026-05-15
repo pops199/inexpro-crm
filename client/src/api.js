@@ -536,6 +536,18 @@ const Api = {
     },
   },
 
+  // ── Signature Requests (e-sign flow) ───────────────────────────
+  signatureRequests: {
+    /** GET /api/signature-requests/templates — available signable templates */
+    templates() {
+      return apiFetch('GET', '/api/signature-requests/templates');
+    },
+    /** GET /api/signature-requests?contact_id=&account_id=&status= */
+    list(params) {
+      return apiFetch('GET', '/api/signature-requests' + buildQueryString(params || {}));
+    },
+  },
+
   // ── Reports ───────────────────────────────────────────────────
   reports: {
     /** GET /api/reports/predefined — list available predefined reports */
