@@ -1381,7 +1381,7 @@ const AdviceRecords = (() => {
           : `<button class="btn btn-success" id="ar-detail-complete-btn">✓ Mark ROA as Complete</button>`;
         headerActions.innerHTML = `
           <button class="btn btn-secondary" onclick="AdviceRecords._generateRoa(${id})">📄 Generate ROA</button>
-          <button class="btn btn-secondary" onclick="AdviceRecords._emailRoa(${id})">📧 Send ROA</button>
+          <button class="btn btn-secondary" onclick="AdviceRecords._emailRoa(${id})">Send ROA</button>
           ${completeBtn}
           <a href="#/advice-records/${id}/edit" class="btn btn-primary">Edit</a>`;
         document.getElementById('ar-detail-complete-btn')?.addEventListener('click', async () => {
@@ -1770,29 +1770,67 @@ const AdviceRecords = (() => {
     }
   }
 
+  // ── Send ROA ─────────────────────────────────────────────────────────────
+  //
+  // New flow: clicking "Send ROA" creates a pending signature_request for
+  // this ROA, then opens the email modal pre-filled with the signing link
+  // already pasted into the body. The broker tweaks the message + sends.
+  // The client clicks the link → reviews the ROA on a public page →
+  // signs → submits → the signed PDF is filed automatically under the
+  // ROA, contact, account, and policy.
   async function _emailRoa(id) {
     try {
+      // 1) Create the signature request first so the link is ready before
+      //    the broker even sees the email modal.
+      const r = await fetch(`/api/advice-records/${id}/sign-request`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!r.ok) {
+        let msg = 'Failed to create signature link';
+        try { const j = await r.json(); if (j.error) msg = j.error; } catch (_) {}
+        throw new Error(msg);
+      }
+      const sig = await r.json();
+
+      // 2) Pull client / contact details for the modal pre-fill.
       const d = await Api.adviceRecords.get(id);
       let contact = null;
       if (d.contact_id) {
         try { contact = await Api.contacts.get(d.contact_id); } catch (_) {}
       }
-
-      const html = _generateRoaHtml(d, contact, null);
       const contactName = contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '';
-      const email = contact ? (contact.email || '') : '';
+      const email = (sig.recipient_email) || (contact ? contact.email : '') || '';
+      const greeting = contactName ? `Dear ${contactName},` : 'Hi,';
+
+      // Default HTML body with the signing link styled as a button + the
+      // raw URL underneath for forwarding / copy-paste.
+      const defaultBody =
+        `<p>${esc(greeting)}</p>` +
+        `<p>Please click the link below to review and sign your Record of Advice (${esc(d.advice_record_number || '')}). ` +
+        `When you submit, your signed copy will be filed against your record automatically.</p>` +
+        `<p style="margin:18px 0;">` +
+          `<a href="${esc(sig.public_url)}" style="display:inline-block;padding:10px 18px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;font-weight:600;">Click here to review and sign</a>` +
+        `</p>` +
+        `<p style="font-size:12px;color:#666;">Or copy this link into your browser: ${esc(sig.public_url)}</p>` +
+        `<p>Kind regards,<br><strong>${esc(window.currentUser?.full_name || 'Inexpro Broker')}</strong></p>`;
 
       const modal = document.createElement('div');
       modal.id = 'mail-modal';
       modal.className = 'modal-overlay';
       modal.innerHTML = `
-        <div class="modal" style="width:560px;" onclick="event.stopPropagation()">
+        <div class="modal" style="width:600px;max-width:95vw;" onclick="event.stopPropagation()">
           <div class="modal-header">
-            <h3>Send ROA via Email</h3>
+            <h3>Send ROA for Signature</h3>
             <button class="btn-close" onclick="document.getElementById('mail-modal').remove()">×</button>
           </div>
           <div class="modal-body">
             <div id="mail-error" style="display:none;color:var(--danger);margin-bottom:.75rem;"></div>
+            <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem;">
+              A unique signing link has been created. It's already in the message below — tweak the wording if you like, then send.
+            </p>
             <div class="form-group">
               <label class="form-label">To</label>
               <input class="form-control" id="mail-to" value="${esc(email)}" placeholder="recipient@email.com">
@@ -1802,8 +1840,9 @@ const AdviceRecords = (() => {
               <input class="form-control" id="mail-subject" value="Record of Advice - ${esc(d.advice_record_number || '')}">
             </div>
             <div class="form-group">
-              <label class="form-label">Additional Message (prepended to ROA)</label>
-              <textarea class="form-control" id="mail-message" rows="3" placeholder="Dear ${esc(contactName)}, please find your Record of Advice attached below."></textarea>
+              <label class="form-label">Message</label>
+              <textarea class="form-control" id="mail-message" rows="10" style="font-family:Arial,sans-serif;font-size:.85rem;">${esc(defaultBody)}</textarea>
+              <small style="color:var(--text-muted);font-size:.75rem;">HTML supported. The signing link is included above.</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -1811,23 +1850,21 @@ const AdviceRecords = (() => {
             <button class="btn btn-primary" id="mail-send-btn" onclick="AdviceRecords._sendRoaEmail()">Send ROA</button>
           </div>
         </div>`;
-      /* backdrop-close disabled */
       document.body.appendChild(modal);
-
-      // Store the record id for use when sending
       modal._roaId = id;
+      modal._signatureRequest = sig;
     } catch (err) {
-      showToast('Failed to prepare email: ' + err.message, 'error');
+      showToast('Failed to prepare ROA email: ' + (err.message || err), 'error');
     }
   }
 
   async function _sendRoaEmail() {
-    const modal = document.getElementById('mail-modal');
-    const roaId = modal?._roaId;
-    const to = document.getElementById('mail-to')?.value?.trim();
+    const modal   = document.getElementById('mail-modal');
+    const roaId   = modal?._roaId;
+    const to      = document.getElementById('mail-to')?.value?.trim();
     const subject = document.getElementById('mail-subject')?.value?.trim();
-    const message = document.getElementById('mail-message')?.value?.trim() || '';
-    const errEl = document.getElementById('mail-error');
+    const html    = document.getElementById('mail-message')?.value || '';
+    const errEl   = document.getElementById('mail-error');
     const sendBtn = document.getElementById('mail-send-btn');
 
     if (!to || !subject) {
@@ -1835,14 +1872,21 @@ const AdviceRecords = (() => {
       return;
     }
 
-    if (sendBtn) sendBtn.disabled = true;
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
     try {
-      await Api.adviceRecords.sendRoa(roaId, { to, subject, message });
+      await Api.settings.sendEmail({
+        to,
+        subject,
+        html,
+        text: html.replace(/<[^>]+>/g, ''),
+        audit_module: 'advice_records',
+        audit_record_id: roaId,
+      });
       document.getElementById('mail-modal')?.remove();
-      showToast('ROA sent successfully', 'success');
+      showToast('ROA signing link sent.', 'success');
     } catch (e) {
       if (errEl) { errEl.style.display = 'block'; errEl.textContent = e.message; }
-      if (sendBtn) sendBtn.disabled = false;
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send ROA'; }
     }
   }
 

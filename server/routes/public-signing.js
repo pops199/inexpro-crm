@@ -70,6 +70,9 @@ router.get('/:token', (req, res) => {
     if (sr.template_key === 'git_confirmation') {
       bodyHtml   = renderGitConfirmationHtml(formData);
       footerHtml = '';
+    } else if (sr.template_key === 'roa_confirmation') {
+      bodyHtml   = renderRoaSigningHtml(db, formData);
+      footerHtml = '';
     } else {
       bodyHtml   = '<p>This document is ready for your signature.</p>';
       footerHtml = '';
@@ -143,6 +146,33 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
           signedAt, signedIp, signedUa,
         },
       });
+    } else if (sr.template_key === 'roa_confirmation') {
+      const { renderRoaPdf } = require('../lib/roa-pdf');
+      let formData = {};
+      try { formData = sr.form_data ? JSON.parse(sr.form_data) : {}; } catch (_) {}
+      const roa = formData.advice_record_id
+        ? db.prepare(`
+            SELECT ar.*,
+                   (c.first_name || ' ' || c.last_name) AS contact_name,
+                   a.account_name,
+                   b.full_name AS broker_name,
+                   p.policy_name
+            FROM advice_records ar
+            LEFT JOIN contacts c ON c.id = ar.contact_id
+            LEFT JOIN accounts a ON a.id = ar.account_id
+            LEFT JOIN users    b ON b.id = ar.broker_id
+            LEFT JOIN policies p ON p.id = ar.policy_id
+            WHERE ar.id = ?
+          `).get(formData.advice_record_id) || {}
+        : {};
+      pdfBuffer = await renderRoaPdf({
+        roa,
+        signature: {
+          buf:        signatureBuf,
+          signerName: String(signer_name).trim(),
+          signedAt, signedIp, signedUa,
+        },
+      });
     } else {
       pdfBuffer = await renderSignedPdf({
         tpl,
@@ -182,18 +212,30 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
     const clientNameForFile = sanitiseFilename(signer_name)
       || sanitiseFilename(ph.client_name)
       || 'Client';
-    const friendlyFilename = sr.template_key === 'git_confirmation'
-      ? `GIT Confirmation - ${clientNameForFile}.pdf`
+    const friendlyFilename =
+        sr.template_key === 'git_confirmation' ? `GIT Confirmation - ${clientNameForFile}.pdf`
+      : sr.template_key === 'roa_confirmation' ? `Record of Advice - ${clientNameForFile}.pdf`
       : `POPIA Consent - ${clientNameForFile}.pdf`;
+
+    // For ROA-template requests we also link the signed PDF to the
+    // advice_record itself, so the document surfaces under the ROA's
+    // Documents tab — not just the contact / account / policy.
+    let adviceRecordId = null;
+    if (sr.template_key === 'roa_confirmation') {
+      try {
+        const fd = sr.form_data ? JSON.parse(sr.form_data) : {};
+        if (fd && fd.advice_record_id) adviceRecordId = parseInt(fd.advice_record_id, 10) || null;
+      } catch (_) {}
+    }
 
     const docResult = db.prepare(`
       INSERT INTO documents (
-        contact_id, account_id, policy_id,
+        contact_id, account_id, policy_id, advice_record_id,
         file_name, original_name, file_type, file_path, file_size,
         description, uploaded_by, uploaded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(
-      sr.contact_id, sr.account_id, sr.policy_id,
+      sr.contact_id, sr.account_id, sr.policy_id, adviceRecordId,
       fileBaseName, friendlyFilename,
       'application/pdf',
       relPath, pdfBuffer.length,
@@ -349,6 +391,81 @@ function renderGitConfirmationHtml(form) {
     <p>By signing below, I acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover.</p>
 
     <p>Kind regards,<br><strong>${escHtml(form.prepared_by_name || 'Inexpro Broker')}</strong><br>Inexpro Short Term Insurance</p>
+  `;
+}
+
+// Build the HTML version of a Record of Advice for the public signing
+// page. Looks up the advice_record by id from form_data and pulls the
+// linked client / broker / policy names so the document the client
+// signs matches the broker's record exactly.
+function renderRoaSigningHtml(db, formData) {
+  const roaId = formData && formData.advice_record_id;
+  if (!roaId) {
+    return '<p style="color:#a71d2a;">Advice record reference is missing. Please contact your broker.</p>';
+  }
+  const roa = db.prepare(`
+    SELECT ar.*,
+           (c.first_name || ' ' || c.last_name) AS contact_name,
+           a.account_name,
+           b.full_name AS broker_name,
+           p.policy_name
+    FROM advice_records ar
+    LEFT JOIN contacts c ON c.id = ar.contact_id
+    LEFT JOIN accounts a ON a.id = ar.account_id
+    LEFT JOIN users    b ON b.id = ar.broker_id
+    LEFT JOIN policies p ON p.id = ar.policy_id
+    WHERE ar.id = ?
+  `).get(roaId);
+  if (!roa) {
+    return '<p style="color:#a71d2a;">Advice record not found. Please contact your broker.</p>';
+  }
+
+  const dateStr = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return String(v).slice(0, 10);
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const headerRow = (label, value) => value
+    ? `<tr><th style="text-align:left;padding:4px 12px 4px 0;width:140px;font-weight:600;">${escHtml(label)}</th>
+         <td style="padding:4px 0;">${escHtml(value)}</td></tr>`
+    : '';
+
+  const section = (heading, value) => value
+    ? `<h3>${escHtml(heading)}</h3><p style="white-space:pre-wrap;">${escHtml(value)}</p>`
+    : '';
+
+  return `
+    <h2 style="text-align:center;">Record of Advice</h2>
+
+    <table role="presentation" style="margin:12px 0;font-size:14px;line-height:1.5;">
+      ${headerRow('Reference',   roa.advice_record_number)}
+      ${headerRow('Client',      roa.contact_name || roa.account_name)}
+      ${headerRow('Adviser',     roa.broker_name)}
+      ${headerRow('Advice Date', dateStr(roa.advice_date))}
+      ${headerRow('Advice Type', roa.advice_type)}
+      ${headerRow('Trigger Event', roa.trigger_event)}
+      ${headerRow('Policy',      roa.policy_name)}
+    </table>
+
+    ${section('Client Needs Identified',  roa.client_needs_identified)}
+    ${section('Recommendation Given',     roa.recommendation_given)}
+    ${section('Why the Product is Suitable', roa.reason_product_suitable)}
+    ${section('Alternatives Considered',  roa.alternatives_considered)}
+    ${section('Material Disclosures',     roa.material_disclosures)}
+    ${section('Notes',                    roa.notes)}
+
+    ${roa.client_decision ? `
+      <h3>Client Decision</h3>
+      <p><strong>Decision:</strong> ${escHtml(roa.client_decision)}</p>
+      ${roa.decision_date ? `<p><strong>Decision Date:</strong> ${escHtml(dateStr(roa.decision_date))}</p>` : ''}
+      ${roa.client_rejection_reason ? `<p><strong>Reason:</strong> ${escHtml(roa.client_rejection_reason)}</p>` : ''}
+    ` : ''}
+
+    <h3>Acknowledgement</h3>
+    <p>By signing below, I confirm that I have read and understood the advice contained in this Record of Advice and that the recommendation has been explained to me.</p>
   `;
 }
 

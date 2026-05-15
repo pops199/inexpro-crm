@@ -6,6 +6,41 @@ sits at the top.
 
 ---
 
+## v1.0.48 — 2026-05-15
+
+**Record of Advice: e-sign flow via the existing Send ROA button**
+
+The Record of Advice module now uses the same e-signature flow as POPIA
+and GIT Confirmation. There's no separate "Send for Signature" button —
+the existing Send ROA button now drives the whole flow.
+
+- **ROA detail header**: the old emoji "📧 Send ROA" and the interim
+  "✍ Send for Signature" buttons are replaced by a single **Send ROA**
+  button.
+- **Click flow**: creates a pending signature_request for the ROA, then
+  opens the email modal pre-populated with the client's email, a
+  default subject (`Record of Advice - <number>`), and a message body
+  with the signing link rendered as a styled button plus a raw URL for
+  forwarding. The broker tweaks the wording and clicks Send ROA — the
+  email goes out via `/api/settings/send-email`.
+- **Client side**: clicking the link opens the public signing page
+  (`/sign/<token>`), shows the ROA contents pulled from the linked
+  advice_record, captures a signature on a canvas, submits.
+- **Server side**: signed PDF (with Inexpro letterhead, footer, and
+  stamped signature) is now linked to:
+  - **the ROA itself** (`advice_record_id`) — surfaces under the ROA's
+    Documents tab
+  - the contact (`contact_id`)
+  - the account (`account_id`) when applicable
+  - the policy (`policy_id`) when applicable
+- **New shared module** `server/lib/roa-pdf.js` renders the signed ROA
+  PDF using the same letterhead + footer chrome and proper-margin /
+  cursor-saving patterns as the POPIA + GIT renderers.
+- **New signable template** `roa_confirmation` registered server-side
+  (dynamic — body content comes from the linked advice_record row).
+- **New endpoint** `POST /api/advice-records/:id/sign-request` creates
+  the signature_request and returns the public URL.
+
 ## v1.0.47 — 2026-05-15
 
 **e-Signature flow · POPIA notices & GIT Confirmation**

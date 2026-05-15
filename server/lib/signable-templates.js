@@ -156,6 +156,23 @@ const TEMPLATES = {
     bodyHtml:   '',
     footerHtml: '',
   },
+  // Record of Advice — DYNAMIC template. The signing page pulls the
+  // advice_record row referenced by form_data.advice_record_id and
+  // renders its needs / recommendation / suitability content. The signed
+  // PDF appends a stamped signature page and files automatically against
+  // the linked contact / account / policy.
+  roa_confirmation: {
+    key:        'roa_confirmation',
+    label:      'Record of Advice',
+    category:   'Advice',
+    title:      'Record of Advice',
+    filename:   'record-of-advice.pdf',
+    description: 'Record of Advice — signed by client',
+    hasMarketingConsent: false,
+    dynamic:    true,
+    bodyHtml:   '',
+    footerHtml: '',
+  },
 };
 
 function listTemplates() {

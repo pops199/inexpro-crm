@@ -1740,3 +1740,39 @@ Files changed: 11
 - `server/routes/public-signing.js`
 Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 13:40 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 13:53 — auto-detected change
+Files changed: 10
+- `client/public/index.html`
+- `client/src/components/advice-records.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/roa-pdf.js`
+- `server/lib/signable-templates.js`
+- `server/routes/advice-records.js`
+- `server/routes/public-signing.js`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-15 13:59 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/advice-records.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/public-signing.js`
+Session: dc3baf96-2abb-4b5d-b27c-8532ea6b67d3
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

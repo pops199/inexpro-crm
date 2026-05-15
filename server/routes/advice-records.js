@@ -1427,4 +1427,84 @@ router.post('/:id/complete', requireAuth, (req, res) => {
   res.json(updated);
 });
 
+// ─── POST /:id/sign-request ──────────────────────────────────────────
+// Create a pending signature_request for this ROA. The client clicks
+// the resulting link, reviews the document, signs it, and the signed
+// PDF is auto-filed under the linked contact / account / policy by the
+// public-signing route. Mirrors the GIT Confirmation sign-request
+// pattern — the advice_record_id is stashed in form_data so the
+// signing page knows which ROA to render.
+router.post('/:id/sign-request', requireAuth, (req, res) => {
+  try {
+    const db = getDb();
+    const id = parseInt(req.params.id, 10);
+    const roa = db.prepare('SELECT * FROM advice_records WHERE id = ?').get(id);
+    if (!roa) return res.status(404).json({ error: 'Advice record not found' });
+
+    // Broker isolation — only the assigned broker can request a signature.
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && roa.broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(24).toString('base64url');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Resolve recipient name + email from the contact / account chain.
+    let recipientName = null;
+    let recipientEmail = null;
+    if (roa.contact_id) {
+      const c = db.prepare('SELECT first_name, last_name, email FROM contacts WHERE id = ?').get(roa.contact_id);
+      if (c) {
+        recipientName = `${c.first_name || ''} ${c.last_name || ''}`.trim() || null;
+        recipientEmail = c.email || null;
+      }
+    } else if (roa.account_id) {
+      const a = db.prepare('SELECT account_name FROM accounts WHERE id = ?').get(roa.account_id);
+      if (a) recipientName = a.account_name || null;
+    }
+
+    const formData = { advice_record_id: id };
+
+    const result = db.prepare(`
+      INSERT INTO signature_requests
+        (token, template_key, status, contact_id, account_id, policy_id,
+         created_by, expires_at, recipient_name, recipient_email, form_data)
+      VALUES (?, 'roa_confirmation', 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      token,
+      roa.contact_id || null,
+      roa.account_id || null,
+      roa.policy_id  || null,
+      req.session.userId,
+      expiresAt,
+      recipientName,
+      recipientEmail,
+      JSON.stringify(formData)
+    );
+
+    res.locals.logAudit({
+      action: 'CREATE',
+      module: 'signature_requests',
+      recordId: result.lastInsertRowid,
+      description: `ROA signature request created for ${roa.advice_record_number || id}`,
+    });
+
+    const publicUrl = `${req.protocol}://${req.get('host')}/sign/${token}`;
+    return res.status(201).json({
+      id: result.lastInsertRowid,
+      token,
+      public_url: publicUrl,
+      template_key: 'roa_confirmation',
+      status: 'pending',
+      expires_at: expiresAt,
+      recipient_email: recipientEmail,
+    });
+  } catch (err) {
+    console.error('POST /advice-records/:id/sign-request error:', err);
+    return res.status(500).json({ error: 'Failed to create signature request' });
+  }
+});
+
 module.exports = router;
