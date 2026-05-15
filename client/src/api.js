@@ -290,6 +290,25 @@ const Api = {
     assetHistory(id) {
       return apiFetch('GET', `/api/policies/${id}/asset-history`);
     },
+    /**
+     * POST /api/policies/:id/git-confirmation
+     * Generate a Goods-in-Transit Confirmation of Insurance PDF.
+     * Returns a Blob that the caller can save / download.
+     */
+    async gitConfirmation(id, body) {
+      const res = await fetch(`/api/policies/${id}/git-confirmation`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      });
+      if (!res.ok) {
+        let msg = `GIT confirmation failed (${res.status})`;
+        try { const j = await res.json(); if (j.error) msg = j.error; } catch (_) {}
+        throw new Error(msg);
+      }
+      return res.blob();
+    },
   },
 
   // ── Policy Sections ───────────────────────────────────────────
@@ -502,6 +521,10 @@ const Api = {
     /** DELETE /api/documents/:id */
     delete(id) {
       return apiFetch('DELETE', `/api/documents/${id}`);
+    },
+    /** GET /api/documents/related?module=contacts|accounts&record_id=N — grouped library */
+    related(module, recordId) {
+      return apiFetch('GET', '/api/documents/related' + buildQueryString({ module, record_id: recordId }));
     },
     /** Return the direct view URL for a document. */
     viewUrl(id) {

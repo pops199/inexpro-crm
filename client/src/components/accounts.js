@@ -1210,41 +1210,13 @@ const Accounts = (() => {
           <div class="form-group" style="border-top:1px solid var(--border-color,#dee2e6);padding-top:.75rem;margin-top:.5rem;">
             <label class="form-label">Attachments</label>
 
-            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;margin-bottom:.5rem;">
-              <input type="checkbox" id="mail-attach-schedule" />
-              Attach Policy Schedule (PDF)
-            </label>
-
-            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;margin-bottom:.35rem;">
-              <input type="checkbox" id="mail-attach-roa" onchange="Accounts._toggleRoaDocs()" />
-              Attach Record of Advice
-            </label>
-            <div id="mail-roa-list" style="display:none;margin-left:1.5rem;margin-bottom:.5rem;">
-              ${adviceRecords.length
-                ? adviceRecords.map(ar => `
-                  <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.85rem;margin-bottom:.2rem;">
-                    <input type="checkbox" class="mail-roa-cb" value="${ar.id}" checked />
-                    ${Utils.esc(ar.advice_record_number || 'ROA-' + ar.id)} — ${Utils.esc(ar.advice_type || '')}
-                    <span style="color:var(--text-muted);font-size:.78rem;">(${ar.advice_date ? formatDate(ar.advice_date) : 'No date'})</span>
-                  </label>`).join('')
-                : '<span style="font-size:.85rem;color:var(--text-muted);">No records of advice found for this account.</span>'}
-            </div>
-
-            <!-- File attachments from computer -->
-            <div style="margin-top:.5rem;">
-              <button type="button" class="btn btn-secondary btn-sm" id="mail-attach-file-btn">+ Add Attachment</button>
+            <!-- Add from library (covers Policy Schedule, ROAs, claim forms,
+                 plus every uploaded doc) OR upload a fresh file from disk. -->
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="mail-attach-library-btn">+ Add Attachment</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="mail-attach-file-btn">+ Upload from Computer</button>
               <input type="file" id="mail-attach-file-input" multiple style="display:none;" />
             </div>
-
-            <!-- Claim form attachments -->
-            ${claimForms.length ? `
-            <div style="margin-top:.5rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-              <select id="mail-claim-form-select" class="form-control" style="flex:1;min-width:200px;">
-                <option value="">— Select Claim Form —</option>
-                  ${claimForms.map(f => `<option value="${Utils.esc(f.filename)}">${Utils.esc(f.label || f.filename)}</option>`).join('')}
-              </select>
-              <button type="button" class="btn btn-secondary btn-sm" id="mail-attach-claim-form-btn">Attach</button>
-            </div>` : ''}
 
             <!-- Attached files list -->
             <div id="mail-attachment-list" style="margin-top:.5rem;display:flex;flex-direction:column;gap:.25rem;"></div>
@@ -1279,7 +1251,13 @@ const Accounts = (() => {
       today: new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' }),
     };
     modal._userAttachments = [];
-    modal._claimFormNames = [];
+    modal._libraryDocs = []; // [{ id, filename, group, type, value }]
+
+    // Context the library picker needs to inject synthetic entries.
+    modal._parentModule  = 'accounts';
+    modal._claimForms    = claimForms || [];
+    modal._policies      = policies   || [];
+    modal._adviceRecords = adviceRecords || [];
 
     _wireMailAttachments(modal);
   }
@@ -1289,20 +1267,37 @@ const Accounts = (() => {
     const renderList = () => {
       if (!listEl) return;
       const rows = [];
+      (modal._libraryDocs || []).forEach((d, i) => {
+        const icon = d.type && d.type !== 'doc' ? '🧾' : '📁';
+        rows.push(`<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.25rem .5rem;background:var(--bg-alt,#f4f5f7);border-radius:4px;">
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">${icon} ${Utils.esc(d.filename)}${d.group ? ` <span style="color:var(--text-muted);font-size:.78rem;">(${Utils.esc(d.group)})</span>` : ''}</span>
+          <button type="button" class="btn btn-sm btn-danger" data-remove-lib="${i}" style="padding:0 .4rem;">✕</button>
+        </div>`);
+      });
       (modal._userAttachments || []).forEach((f, i) => {
         rows.push(`<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.25rem .5rem;background:var(--bg-alt,#f4f5f7);border-radius:4px;">
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">📎 ${Utils.esc(f.filename)}</span>
           <button type="button" class="btn btn-sm btn-danger" data-remove-file="${i}" style="padding:0 .4rem;">✕</button>
         </div>`);
       });
-      (modal._claimFormNames || []).forEach((name, i) => {
-        rows.push(`<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.25rem .5rem;background:var(--bg-alt,#f4f5f7);border-radius:4px;">
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">📄 ${Utils.esc(name)}</span>
-          <button type="button" class="btn btn-sm btn-danger" data-remove-form="${i}" style="padding:0 .4rem;">✕</button>
-        </div>`);
-      });
       listEl.innerHTML = rows.join('');
     };
+
+    const libBtn = modal.querySelector('#mail-attach-library-btn');
+    if (libBtn) {
+      libBtn.addEventListener('click', async () => {
+        await _openAttachmentLibrary({
+          parentModule:  modal._parentModule || 'accounts',
+          parentId:      modal._accountId,
+          claimForms:    modal._claimForms || [],
+          policies:      modal._policies || [],
+          adviceRecords: modal._adviceRecords || [],
+        }, modal._libraryDocs, (picked) => {
+          modal._libraryDocs = picked;
+          renderList();
+        });
+      });
+    }
 
     const fileBtn = modal.querySelector('#mail-attach-file-btn');
     const fileInput = modal.querySelector('#mail-attach-file-input');
@@ -1332,33 +1327,274 @@ const Accounts = (() => {
       });
     }
 
-    const formSelect = modal.querySelector('#mail-claim-form-select');
-    const formBtn = modal.querySelector('#mail-attach-claim-form-btn');
-    if (formSelect && formBtn) {
-      formBtn.addEventListener('click', () => {
-        const v = formSelect.value;
-        if (!v) return;
-        if (!modal._claimFormNames.includes(v)) modal._claimFormNames.push(v);
-        formSelect.value = '';
-        renderList();
-      });
-    }
-
     if (listEl) {
       listEl.addEventListener('click', (e) => {
+        const rl = e.target.closest('[data-remove-lib]');
         const rf = e.target.closest('[data-remove-file]');
-        const rc = e.target.closest('[data-remove-form]');
-        if (rf) {
+        if (rl) {
+          const i = parseInt(rl.dataset.removeLib, 10);
+          modal._libraryDocs.splice(i, 1);
+          renderList();
+        } else if (rf) {
           const i = parseInt(rf.dataset.removeFile, 10);
           modal._userAttachments.splice(i, 1);
-          renderList();
-        } else if (rc) {
-          const i = parseInt(rc.dataset.removeForm, 10);
-          modal._claimFormNames.splice(i, 1);
           renderList();
         }
       });
     }
+  }
+
+  /**
+   * Open the document-library picker — same UX as the contacts picker.
+   * Lists every real document related to this account, grouped by source.
+   * Synthetic entries are merged in for claim-form templates, the Policy
+   * Schedule PDF generator, and ROA generators (one per advice record).
+   * Each picked item is returned with a `type` so _sendMail routes it to the
+   * correct field on the email payload.
+   */
+  async function _openAttachmentLibrary(opts, alreadyPicked, onApply) {
+    const { parentModule, parentId } = opts;
+    const claimForms    = opts.claimForms    || [];
+    const policiesCtx   = opts.policies      || [];
+    const adviceRecords = opts.adviceRecords || [];
+
+    if (!parentId) {
+      showToast('Save this record before attaching documents.', 'warning');
+      return;
+    }
+
+    const existing = document.getElementById('mail-attach-library-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mail-attach-library-modal';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '2000';
+    overlay.innerHTML = `
+      <div class="modal" style="width:640px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">Add From Document Library</h3>
+          <button class="modal-close" id="lib-close">×</button>
+        </div>
+        <div class="modal-body" style="overflow:auto;flex:1;">
+          <div style="margin-bottom:.75rem;">
+            <input type="search" id="lib-search" class="form-control" placeholder="Search filename or description…" style="font-size:.9rem;" />
+          </div>
+          <div id="lib-content">
+            <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between;">
+          <span id="lib-selected-count" style="font-size:.85rem;color:var(--text-muted);">0 selected</span>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn btn-secondary" id="lib-cancel">Cancel</button>
+            <button class="btn btn-primary" id="lib-apply" disabled>Add Selected</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('#lib-close').addEventListener('click', close);
+    overlay.querySelector('#lib-cancel').addEventListener('click', close);
+
+    // Fetch real documents AND advice records in parallel so the picker is
+    // authoritative regardless of what the email modal preloaded.
+    let res;
+    let liveAdviceRecords = adviceRecords;
+    try {
+      const arQuery = parentModule === 'accounts' ? { account_id: parentId } : { contact_id: parentId };
+      const [docsRes, arRes] = await Promise.all([
+        Api.documents.related(parentModule, parentId),
+        Api.adviceRecords.list({ ...arQuery, limit: 100 }).catch(() => null),
+      ]);
+      res = docsRes;
+      if (arRes) {
+        const list = arRes.data || arRes || [];
+        if (Array.isArray(list) && list.length) liveAdviceRecords = list;
+      }
+    } catch (err) {
+      overlay.querySelector('#lib-content').innerHTML =
+        `<div class="alert alert-danger">Failed to load related documents: ${Utils.esc(err.message || err)}</div>`;
+      return;
+    }
+
+    // ── Canonical group order ───────────────────────────────────────────────
+    // Always show every standard group so users see the full categorisation
+    // even when a group is empty.
+    const directLabel = parentModule === 'contacts' ? 'Contact Documents' : 'Account Documents';
+    const STANDARD_LABELS = [directLabel, 'Policies', 'Claims', 'Engagements', 'Complaints', 'Reviews', 'Assets'];
+    const groupMap = new Map();
+    STANDARD_LABELS.forEach(label => groupMap.set(label, { label, count: 0, docs: [] }));
+    (res.groups || []).forEach(g => {
+      const existing = groupMap.get(g.label);
+      if (existing) {
+        existing.docs = (g.docs || []).slice();
+        existing.count = existing.docs.length;
+      } else {
+        groupMap.set(g.label, g);
+      }
+    });
+
+    // ── Inject synthetic entries ────────────────────────────────────────────
+    if (claimForms.length) {
+      const g = groupMap.get('Claims');
+      claimForms.forEach(f => g.docs.push({
+        id:            'claim-form:' + f.filename,
+        original_name: f.label || f.filename,
+        description:   'Default claim-form template',
+        file_type:     'application/pdf',
+        synthetic_type: 'claim_form',
+        synthetic_value: f.filename,
+      }));
+      g.count = g.docs.length;
+    }
+
+    // Policy Schedule synthetic — always offered.
+    {
+      const g = groupMap.get('Policies');
+      const policyCount = policiesCtx.length;
+      g.docs.unshift({
+        id:            'policy-schedule:' + parentId,
+        original_name: 'Policy Schedule (generated PDF)',
+        description:   policyCount
+          ? `Live schedule for all ${policyCount} polic${policyCount === 1 ? 'y' : 'ies'}`
+          : 'Generated from current policy data',
+        file_type:     'application/pdf',
+        synthetic_type: parentModule === 'accounts' ? 'schedule_account' : 'schedule_contact',
+        synthetic_value: parentId,
+      });
+      g.count = g.docs.length;
+    }
+
+    if (liveAdviceRecords && liveAdviceRecords.length) {
+      const g = groupMap.get('Engagements');
+      liveAdviceRecords.forEach(ar => g.docs.push({
+        id:            'roa:' + ar.id,
+        original_name: `Record of Advice — ${ar.advice_record_number || 'ROA-' + ar.id}`,
+        description:   [ar.advice_type, ar.advice_date ? formatDate(ar.advice_date) : ''].filter(Boolean).join(' · '),
+        file_type:     'application/pdf',
+        synthetic_type: 'roa',
+        synthetic_value: ar.id,
+      }));
+      g.count = g.docs.length;
+    }
+
+    const groups = Array.from(groupMap.values());
+
+    const preselectedIds = new Set((alreadyPicked || []).map(d => String(d.id)));
+
+    const renderGroups = (filterTerm) => {
+      const term = (filterTerm || '').trim().toLowerCase();
+      const html = groups.map(g => {
+        const visibleDocs = term
+          ? (g.docs || []).filter(d =>
+              (d.original_name || '').toLowerCase().includes(term) ||
+              (d.description || '').toLowerCase().includes(term))
+          : (g.docs || []);
+
+        // Keep empty categories visible by default; suppress them during
+        // searches so the result set stays tight.
+        if (!visibleDocs.length && term) return '';
+
+        const hasSelectAll = visibleDocs.length > 0;
+        const rows = visibleDocs.length
+          ? visibleDocs.map(d => {
+              const sizeKb = d.file_size ? Math.round(d.file_size / 1024) + ' KB' : '';
+              const uploaded = d.uploaded_at ? formatDate(d.uploaded_at) : '';
+              const checked = preselectedIds.has(String(d.id)) ? 'checked' : '';
+              const isSynth = !!d.synthetic_type;
+              const icon = isSynth ? '🧾' : '📁';
+              const type = isSynth ? d.synthetic_type : 'doc';
+              const value = isSynth ? d.synthetic_value : d.id;
+              const viewLink = !isSynth && d.view_url
+                ? `<a href="${Utils.esc(d.view_url)}" target="_blank" rel="noopener" title="View" style="font-size:.85rem;text-decoration:none;" onclick="event.stopPropagation()">👁</a>`
+                : '';
+              return `
+                <label class="lib-row" style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-bottom:1px solid var(--border-color,#eee);cursor:pointer;">
+                  <input type="checkbox" class="lib-doc-cb" value="${Utils.esc(String(d.id))}"
+                    data-name="${Utils.esc(d.original_name || d.file_name || '')}"
+                    data-group="${Utils.esc(g.label)}"
+                    data-type="${Utils.esc(type)}"
+                    data-value="${Utils.esc(String(value))}"
+                    ${checked} />
+                  <span style="flex:1;font-size:.85rem;line-height:1.3;">
+                    <span style="color:var(--text);">${icon} ${Utils.esc(d.original_name || d.file_name || '—')}</span>
+                    ${d.description ? `<br><span style="color:var(--text-muted);font-size:.78rem;">${Utils.esc(d.description)}</span>` : ''}
+                  </span>
+                  <span style="font-size:.75rem;color:var(--text-muted);text-align:right;white-space:nowrap;">
+                    ${sizeKb}${sizeKb && uploaded ? ' · ' : ''}${uploaded}
+                  </span>
+                  ${viewLink}
+                </label>`;
+            }).join('')
+          : `<div style="padding:.5rem .75rem;font-size:.82rem;color:var(--text-muted);font-style:italic;">No documents in this category yet.</div>`;
+
+        return `
+          <details ${visibleDocs.length ? 'open' : ''} style="margin-bottom:.75rem;border:1px solid var(--border-color,#dee2e6);border-radius:6px;background:var(--card-bg,#fff);">
+            <summary style="padding:.5rem .75rem;cursor:pointer;font-weight:600;font-size:.88rem;display:flex;justify-content:space-between;align-items:center;">
+              <span>${Utils.esc(g.label)} <span style="color:var(--text-muted);font-weight:400;">(${visibleDocs.length}${term && visibleDocs.length !== (g.docs || []).length ? '/' + (g.docs || []).length : ''})</span></span>
+              ${hasSelectAll ? `<button type="button" class="btn btn-sm btn-link lib-group-toggle" data-group-label="${Utils.esc(g.label)}" style="font-size:.78rem;padding:0;">Select all</button>` : ''}
+            </summary>
+            <div>${rows}</div>
+          </details>`;
+      }).join('') || `<p style="color:var(--text-muted);font-size:.9rem;padding:.5rem 0;">No documents match your search.</p>`;
+
+      overlay.querySelector('#lib-content').innerHTML = html;
+
+      overlay.querySelectorAll('.lib-group-toggle').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const det = btn.closest('details');
+          if (!det) return;
+          const cbs = det.querySelectorAll('.lib-doc-cb');
+          const anyUnchecked = Array.from(cbs).some(cb => !cb.checked);
+          cbs.forEach(cb => { cb.checked = anyUnchecked; });
+          btn.textContent = anyUnchecked ? 'Deselect all' : 'Select all';
+          updateCount();
+        });
+      });
+
+      overlay.querySelectorAll('.lib-doc-cb').forEach(cb => {
+        cb.addEventListener('change', updateCount);
+      });
+      updateCount();
+    };
+
+    const updateCount = () => {
+      const n = overlay.querySelectorAll('.lib-doc-cb:checked').length;
+      const countEl = overlay.querySelector('#lib-selected-count');
+      if (countEl) countEl.textContent = `${n} selected`;
+      const applyBtn = overlay.querySelector('#lib-apply');
+      if (applyBtn) applyBtn.disabled = n === 0;
+    };
+
+    renderGroups('');
+
+    const searchEl = overlay.querySelector('#lib-search');
+    if (searchEl) {
+      let t;
+      searchEl.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(() => renderGroups(searchEl.value), 200);
+      });
+    }
+
+    overlay.querySelector('#lib-apply').addEventListener('click', () => {
+      const picked = [];
+      overlay.querySelectorAll('.lib-doc-cb:checked').forEach(cb => {
+        picked.push({
+          id:       cb.value,
+          filename: cb.dataset.name || `Document ${cb.value}`,
+          group:    cb.dataset.group || '',
+          type:     cb.dataset.type  || 'doc',
+          value:    cb.dataset.value || cb.value,
+        });
+      });
+      onApply(picked);
+      close();
+    });
   }
 
   function _replacePlaceholders(text, placeholders) {
@@ -1381,12 +1617,6 @@ const Accounts = (() => {
     if (bodyEl && tpl.body) bodyEl.value = _replacePlaceholders(tpl.body, ph);
   }
 
-  function _toggleRoaDocs() {
-    const checked = document.getElementById('mail-attach-roa')?.checked;
-    const el = document.getElementById('mail-roa-list');
-    if (el) el.style.display = checked ? '' : 'none';
-  }
-
   async function _sendMail() {
     const to = document.getElementById('mail-to')?.value?.trim();
     const subject = document.getElementById('mail-subject')?.value?.trim();
@@ -1402,22 +1632,26 @@ const Accounts = (() => {
 
     const payload = { to, subject, html: body, text: body, audit_module: 'accounts', audit_record_id: modal?._accountId };
 
-    // Attach Policy Schedule PDF
-    if (document.getElementById('mail-attach-schedule')?.checked) {
-      payload.schedule_account_id = modal?._accountId;
-    }
-
-    // Collect selected ROA IDs
-    const roaIds = [];
-    if (document.getElementById('mail-attach-roa')?.checked) {
-      document.querySelectorAll('#mail-roa-list .mail-roa-cb:checked').forEach(cb => {
-        roaIds.push(parseInt(cb.value));
-      });
-      if (roaIds.length) payload.roa_ids = roaIds;
-    }
-
     if (modal?._userAttachments?.length) payload.user_attachments = modal._userAttachments;
-    if (modal?._claimFormNames?.length)  payload.claim_form_names = modal._claimFormNames;
+
+    // Library picks now cover docs, claim-form templates, the Policy Schedule
+    // generator, and ROA generators — route each by `type`.
+    const docIds = [];
+    const roaIds = [];
+    const claimFormNames = [];
+    (modal?._libraryDocs || []).forEach(d => {
+      switch (d.type) {
+        case 'doc':              docIds.push(parseInt(d.value, 10)); break;
+        case 'roa':              roaIds.push(parseInt(d.value, 10)); break;
+        case 'schedule_contact': payload.schedule_contact_id = parseInt(d.value, 10); break;
+        case 'schedule_account': payload.schedule_account_id = parseInt(d.value, 10); break;
+        case 'claim_form':       claimFormNames.push(String(d.value)); break;
+        default:                 docIds.push(parseInt(d.value, 10));
+      }
+    });
+    if (docIds.length)         payload.document_ids     = docIds;
+    if (roaIds.length)         payload.roa_ids          = roaIds;
+    if (claimFormNames.length) payload.claim_form_names = claimFormNames;
 
     if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
     try {
@@ -1431,6 +1665,6 @@ const Accounts = (() => {
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
-  return { list, form, detail, _openMailModal, _applyMailTemplate, _sendMail, _toggleRoaDocs };
+  return { list, form, detail, _openMailModal, _applyMailTemplate, _sendMail };
 
 })();

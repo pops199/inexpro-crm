@@ -1482,4 +1482,323 @@ router.get('/quotes/:quoteId/download', (req, res, next) => {
   _streamQuoteFile(req, res, next, 'attachment');
 });
 
+// ─── POST /:id/git-confirmation ──────────────────────────────────────────
+// Generate a Goods-in-Transit "Confirmation of Insurance" PDF letter for a
+// Transport policy. The client POSTs the editable fields (coverage limits,
+// vehicle groups, etc.) and we render them on top of the letterhead. The
+// long regulatory boilerplate (exclusions, first-loss clause, proportionate
+// consignment clause, acknowledgement block) is templated from the
+// 04 Confirmation of Insurance source document and not user-editable.
+router.post('/:id/git-confirmation', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const policy = db.prepare('SELECT * FROM policies WHERE id = ?').get(req.params.id);
+    if (!policy) return res.status(404).json({ error: 'Policy not found' });
+
+    // Broker isolation
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && policy.assigned_broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const isTransport = policy.policy_type === 'Transport' || policy.product_category === 'Transport';
+    if (!isTransport) {
+      return res.status(422).json({ error: 'GIT Confirmation is only available for Transport policies' });
+    }
+
+    const body = req.body || {};
+    const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
+
+    const chunks = [];
+    const pdfDoc = new PDFDocument({ margin: 0, size: 'A4', autoFirstPage: true });
+    pdfDoc.on('data', c => chunks.push(c));
+
+    await new Promise((resolve, reject) => {
+      pdfDoc.on('end', resolve);
+      pdfDoc.on('error', reject);
+
+      const PAGE_W = 595.28;
+      const PAGE_H = 841.89;
+      const MARGIN = 50;
+      const CONTENT_W = PAGE_W - MARGIN * 2;
+      const PRIMARY = '#1a5276';
+      const BODY = 10;
+      const SMALL = 9;
+      const H = 12;
+
+      // Footer: branded image at the bottom of every page with the firm's
+      // legal disclosure overlaid in text (kept selectable / accessible).
+      // Image is stretched to full width with a fixed height so the layout
+      // stays consistent regardless of source aspect.
+      const footerImagePath = path.join(__dirname, '../../client/public/letterhead-footer.jpg');
+      const FOOTER_H = 80;
+      const FOOTER_TEXT_TOP = PAGE_H - FOOTER_H + 8;
+      const SAFE_BOTTOM = PAGE_H - FOOTER_H - 10; // content must end here
+      function drawFooter() {
+        if (fs.existsSync(footerImagePath)) {
+          pdfDoc.image(footerImagePath, 0, PAGE_H - FOOTER_H, { width: PAGE_W, height: FOOTER_H });
+        }
+        // Text overlay — sits over the image's white space.
+        pdfDoc.save();
+        pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#1a5276')
+          .text('Inexpro Short Term Insurance', 0, FOOTER_TEXT_TOP,
+            { width: PAGE_W, align: 'center' });
+        pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#1a5276')
+          .text('Steph@Inexpro.co.za  |  www.Inexpro.co.za', 0, FOOTER_TEXT_TOP + 12,
+            { width: PAGE_W, align: 'center' });
+        pdfDoc.fontSize(7).fillColor('#555')
+          .text('CK 1995/049701/23  |  VAT 4240154593', 0, FOOTER_TEXT_TOP + 26,
+            { width: PAGE_W, align: 'center' });
+        pdfDoc.text('Inexpro is an authorised financial service provider — FSP Licence No. 7591',
+          0, FOOTER_TEXT_TOP + 38, { width: PAGE_W, align: 'center' });
+        pdfDoc.restore();
+      }
+
+      // Letterhead on page 1 only — subsequent pages start at a plain top
+      // margin so the letter doesn't repeat its branded header on every page.
+      const letterheadPath = path.join(__dirname, '../../client/public/letterhead-ROA.png');
+      const PAGE2_TOP = 50;
+      let firstPageTop = PAGE2_TOP;
+      if (fs.existsSync(letterheadPath)) {
+        const imgData = fs.readFileSync(letterheadPath);
+        const imgW = imgData.readUInt32BE(16);
+        const imgH = imgData.readUInt32BE(20);
+        const renderedH = (imgH / imgW) * PAGE_W;
+        pdfDoc.image(letterheadPath, 0, 0, { width: PAGE_W });
+        firstPageTop = renderedH + 12;
+      }
+      drawFooter();
+      pdfDoc.on('pageAdded', () => {
+        drawFooter();
+        pdfDoc.y = PAGE2_TOP;
+        pdfDoc.x = MARGIN;
+      });
+
+      pdfDoc.y = firstPageTop;
+      pdfDoc.x = MARGIN;
+
+      // Helpers
+      const fmtR = (v) => {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return String(v || '');
+        return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+      const fmtDateLong = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return iso;
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      };
+      function checkBreak(needed) {
+        if (pdfDoc.y + needed > SAFE_BOTTOM) pdfDoc.addPage();
+      }
+      function sectionHead(title) {
+        checkBreak(40);
+        pdfDoc.moveDown(0.6);
+        pdfDoc.fontSize(H).fillColor(PRIMARY).font('Helvetica-Bold')
+          .text(title, MARGIN, pdfDoc.y, { width: CONTENT_W });
+        pdfDoc.moveTo(MARGIN, pdfDoc.y + 2).lineTo(MARGIN + CONTENT_W, pdfDoc.y + 2)
+          .strokeColor('#dee2e6').lineWidth(0.75).stroke();
+        pdfDoc.moveDown(0.4);
+        pdfDoc.fontSize(BODY).fillColor('#222').font('Helvetica');
+      }
+      function labelValueRow(label, value) {
+        const LABEL_W = 140;
+        const y = pdfDoc.y;
+        pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
+          .text(label + ':', MARGIN, y, { width: LABEL_W });
+        const lineH = pdfDoc.heightOfString(label + ':', { width: LABEL_W });
+        pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222')
+          .text(String(value || ''), MARGIN + LABEL_W, y, { width: CONTENT_W - LABEL_W });
+        const lineH2 = pdfDoc.heightOfString(String(value || ''), { width: CONTENT_W - LABEL_W });
+        pdfDoc.y = y + Math.max(lineH, lineH2) + 2;
+      }
+
+      // ── Date (right-aligned) ─────────────────────────────────
+      pdfDoc.fontSize(BODY).font('Helvetica').fillColor('#222')
+        .text(fmtDateLong(body.date) || fmtDateLong(new Date().toISOString()), MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'right' });
+
+      pdfDoc.moveDown(0.8);
+
+      // Title
+      pdfDoc.fontSize(16).font('Helvetica-Bold').fillColor(PRIMARY)
+        .text('Confirmation of Insurance', MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'center' });
+      pdfDoc.moveDown(0.6);
+
+      // Header block
+      labelValueRow('INSURED', body.insured_name || '');
+      labelValueRow('ADDRESS', body.insured_address || '');
+      labelValueRow('RISK ADDRESS', body.risk_address || '');
+      labelValueRow('INSURERS', body.insurer || policy.insurer || '');
+      labelValueRow('Policy Number', body.policy_number || policy.policy_number || '');
+      labelValueRow('Brokers', body.broker_firm || 'Inexpro cc');
+      labelValueRow('Renewal date', fmtDateLong(body.renewal_date || policy.renewal_date));
+      labelValueRow('Premiums', body.premium_note || 'Continuation of cover is dependent on monthly payment of premium when presented');
+
+      // ── Coverage & Limits ────────────────────────────────────
+      sectionHead('COVERAGE & LIMITS');
+      const cov = body.coverage || {};
+      const covRows = [
+        ['Goods in Transit (Carriers Liability)', cov.goods_in_transit, ' (As Specified)'],
+        ['Vehicle Third Party Liability',          cov.vehicle_third_party_liability, ''],
+        ['Driver Fidelity',                        cov.driver_fidelity, ''],
+        ['Spillage out of Vehicle',                cov.spillage_out_of_vehicle, ''],
+        ['Wreckage Removal',                       cov.wreckage_removal, ''],
+        ['Debris Removal',                         cov.debris_removal, ''],
+        ['Public Liability (Claims Made Basis)',   cov.public_liability, ''],
+      ];
+      covRows.forEach(([label, amount, suffix]) => {
+        if (amount === undefined || amount === null || amount === '') return;
+        const y = pdfDoc.y;
+        pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222')
+          .text(label, MARGIN, y, { width: 300 });
+        pdfDoc.text('- ' + fmtR(amount) + (suffix || ''), MARGIN + 300, y, { width: CONTENT_W - 300 });
+        pdfDoc.y = y + 14;
+      });
+      const coverTypes = Array.isArray(body.cover_types) ? body.cover_types : [];
+      if (coverTypes.length) {
+        pdfDoc.moveDown(0.3);
+        labelValueRow('Cover', coverTypes.join(', '));
+      }
+
+      // ── Goods in Transit (Carriers Liability) Detail ─────────
+      sectionHead('Goods in Transit (Carriers Liability) Detail');
+      pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
+        .text('MAXIMUM LIMITS OF INDEMNITY', MARGIN, pdfDoc.y, { width: CONTENT_W });
+      pdfDoc.moveDown(0.3);
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222')
+        .text(
+          "Unless otherwise agreed prior to sending, the indemnity under Goods in Transit policy will be calculated as per the terms and conditions of the BASIS OF VALUATION and/or INDEMNITY CALCULATION CLAUSE and/or other relevant clauses, however subject to an ABSOLUTE MAXIMUM LIMIT OF INDEMNITY any ONE CONVEYANCE OR ONE OCCURRENCE sub-limits per section:",
+          MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+        );
+      pdfDoc.moveDown(0.4);
+
+      // Vehicle groups
+      const groups = Array.isArray(body.vehicle_groups) ? body.vehicle_groups : [];
+      groups.forEach(grp => {
+        checkBreak(70);
+        const desc = (grp.description || 'CARGO & PACKAGING MATERIALS').toUpperCase();
+        const limit = fmtR(grp.limit);
+        pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
+          .text(`${desc} ${limit} any one conveyance or occurrence in respect of vehicle${(grp.vehicles || []).length > 1 ? 's' : ''}:`,
+            MARGIN, pdfDoc.y, { width: CONTENT_W });
+        pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222');
+        (grp.vehicles || []).forEach(v => {
+          checkBreak(14);
+          pdfDoc.text(String(v), MARGIN + 16, pdfDoc.y, { width: CONTENT_W - 16 });
+        });
+        pdfDoc.moveDown(0.4);
+      });
+
+      // ── Standard boilerplate (from the source docx) ──────────
+      sectionHead('Goods in Transit');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        "All property usual to the Insured's business (including ropes, tarpaulins and packing materials in connection with the transit)\n\n" +
+        "Defined events: All Risk\n\n" +
+        "Property shall mean the property described in the schedule, including all containers, ropes, tarpaulins, packaging materials, receptacles, covers, boxes and labels when necessary for the Insured's commercial purposes, specifically including Tyres, Electronic goods, Spirits, Alcohol and alcohol related products but excluding antiques or antiquities of any description, arms, ammunition, artworks, live animals of any description, bank and treasury notes, cash, travellers cheques, bullion, platinum, cobalt, copper, deeds, designs, documents of any description, explosives, furs, jewellery, patterns, plans, precious metals or stones, specie, stamps, tickets, brass and scrap metal, exotic sea foods including caviar, prawns, calamari and crayfish, aircraft and their parts and accessories unless declared to the company and specifically included in the schedule.",
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      sectionHead('Excluded Goods');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        "The following commodities / goods are excluded and no cover in respect thereof is provided unless agreed in writing with the company prior to cover commencing: antiques or antiquities of any description, artworks, ammunition, explosives, fireworks, bank and treasury notes, bullion, cash, travellers cheques, cameras, cellular phones and accessories, pre-paid phone cards, computers and memory systems, cobalt, copper in any form, copper cable, non-ferrous metals, gold, silver articles, jewellery, watches, furs, models, moulds, patterns, plans, deeds, designs, documents of any description, securities, specie, stamps, tickets, cigarettes and tobacco products other than raw tobacco, solar panels, lithium-ion batteries and catalytic converters, alcohol other than beer and wine.",
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      sectionHead('Territorial limits');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        body.territorial_limits || 'Republic of South Africa, Namibia, Botswana, Lesotho, Swaziland, Zimbabwe, Malawi, Mozambique, Zambia, Tanzania, Angola, and the Democratic Republic of the Congo.',
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      sectionHead('GENERAL EXCLUSIONS');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        'In no case shall this insurance cover liability arising from:',
+        MARGIN, pdfDoc.y, { width: CONTENT_W });
+      pdfDoc.moveDown(0.2);
+      const exclusions = [
+        'loss, damage, or expense attributable to willful misconduct of the Insured, or Agent of the Insured;',
+        'ordinary leakage, ordinary loss in weight or volume or ordinary wear and tear or gradual deterioration (including the gradual action of light or climatic or atmospheric conditions) of the goods carried;',
+        'loss, damage or expense caused by insufficiency or unsuitability of packing or preparation of the goods carried, outside the control of the Insured;',
+        'loss, damage or expense caused by inherent vice or nature of the goods or changes brought about by natural causes or any latent or manufacturing defect;',
+        'loss, damage or expense caused by delay;',
+        'loss, damage or expense arising from the unfitness of the conveying vehicle;',
+        'loss of market and/or consequential loss of any nature;',
+        'loss, damage or expense caused by infestation, insects or vermin;',
+        'loss, damage or expense caused during the process of loading and unloading of the conveying vehicle;',
+        'loss, damage or expense arising out of the breakdown or malfunctioning of refrigeration equipment and/or cooling machinery or from insufficiency of insulation unless caused by external means, and provided that the Insurer and the Insured have agreed in writing prior to the carriage as to the specific terms and conditions upon which cover will be granted.',
+      ];
+      exclusions.forEach(t => {
+        checkBreak(30);
+        pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222')
+          .text('•  ' + t, MARGIN + 6, pdfDoc.y, { width: CONTENT_W - 6, align: 'justify' });
+        pdfDoc.moveDown(0.15);
+      });
+
+      sectionHead('FIRST LOSS');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        'In the event of the total cargo value at risk exceeding the maximum limits of indemnity provided herein, the Insurers undertake to pay the full amount of any loss recoverable up to but not exceeding the ABSOLUTE MAXIMUM LIMIT OF INDEMNITY any ONE CONVEYANCE OR ONE OCCURRENCE stated above without applying average or under insurance calculations, minus the appropriate excess.',
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      sectionHead('PROPORTIONATE CONSIGNMENT COVER');
+      pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#222').text(
+        'The Indemnity as Specified per Vehicle is the ABSOLUTE MAXIMUM LIMIT OF INDEMNITY in any ONE CONVEYANCE in one complete consignment. Should any one consignment be divided between one or more consignees, the limit will be proportionately divided amongst the Consignees.',
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      pdfDoc.moveDown(0.4);
+      pdfDoc.font('Helvetica-Oblique').fontSize(SMALL).fillColor('#444').text(
+        'This policy may contain clause(s) that limit the amount payable and is subject to standard policy conditions and exclusions. Any cargo owner or their representatives loading any commodity exceeding these terms and conditions will be regarded as at the owner’s risk. It is the obligation of the Cargo Owner or their representatives to ensure that the terms and conditions as specified herein are adhered to.',
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      pdfDoc.moveDown(0.8);
+      pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222')
+        .text('Regards,', MARGIN, pdfDoc.y);
+      pdfDoc.moveDown(2.5);
+      pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
+        .text(body.prepared_by_name || 'Inexpro Broker', MARGIN, pdfDoc.y);
+
+      // ── Acknowledgement of Receipt ───────────────────────────
+      pdfDoc.addPage();
+      sectionHead('Acknowledgement of Receipt');
+      pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222').text(
+        'I _____________________________________________ representing _____________________________________________,\n\n' +
+        'hereby acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover. Acceptance of this cover forms part of the agreement, that should any action arise without the conditions covered, it will be at own risk.\n\n' +
+        'Signed on this ______ day of _______________________ ' + (new Date(body.date || Date.now()).getFullYear()) + ' at _______________________.\n\n\n\n' +
+        '_______________________________                _______________________________\n' +
+        '             For                                                   Witness',
+        MARGIN, pdfDoc.y, { width: CONTENT_W, lineGap: 4 }
+      );
+      pdfDoc.moveDown(1.2);
+      pdfDoc.font('Helvetica-Oblique').fontSize(SMALL).fillColor('#444').text(
+        `Should either ${body.broker_firm || 'Inexpro'} or the Insured not have received the acknowledgement of receipt as above and/or any representation disputing the Terms and Conditions stated above, within 14 working days from the date of this confirmation, the cover as stipulated in this Confirmation of Cover will be deemed as accepted and contractually binding to the recipient and client.`,
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      pdfDoc.end();
+    });
+
+    const buf = Buffer.concat(chunks);
+
+    res.locals.logAudit({
+      action: 'EXPORT',
+      module: 'policies',
+      recordId: policy.id,
+      description: `GIT Confirmation of Insurance generated for policy ${policy.policy_number || policy.id}`,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="git-confirmation-${policy.policy_number || policy.id}.pdf"`);
+    return res.send(buf);
+  } catch (err) {
+    console.error('POST /policies/:id/git-confirmation error:', err);
+    return next(err);
+  }
+});
+
 module.exports = router;

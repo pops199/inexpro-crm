@@ -6,6 +6,53 @@ sits at the top.
 
 ---
 
+## v1.0.46 — 2026-05-15
+
+**Email composer document library · GIT Confirmation generator**
+
+- **Email composer overhaul (Contacts + Accounts).** The "+ Add Attachment"
+  button now opens a **document-library picker** instead of a file dialog.
+  The picker lists every standard group — Contact/Account Documents,
+  Policies, Claims, Engagements, Complaints, Reviews, Assets — even when a
+  group is empty, with collapsible sections, per-group "Select all",
+  search, and a 👁 preview link per row.
+  - **Synthetic entries** are merged in so users can pick generated PDFs
+    the same way they pick real uploads:
+    - 🧾 **Policy Schedule (generated PDF)** — always available under
+      *Policies*.
+    - 🧾 **Default claim-form templates** — under *Claims*.
+    - 🧾 **Record of Advice per advice record** — under *Engagements*.
+  - The old Policy Schedule checkbox, ROA checkbox+list, and Claim Form
+    dropdown have been removed (consolidated into the library).
+  - A separate **"+ Upload from Computer"** button keeps the local-file
+    flow for fresh uploads.
+  - Server `/api/documents/related?module=…&record_id=…` aggregates
+    docs across the related policies / claims / ROAs / etc.
+  - The picker fetches advice records live so newly-added ROAs show up
+    without reopening the email modal.
+  - **Bug fix:** `/api/settings/send-email` was attaching documents by raw
+    file path, which bundled encrypted ciphertext into emails. Documents
+    now decrypt server-side via `readDecryptedFile` before nodemailer sees
+    them.
+- **GIT Confirmation of Insurance generator.** A new **GIT Confirmation**
+  button appears at the top of the policy detail page next to *Create
+  Amendment Mail* — visible only for Transport policies (`policy_type`
+  or `product_category` = Transport). It opens a form pre-filled from the
+  policy/insured records: confirmation + renewal dates, insured + risk
+  addresses, insurer, policy number, brokers, prepared-by, premium note,
+  **7 editable coverage limits**, **First Loss / All Risk Policy / SASRIA**
+  checkboxes, **repeating vehicle-limit groups** (description + R-amount
+  + vehicles), and territorial limits. Generates a multi-page A4 PDF
+  built from the *04 Confirmation of Insurance* template — header letter,
+  coverage tables, vehicle limit detail, standard property definition,
+  excluded goods, territorial limits, general exclusions, first-loss
+  clause, proportionate consignment clause, sign-off, and a second-page
+  Acknowledgement of Receipt block. Audit log records the export.
+- **PDF chrome.** Inexpro letterhead now renders on page 1 only.
+  A new `client/public/letterhead-footer.jpg` asset is reused as the page
+  footer banner — it's stamped at the bottom of **every page**, with the
+  firm's contact and FSP-licence disclosure overlaid as selectable text.
+
 ## v1.0.45 — 2026-05-14
 
 **Broker CPD register — inline Certificate Addendum**

@@ -589,3 +589,43 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-14 07:55
 - Modified 7 files
 - Files: client/public/index.html, client/src/components/reports.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)
+
+## 2026-05-14 08:09
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-15 07:00
+- Modified 10 files
+- Files: client/public/index.html, client/src/api.js, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db (+5 more)
+
+## 2026-05-15 07:23
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-15 07:34
+- Modified 8 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm (+3 more)
+
+## 2026-05-15 07:36
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-15 07:41
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm (+2 more)
+
+## 2026-05-15 07:46
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm (+2 more)
+
+## 2026-05-15 08:40
+- Modified 9 files
+- Files: 04 Confirmation of Insurance 22 April 2026.docx, client/public/index.html, client/src/api.js, client/src/components/policies.js, server/db/inexpro.db (+4 more)
+
+## 2026-05-15 08:48
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/policies.js
+
+## 2026-05-15 08:53
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/policies.js

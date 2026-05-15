@@ -1554,13 +1554,9 @@ const Policies = (() => {
     const el = document.getElementById('content-area');
     el.innerHTML = `<div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>`;
 
+    // headerActions are rebuilt AFTER the policy loads so we can gate the
+    // "GIT Confirmation" button on Transport policies only.
     const headerActions = document.getElementById('header-actions');
-    if (headerActions) {
-      headerActions.innerHTML = `
-        <button class="btn btn-secondary" onclick="Policies._amendmentMail(${id})">Create Amendment Mail</button>
-        <a href="#/policies/${id}/edit" class="btn btn-primary">Edit</a>
-        <a href="#/schedule/policy/${id}" class="btn btn-primary">Show Schedule</a>`;
-    }
 
     try {
       const [res, historyRes] = await Promise.all([
@@ -1569,6 +1565,17 @@ const Policies = (() => {
       ]);
       const d       = res.data || res || {};
       const history = Array.isArray(historyRes) ? historyRes : (historyRes?.data || []);
+
+      // Transport policies (or Mixed/Transport-category) get the GIT
+      // Confirmation of Insurance generator — others don't see the button.
+      const isTransport = d.policy_type === 'Transport' || d.product_category === 'Transport';
+      if (headerActions) {
+        headerActions.innerHTML = `
+          <button class="btn btn-secondary" onclick="Policies._amendmentMail(${id})">Create Amendment Mail</button>
+          ${isTransport ? `<button class="btn btn-secondary" onclick="Policies._openGitConfirmation(${id})">GIT Confirmation</button>` : ''}
+          <a href="#/policies/${id}/edit" class="btn btn-primary">Edit</a>
+          <a href="#/schedule/policy/${id}" class="btn btn-primary">Show Schedule</a>`;
+      }
 
       setPageTitle(esc(d.policy_name || 'Policy'));
       setBreadcrumb(['Policies', d.policy_name || 'Detail']);
@@ -2910,8 +2917,290 @@ ${brokerName}`;
     }
   }
 
+  // ── GIT Confirmation of Insurance ─────────────────────────────────────────
+  //
+  // Modal form gathers the editable fields used by the back-end PDF generator
+  // (`POST /api/policies/:id/git-confirmation`). The boilerplate exclusions /
+  // first-loss / acknowledgement clauses are NOT entered here — they live in
+  // the server template (sourced from the 04 Confirmation of Insurance docx)
+  // because they're standard policy language, not per-client data.
+
+  async function _openGitConfirmation(policyId) {
+    // Load policy + insured details so we can pre-fill the form.
+    let policy = {};
+    let contact = null;
+    let account = null;
+    try {
+      const res = await Api.policies.get(policyId);
+      policy = res.data || res || {};
+      if (policy.contact_id) {
+        try { contact = await Api.contacts.get(policy.contact_id); } catch (_) {}
+      }
+      if (policy.account_id) {
+        try { account = await Api.accounts.get(policy.account_id); } catch (_) {}
+      }
+    } catch (err) {
+      showToast('Failed to load policy: ' + (err.message || err), 'error');
+      return;
+    }
+
+    const insuredName = account?.account_name || (contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '');
+    const insuredAddress = account?.physical_address || account?.postal_address
+      || contact?.physical_address || contact?.postal_address || '';
+    const today = new Date().toISOString().slice(0, 10);
+    const renewalIso = policy.renewal_date ? String(policy.renewal_date).slice(0, 10) : '';
+
+    const existing = document.getElementById('git-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'git-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal" style="width:780px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">GIT Confirmation of Insurance</h3>
+          <button class="modal-close" id="git-close">×</button>
+        </div>
+        <div class="modal-body" style="overflow:auto;flex:1;">
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;">
+            Generates a Goods-in-Transit Confirmation of Insurance PDF for this policy. Fields are pre-filled from the policy / insured records — adjust as needed.
+          </p>
+
+          <h4 style="margin:.5rem 0;font-size:.95rem;color:var(--primary);">Header</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Confirmation date</label>
+              <input class="form-control" type="date" id="git-date" value="${esc(today)}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Renewal date</label>
+              <input class="form-control" type="date" id="git-renewal" value="${esc(renewalIso)}">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:.6rem;">
+            <label class="form-label">Insured</label>
+            <input class="form-control" id="git-insured" value="${esc(insuredName)}">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Address</label>
+              <textarea class="form-control" id="git-address" rows="2">${esc(insuredAddress)}</textarea>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Risk Address</label>
+              <textarea class="form-control" id="git-risk-address" rows="2"></textarea>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Insurer</label>
+              <input class="form-control" id="git-insurer" value="${esc(policy.insurer || '')}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Policy Number</label>
+              <input class="form-control" id="git-policy-number" value="${esc(policy.policy_number || '')}">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Brokers</label>
+              <input class="form-control" id="git-broker-firm" value="Inexpro cc">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Prepared by (signature name)</label>
+              <input class="form-control" id="git-prepared-by" value="${esc(window.currentUser?.full_name || '')}">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:.8rem;">
+            <label class="form-label">Premium note</label>
+            <input class="form-control" id="git-premium-note" value="Continuation of cover is dependent on monthly payment of premium when presented">
+          </div>
+
+          <h4 style="margin:.6rem 0 .4rem;font-size:.95rem;color:var(--primary);">Coverage &amp; Limits (R)</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Goods in Transit (Carriers Liability)</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-git" value="1500000">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Vehicle Third Party Liability</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-vtpl" value="20000000">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Driver Fidelity</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-fidelity" value="2500000">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Spillage out of Vehicle</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-spillage" value="250000">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Wreckage Removal</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-wreckage" value="50000">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Debris Removal</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-debris" value="50000">
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1 / -1;">
+              <label class="form-label">Public Liability (Claims Made Basis)</label>
+              <input class="form-control" type="number" step="0.01" id="git-cov-publiab" value="10000000">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:.8rem;">
+            <label class="form-label">Cover (tick all that apply)</label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:.3rem;font-size:.85rem;cursor:pointer;">
+                <input type="checkbox" class="git-cover-type" value="First Loss" checked /> First Loss
+              </label>
+              <label style="display:flex;align-items:center;gap:.3rem;font-size:.85rem;cursor:pointer;">
+                <input type="checkbox" class="git-cover-type" value="All Risk Policy" checked /> All Risk Policy
+              </label>
+              <label style="display:flex;align-items:center;gap:.3rem;font-size:.85rem;cursor:pointer;">
+                <input type="checkbox" class="git-cover-type" value="SASRIA" checked /> SASRIA
+              </label>
+            </div>
+          </div>
+
+          <h4 style="margin:.6rem 0 .4rem;font-size:.95rem;color:var(--primary);">GIT Vehicle Limits</h4>
+          <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;">
+            One group per shared limit. Enter the vehicles assigned to that limit one per line — e.g. <code>CF 145791 (BH72)</code>.
+          </p>
+          <div id="git-vehicle-groups"></div>
+          <button type="button" class="btn btn-sm btn-secondary" id="git-add-group" style="margin-top:.3rem;">+ Add vehicle group</button>
+
+          <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Territorial Limits</h4>
+          <textarea class="form-control" id="git-territory" rows="2">Republic of South Africa, Namibia, Botswana, Lesotho, Swaziland, Zimbabwe, Malawi, Mozambique, Zambia, Tanzania, Angola, and the Democratic Republic of the Congo.</textarea>
+
+          <div id="git-error" class="alert alert-danger" style="display:none;margin-top:.75rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="git-cancel">Cancel</button>
+          <button class="btn btn-primary" id="git-generate">Generate PDF</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // ── Vehicle-groups dynamic UI ─────────────────────────────────
+    const groupsEl = modal.querySelector('#git-vehicle-groups');
+    let groupCounter = 0;
+    function addGroup(initial) {
+      const idx = ++groupCounter;
+      const row = document.createElement('div');
+      row.className = 'git-group-row';
+      row.dataset.idx = String(idx);
+      row.style.cssText = 'border:1px solid var(--border-color,#dee2e6);border-radius:6px;padding:.6rem;margin-bottom:.6rem;background:var(--bg-alt,#f8f9fa);';
+      row.innerHTML = `
+        <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:.4rem;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" style="font-size:.78rem;">Description</label>
+            <input class="form-control git-grp-desc" value="${esc(initial?.description || 'CARGO & PACKAGING MATERIALS')}">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" style="font-size:.78rem;">Limit (R)</label>
+            <input class="form-control git-grp-limit" type="number" step="0.01" value="${initial?.limit ?? ''}">
+          </div>
+          <button type="button" class="btn btn-sm btn-danger git-grp-remove" title="Remove group">✕</button>
+        </div>
+        <div class="form-group" style="margin:.4rem 0 0;">
+          <label class="form-label" style="font-size:.78rem;">Vehicles (one per line)</label>
+          <textarea class="form-control git-grp-vehicles" rows="3">${esc((initial?.vehicles || []).join('\n'))}</textarea>
+        </div>`;
+      groupsEl.appendChild(row);
+      row.querySelector('.git-grp-remove').addEventListener('click', () => row.remove());
+    }
+    // Seed with two example groups matching the source document's pattern.
+    addGroup({ description: 'CARGO & PACKAGING MATERIALS', limit: 2000000, vehicles: [] });
+    addGroup({ description: 'CARGO & PACKAGING MATERIALS', limit: 1500000, vehicles: [] });
+
+    modal.querySelector('#git-add-group').addEventListener('click', () => addGroup());
+
+    // ── Close handlers ───────────────────────────────────────────
+    const close = () => modal.remove();
+    modal.querySelector('#git-close').addEventListener('click', close);
+    modal.querySelector('#git-cancel').addEventListener('click', close);
+
+    // ── Generate ─────────────────────────────────────────────────
+    modal.querySelector('#git-generate').addEventListener('click', async () => {
+      const errEl = modal.querySelector('#git-error');
+      errEl.style.display = 'none';
+
+      const insuredName = modal.querySelector('#git-insured').value.trim();
+      const policyNumber = modal.querySelector('#git-policy-number').value.trim();
+      if (!insuredName || !policyNumber) {
+        errEl.textContent = 'Insured name and Policy Number are required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const coverTypes = Array.from(modal.querySelectorAll('.git-cover-type:checked')).map(cb => cb.value);
+
+      const vehicleGroups = Array.from(modal.querySelectorAll('.git-group-row')).map(row => {
+        const description = row.querySelector('.git-grp-desc').value.trim();
+        const limit = parseFloat(row.querySelector('.git-grp-limit').value);
+        const vehicles = row.querySelector('.git-grp-vehicles').value
+          .split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        return { description, limit, vehicles };
+      }).filter(g => Number.isFinite(g.limit));
+
+      const numVal = (sel) => {
+        const v = parseFloat(modal.querySelector(sel).value);
+        return Number.isFinite(v) ? v : null;
+      };
+
+      const body = {
+        date:              modal.querySelector('#git-date').value || null,
+        insured_name:      insuredName,
+        insured_address:   modal.querySelector('#git-address').value.trim(),
+        risk_address:      modal.querySelector('#git-risk-address').value.trim(),
+        insurer:           modal.querySelector('#git-insurer').value.trim(),
+        policy_number:     policyNumber,
+        broker_firm:       modal.querySelector('#git-broker-firm').value.trim() || 'Inexpro cc',
+        renewal_date:      modal.querySelector('#git-renewal').value || null,
+        premium_note:      modal.querySelector('#git-premium-note').value.trim(),
+        coverage: {
+          goods_in_transit:              numVal('#git-cov-git'),
+          vehicle_third_party_liability: numVal('#git-cov-vtpl'),
+          driver_fidelity:               numVal('#git-cov-fidelity'),
+          spillage_out_of_vehicle:       numVal('#git-cov-spillage'),
+          wreckage_removal:              numVal('#git-cov-wreckage'),
+          debris_removal:                numVal('#git-cov-debris'),
+          public_liability:              numVal('#git-cov-publiab'),
+        },
+        cover_types:        coverTypes,
+        vehicle_groups:     vehicleGroups,
+        territorial_limits: modal.querySelector('#git-territory').value.trim(),
+        prepared_by_name:   modal.querySelector('#git-prepared-by').value.trim(),
+      };
+
+      const btn = modal.querySelector('#git-generate');
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+      try {
+        const blob = await Api.policies.gitConfirmation(policyId, body);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `git-confirmation-${policyNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('GIT Confirmation generated.', 'success');
+        close();
+      } catch (err) {
+        errEl.textContent = err.message || String(err);
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Generate PDF';
+      }
+    });
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
-  return { list, form, detail, _amendmentMail, _sendAmendment };
+  return { list, form, detail, _amendmentMail, _sendAmendment, _openGitConfirmation };
 
 })();

@@ -243,6 +243,105 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// ─── GET /related — list every document related to a contact or account, ─
+// grouped by source module (Contact / Policies / Claims / ROAs / etc.).
+// Used by the email composer's "Add Attachment" library picker so users can
+// browse and tick existing documents instead of re-uploading from disk.
+
+router.get('/related', requireAuth, (req, res) => {
+  try {
+    const db = getDb();
+    const { module: mod, record_id } = req.query;
+    const id = parseInt(record_id, 10);
+    if ((mod !== 'contacts' && mod !== 'accounts') || !id) {
+      return res.status(400).json({ error: 'module must be contacts|accounts and record_id is required' });
+    }
+
+    // Sub-queries to enumerate related record IDs per child module.
+    // For contacts: scoped to contact_id; for accounts: account_id.
+    const parentCol = mod === 'contacts' ? 'contact_id' : 'account_id';
+
+    const collect = (sql) => {
+      try { return db.prepare(sql).all(id).map(r => r.id); }
+      catch (_) { return []; }
+    };
+
+    const policyIds        = collect(`SELECT id FROM policies         WHERE ${parentCol} = ?`);
+    const claimIds         = collect(`SELECT id FROM claims           WHERE ${parentCol} = ?`);
+    const adviceRecordIds  = collect(`SELECT id FROM advice_records   WHERE ${parentCol} = ?`);
+    const engagementIds    = collect(`SELECT id FROM client_engagements WHERE ${parentCol} = ?`);
+    const complaintIds     = collect(`SELECT id FROM complaints       WHERE ${parentCol} = ?`);
+    const reviewIds        = collect(`SELECT id FROM reviews          WHERE ${parentCol} = ?`);
+    const assetIds         = collect(`SELECT id FROM assets           WHERE ${parentCol} = ?`);
+
+    // Build a single docs map keyed by id so we de-dup across groups in case
+    // a document is linked to more than one FK (rare but possible).
+    const decorate = rows => rows.map(d => ({
+      id:           d.id,
+      original_name: d.original_name,
+      file_name:    d.file_name,
+      file_type:    d.file_type,
+      file_size:    d.file_size,
+      description:  d.description,
+      uploaded_at:  d.uploaded_at,
+      view_url:     `/api/documents/${d.id}/view`,
+      download_url: `/api/documents/${d.id}/download`,
+    }));
+
+    const queryGroup = (label, fkCol, ids) => {
+      if (!ids || !ids.length) return { label, count: 0, docs: [] };
+      const placeholders = ids.map(() => '?').join(',');
+      const rows = db.prepare(
+        `SELECT * FROM documents WHERE ${fkCol} IN (${placeholders}) ORDER BY uploaded_at DESC`
+      ).all(...ids);
+      return { label, count: rows.length, docs: decorate(rows) };
+    };
+
+    const directLabel = mod === 'contacts' ? 'Contact Documents' : 'Account Documents';
+    const directCol   = mod === 'contacts' ? 'contact_id'        : 'account_id';
+    const direct = db.prepare(
+      `SELECT * FROM documents WHERE ${directCol} = ? ORDER BY uploaded_at DESC`
+    ).all(id);
+
+    // Engagements rolls up two FK sources: documents linked to a
+    // client_engagement and documents linked to a record of advice. The UI
+    // shows them as one "Engagements" group with synthetic ROA PDFs folded in
+    // client-side.
+    const engagementsDocs = (() => {
+      const out = [];
+      const seen = new Set();
+      [['engagement_id', engagementIds], ['advice_record_id', adviceRecordIds]].forEach(([fkCol, ids]) => {
+        if (!ids.length) return;
+        const placeholders = ids.map(() => '?').join(',');
+        db.prepare(
+          `SELECT * FROM documents WHERE ${fkCol} IN (${placeholders}) ORDER BY uploaded_at DESC`
+        ).all(...ids).forEach(d => {
+          if (seen.has(d.id)) return;
+          seen.add(d.id);
+          out.push(d);
+        });
+      });
+      return out;
+    })();
+
+    const groups = [
+      { module: mod,                label: directLabel,        count: direct.length, docs: decorate(direct) },
+      queryGroup('Policies',         'policy_id',         policyIds),
+      queryGroup('Claims',           'claim_id',          claimIds),
+      { module: 'engagements',      label: 'Engagements',    count: engagementsDocs.length, docs: decorate(engagementsDocs) },
+      queryGroup('Complaints',       'complaint_id',      complaintIds),
+      queryGroup('Reviews',          'review_id',         reviewIds),
+      queryGroup('Assets',           'asset_id',          assetIds),
+    ].filter(g => g.count > 0);
+
+    const total = groups.reduce((sum, g) => sum + g.count, 0);
+    return res.json({ groups, total });
+  } catch (err) {
+    console.error('GET /documents/related error:', err);
+    return res.status(500).json({ error: 'Failed to load related documents' });
+  }
+});
+
 // ─── DELETE /:id — delete file from disk and database ────────
 
 router.delete('/:id', requireAuth, canDelete, (req, res) => {

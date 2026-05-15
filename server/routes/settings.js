@@ -917,23 +917,30 @@ router.post('/send-email', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'SMTP not configured. Please configure email settings in Admin.' });
     }
 
-    // Build attachments from document IDs
+    // Build attachments from document IDs. Files are encrypted on disk
+    // (AES-256-GCM via lib/file-encryption), so we must decrypt into a buffer
+    // before handing them to nodemailer — passing the raw path would attach
+    // ciphertext to the email.
     const attachments = [];
     if (Array.isArray(document_ids) && document_ids.length) {
       const path = require('path');
       const fs = require('fs');
+      const { readDecryptedFile } = require('../lib/file-encryption');
       const uploadRoot = path.join(__dirname, '..', '..', 'uploads');
       for (const docId of document_ids) {
         const doc = db.prepare('SELECT original_name, file_path, file_type FROM documents WHERE id = ?').get(docId);
-        if (doc) {
-          const fullPath = path.join(uploadRoot, doc.file_path);
-          if (fs.existsSync(fullPath)) {
-            attachments.push({
-              filename: doc.original_name,
-              path: fullPath,
-              contentType: doc.file_type || 'application/octet-stream',
-            });
-          }
+        if (!doc) continue;
+        const fullPath = path.join(uploadRoot, doc.file_path);
+        if (!fs.existsSync(fullPath)) continue;
+        try {
+          const content = readDecryptedFile(fullPath);
+          attachments.push({
+            filename:    doc.original_name,
+            content,
+            contentType: doc.file_type || 'application/octet-stream',
+          });
+        } catch (err) {
+          console.error(`Failed to read document ${docId} for email:`, err.message);
         }
       }
     }
