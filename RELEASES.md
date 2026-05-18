@@ -6,6 +6,15 @@ sits at the top.
 
 ---
 
+## v1.0.51 — 2026-05-18
+
+**Workflows "All" tab now hides Completed**
+
+- The **All** tab in the Workflows module now shows only open work —
+  Assigned, Open, In Progress and On Hold. Completed tasks are filtered
+  out and live exclusively under the dedicated **Completed** tab. The
+  All-tab count badge updates accordingly. Other tabs are unchanged.
+
 ## v1.0.50 — 2026-05-18
 
 **Weekly auto-scan for new releases + in-app notifications; "Retail Value" added to Basis of Cover**

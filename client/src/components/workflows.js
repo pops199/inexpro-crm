@@ -165,8 +165,11 @@ const Workflows = (() => {
       const rows = res.data || res || [];
 
       const tabs = ['All', ...STATUSES];
+      // "All" intentionally excludes Completed — completed work lives under
+      // its own tab so the default view stays focused on what's still open.
       function countFor(s) {
-        return s === 'All' ? rows.length : rows.filter(r => r.status === s).length;
+        if (s === 'All')       return rows.filter(r => r.status !== 'Completed').length;
+        return rows.filter(r => r.status === s).length;
       }
 
       // ── Due-date ranges (chips) ─────────────────────────────────────────
@@ -291,7 +294,12 @@ const Workflows = (() => {
               if (isNaN(d) || !activeRange.test(d)) return false;
             }
           }
-          if (s && r.status !== s) return false;
+          if (s) {
+            if (r.status !== s) return false;
+          } else {
+            // "All" tab — hide Completed; they live under their own tab.
+            if (r.status === 'Completed') return false;
+          }
           if (q) {
             const hay = `${r.description || ''} ${r.notes || ''}`.toLowerCase();
             if (!hay.includes(q)) return false;
@@ -330,6 +338,10 @@ const Workflows = (() => {
           });
         });
       }
+
+      // Apply the default ("All") filter immediately so Completed rows are
+      // hidden on first render — they only appear under their own tab.
+      applyFilter();
 
       // ── Clickable sort headers ─────────────────────────────────────────
       document.querySelectorAll('#wf-thead-row th[data-sort]').forEach(th => {
