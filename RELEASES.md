@@ -6,6 +6,29 @@ sits at the top.
 
 ---
 
+## v1.0.50 — 2026-05-18
+
+**Weekly auto-scan for new releases + in-app notifications; "Retail Value" added to Basis of Cover**
+
+- **Weekly system-update auto-scan**: every Monday at 07:00 (local time)
+  the server runs the same "check for updates" routine as the admin
+  button, and if a newer `v*` tag is available on GitHub, drops an
+  in-app notification on every active **admin / admin_only** user.
+  Cadence is read from `system_settings` (`weekly_update_check_day`,
+  `weekly_update_check_hour`) so it can be retuned without a restart.
+- **Manual button now notifies too**: clicking **Admin → System
+  Update → Check for Updates** also fires the same notification when
+  a new release is found. Idempotent per release tag — re-clicking
+  while v1.2.3 is the latest never produces a duplicate notification.
+  Dedup key is `system_update_available:<tag>`, so each admin sees one
+  notification per version, ever.
+- **No email**: this is in-app only. The bell badge polls every minute,
+  so admins see the new notification without refreshing the page.
+- **Assets — Basis of Cover**: new "Retail Value" option added to the
+  dropdown (between "Replacement Value" and "Market Value"). Existing
+  assets are unchanged; reports and CSV import accept the new value
+  automatically.
+
 ## v1.0.49 — 2026-05-15
 
 **ROA library entries become per-record e-sign requests; uploads move to `client/uploads/`**

@@ -1424,7 +1424,7 @@ const Assets = (() => {
                   <div class="form-group">
                     <label class="form-label">Basis of Cover</label>
                     <select name="basis_of_cover" class="form-control">
-                      ${selectOpts(['Replacement Value','Market Value','Agreed Value','Indemnity','First Loss'], d.basis_of_cover, '— Select —')}
+                      ${selectOpts(['Replacement Value','Retail Value','Market Value','Agreed Value','Indemnity','First Loss'], d.basis_of_cover, '— Select —')}
                     </select>
                   </div>
                   <div class="form-group" style="grid-column:1/-1;">

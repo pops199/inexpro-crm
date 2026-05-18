@@ -705,3 +705,15 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-15 17:25
 - Modified 10 files
 - Files: .gitignore, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/routes/assets.js (+5 more)
+
+## 2026-05-15 17:26
+- Modified 2 files
+- Files: RELEASES.md, package.json
+
+## 2026-05-18 07:16
+- Modified 5 files
+- Files: server/db/inexpro.db-wal, server/db/sessions.db, server/lib/scheduler.js, server/lib/system-update-notifier.js, server/routes/system-update.js
+
+## 2026-05-18 07:21
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/inexpro.db-wal, server/db/sessions.db

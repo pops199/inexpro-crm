@@ -19,6 +19,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const updater = require('../lib/updater');
 const migrate = require('../db/migrate');
+const { notifyAdminsIfUpdateAvailable } = require('../lib/system-update-notifier');
 
 // Restore upload — accepts a single .db file up to 500 MB. Held in
 // memory rather than streamed to disk so we control exactly when (and
@@ -89,6 +90,10 @@ router.post('/check-updates', (req, res) => {
       module: 'system_update',
       description: `Checked for updates — current ${status.current_tag || status.current_commit?.slice(0,7)}, latest ${status.latest_tag}`,
     });
+    // Fire in-app notifications to every admin when a new release is found.
+    // Idempotent per release tag — re-clicking the button doesn't spam.
+    try { notifyAdminsIfUpdateAvailable(status, 'manual_check'); }
+    catch (e) { console.error('[system-update] notify failed:', e.message); }
     res.json(status);
   } catch (err) {
     res.status(500).json({ error: err.message, code: err.code || null });

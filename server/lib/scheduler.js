@@ -17,11 +17,13 @@ const { sendMail } = require('./mailer');
 const fitness = require('./broker-fitness-alerts');
 const roaAck = require('./roa-acknowledgement-reminders');
 const { notify } = require('./notifications');
+const { notifyAdminsIfUpdateAvailable } = require('./system-update-notifier');
 
-let _scanTimer        = null;
-let _scanIntervalMs   = 0;
-let _lastScanAt       = 0;
-let _lastDigestKey    = ''; // 'YYYY-WW' marker for once-per-week guard
+let _scanTimer            = null;
+let _scanIntervalMs       = 0;
+let _lastScanAt           = 0;
+let _lastDigestKey        = ''; // 'YYYY-WW' marker for once-per-week guard
+let _lastUpdateCheckKey   = ''; // 'YYYY-WW' marker for once-per-week update scan
 
 function readSetting(key, fallback) {
   try {
@@ -201,6 +203,46 @@ function digestTick() {
   }
 }
 
+// ── Weekly system-update auto-scan ─────────────────────────────────────────
+//
+// Fires once per ISO week on the configured day/hour (default: Monday 07:00).
+// Calls updater.checkForUpdates (which does a git fetch), and if a newer
+// release tag is available, drops an in-app notification on every active
+// admin / admin_only user. Idempotent per release: re-firing within the same
+// week is blocked by _lastUpdateCheckKey, and the notifier dedup_key blocks
+// duplicates even across week boundaries.
+//
+// Cadence is read from system_settings so admins can retune without a restart:
+//   weekly_update_check_day   (default 1, Mon)  — 0=Sun..6=Sat
+//   weekly_update_check_hour  (default 7)       — 0..23 local time
+
+function weeklyUpdateCheckTick() {
+  try {
+    const day  = parseInt(readSetting('weekly_update_check_day', 1), 10);  // Monday
+    const hour = parseInt(readSetting('weekly_update_check_hour', 7), 10); // 07:00
+    const now  = new Date();
+    if (now.getDay() !== day || now.getHours() !== hour) return;
+    const key = isoWeekKey(now);
+    if (_lastUpdateCheckKey === key) return; // already scanned this ISO week
+    _lastUpdateCheckKey = key;
+
+    // Lazy-require to avoid a circular dependency at module load time
+    // (updater is a peer module; pulling it eagerly at the top of
+    // scheduler.js would force load order that other call sites don't need).
+    const db      = getDb();
+    const updater = require('./updater');
+    const migrate = require('../db/migrate');
+    const status  = updater.checkForUpdates(db, { runMigrationsModule: migrate });
+    const r       = notifyAdminsIfUpdateAvailable(status, 'weekly_scan');
+    console.log(
+      `[system-update-scan] weekly — update_available=${status.update_available} ` +
+      `latest=${status.latest_tag || '—'} notified=${r.notified || 0}`
+    );
+  } catch (err) {
+    console.error('[system-update-scan] error:', err.message);
+  }
+}
+
 // ── Public boot ────────────────────────────────────────────────────────────
 
 function start() {
@@ -216,6 +258,10 @@ function start() {
   // Weekly digest checker — runs each minute, sends only when day/hour matches
   // and not yet sent this ISO week.
   setInterval(digestTick, 60 * 1000);
+
+  // Weekly system-update auto-scan — same minute-tick pattern; defaults to
+  // Monday 07:00 local time.
+  setInterval(weeklyUpdateCheckTick, 60 * 1000);
 }
 
-module.exports = { start, runScan, runDigest, scanCommissionGaps };
+module.exports = { start, runScan, runDigest, scanCommissionGaps, weeklyUpdateCheckTick };
