@@ -761,3 +761,11 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-18 09:03
 - Modified 5 files
 - Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-18 09:10
+- Modified 6 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
+
+## 2026-05-18 10:35
+- Modified 5 files
+- Files: client/public/index.html, client/src/components/engagements.js, server/db/sessions.db, server/routes/advice-records.js, server/routes/engagements.js

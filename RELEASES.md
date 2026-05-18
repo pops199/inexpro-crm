@@ -6,6 +6,24 @@ sits at the top.
 
 ---
 
+## v1.0.53 — 2026-05-18
+
+**Pre-Sale Disclosure: brief-description notes no longer compulsory**
+
+- The "Product Costs Disclosed" and "Material Risks Disclosed" tickboxes
+  in the Pre-Sale Disclosure Checklist (Client Engagement) used to
+  require a non-empty brief description as well — leaving the textarea
+  blank kept the engagement at "Incomplete" and blocked ROA creation.
+  Now the tickbox alone marks the item complete. The textareas remain
+  for the audit trail (and are still pre-filled when a broker fills
+  them in), but they are no longer compulsory.
+- Applies in three places that compute completeness:
+  `evalDisclosureStatus()` in `server/routes/engagements.js`,
+  `engagementDisclosureComplete()` in `server/routes/advice-records.js`
+  (the ROA creation gate), and the live badge in
+  `client/src/components/engagements.js`. ROA-creation error messages
+  updated accordingly ("...tickbox" instead of "...+ notes").
+
 ## v1.0.52 — 2026-05-18
 
 **User delete fixed for compliance tables · GIT Confirmation: Client/Company fields, signed PDF mirrors unsigned · signer-name no longer pre-filled**

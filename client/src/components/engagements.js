@@ -839,8 +839,10 @@ const Engagements = (() => {
       const c = (name) => !!formEl.querySelector(`[name="${name}"]`)?.checked;
       const fspOk        = FSP_OK.includes(v('fsp_licence_disclosed'));
       const brokerOk     = c('broker_identity_disclosed');
-      const costsOk      = c('product_costs_disclosed') && !!v('product_costs_disclosed_notes').trim();
-      const risksOk      = c('material_risks_disclosed') && !!v('material_risks_disclosed_notes').trim();
+      // Tickbox alone marks the item complete — the brief-description
+      // notes are recommended but no longer compulsory.
+      const costsOk      = c('product_costs_disclosed');
+      const risksOk      = c('material_risks_disclosed');
       const complaintsOk = COMPLAINTS_OK.includes(v('complaints_process_disclosed'));
       const methodOk     = METHOD_OK.includes(v('disclosure_method'));
       return (fspOk && brokerOk && costsOk && risksOk && complaintsOk && methodOk) ? 'Complete' : 'Incomplete';

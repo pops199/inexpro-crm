@@ -49,8 +49,11 @@ function engagementDisclosureComplete(db, engagementId) {
   if (!e) return { complete: false, reason: 'engagement not found' };
   const fspOk        = ['Yes — Written', 'Yes — Verbal'].includes(e.fsp_licence_disclosed);
   const brokerOk     = !!e.broker_identity_disclosed;
-  const costsOk      = !!e.product_costs_disclosed && !!(e.product_costs_disclosed_notes && e.product_costs_disclosed_notes.trim());
-  const risksOk      = !!e.material_risks_disclosed && !!(e.material_risks_disclosed_notes && e.material_risks_disclosed_notes.trim());
+  // Completeness depends on the tickbox alone — the brief-description
+  // notes are now optional (kept for audit but no longer block ROA
+  // creation).
+  const costsOk      = !!e.product_costs_disclosed;
+  const risksOk      = !!e.material_risks_disclosed;
   const complaintsOk = ['Yes — Written', 'Yes — Verbal', 'Complaints form provided'].includes(e.complaints_process_disclosed);
   const methodOk     = ['In-person meeting','Phone call','Video call','Email','WhatsApp','Signed form'].includes(e.disclosure_method);
   return {
@@ -58,8 +61,8 @@ function engagementDisclosureComplete(db, engagementId) {
     reason: [
       !fspOk        && 'FSP licence disclosure',
       !brokerOk     && 'broker identity/role disclosure',
-      !costsOk      && 'product costs disclosure + notes',
-      !risksOk      && 'material risks disclosure + notes',
+      !costsOk      && 'product costs disclosure tickbox',
+      !risksOk      && 'material risks disclosure tickbox',
       !complaintsOk && 'complaints process disclosure',
       !methodOk     && 'disclosure method',
     ].filter(Boolean).join(', ')

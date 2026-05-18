@@ -35,8 +35,12 @@ function evalDisclosureStatus(row) {
   if (!row) return 'Incomplete';
   const fspOk        = FSP_DISCLOSURE_OK.includes(row.fsp_licence_disclosed);
   const brokerOk     = !!row.broker_identity_disclosed;
-  const costsOk      = !!row.product_costs_disclosed && !!(row.product_costs_disclosed_notes && row.product_costs_disclosed_notes.trim());
-  const risksOk      = !!row.material_risks_disclosed && !!(row.material_risks_disclosed_notes && row.material_risks_disclosed_notes.trim());
+  // Completeness depends on the tickbox alone — the brief-description
+  // notes (product_costs_disclosed_notes / material_risks_disclosed_notes)
+  // are recommended for the audit trail but no longer block "Complete"
+  // or ROA creation.
+  const costsOk      = !!row.product_costs_disclosed;
+  const risksOk      = !!row.material_risks_disclosed;
   const complaintsOk = COMPLAINTS_DISCLOSURE_OK.includes(row.complaints_process_disclosed);
   const methodOk     = DISCLOSURE_METHOD_OPTS.includes(row.disclosure_method);
   return (fspOk && brokerOk && costsOk && risksOk && complaintsOk && methodOk) ? 'Complete' : 'Incomplete';

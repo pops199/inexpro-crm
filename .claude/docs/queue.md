@@ -1933,3 +1933,24 @@ Files changed: 5
 - `server/routes/public-signing.js`
 Session: 31d57743-dc09-486f-8ff3-893da8955986
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 09:10 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 10:35 — auto-detected change
+Files changed: 5
+- `client/public/index.html`
+- `client/src/components/engagements.js`
+- `server/db/sessions.db`
+- `server/routes/advice-records.js`
+- `server/routes/engagements.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
