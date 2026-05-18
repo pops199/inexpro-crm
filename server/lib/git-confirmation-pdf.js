@@ -295,40 +295,106 @@ async function renderGitConfirmationPdf({ policy, body, signature }) {
 
     // ── Acknowledgement / Signature page ──────────────────────
     pdfDoc.addPage();
+    // Broker-typed client / company names (entered in the GIT Confirmation
+    // modal) fill the "I ____ representing ____" blanks in both the unsigned
+    // and signed views. Falling back to a wide underscore run keeps the
+    // printed form usable when the broker hands a paper copy to the client.
+    const FILL_BLANK = '_______________________________';
+    const clientNameLine  = (body.client_name  || '').toString().trim() || FILL_BLANK;
+    const companyNameLine = (body.company_name || '').toString().trim() || FILL_BLANK;
     if (signature && signature.buf) {
-      sectionHead('Acknowledgement & Client Signature');
+      // The signed page intentionally mirrors the unsigned Acknowledgement
+      // of Receipt layout (same heading, same wording, same side-by-side
+      // For/Witness block, same 14-day deemed-accepted clause) so the final
+      // signed PDF reads as a *completed* version of the form the client
+      // received — not a separate "signature page".
+      sectionHead('Acknowledgement of Receipt');
+
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const dateObj   = signature.signedAt instanceof Date ? signature.signedAt : new Date(signature.signedAt);
+      const dayN      = dateObj.getDate();
+      const ord = (n) => {
+        const s = ['th','st','nd','rd'], v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      };
+      const monthName = months[dateObj.getMonth()];
+      const yearN     = dateObj.getFullYear();
+      // Use the broker-entered Client Name (body.client_name) for the
+      // legal "I ___ representing ___" line — that's what the broker
+      // typed when preparing the document. signature.signerName is what
+      // the client typed in the public signing page; the signing page
+      // pre-fills it from the contact record, so most clients click
+      // through without changing it and end up with the policy-holder
+      // name there. The typed name is still captured separately
+      // (signer_typed_name in signature_requests) and reproduced in the
+      // audit footer below — so the legal trail is preserved.
+      const sClientName = (body.client_name || signature.signerName || '').toString().trim();
+      const sCompany    = (body.company_name || '').toString().trim();
+
       pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222').text(
-        `I, ${signature.signerName}, hereby acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover. Acceptance of this cover forms part of the agreement; should any action arise outside the conditions covered, it will be at own risk.`,
-        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify', lineGap: 2 }
+        `I ${sClientName || '_______________________________'} representing ${sCompany || '_______________________________'},\n\n` +
+        'hereby acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover. Acceptance of this cover forms part of the agreement, that should any action arise without the conditions covered, it will be at own risk.\n\n' +
+        `Signed on this ${ord(dayN)} day of ${monthName} ${yearN}.`,
+        MARGIN, pdfDoc.y, { width: CONTENT_W, lineGap: 4 }
       );
-      pdfDoc.moveDown(0.8);
+      pdfDoc.moveDown(1.6);
 
-      // Signature image — explicit positioning so the cursor doesn't drift.
-      const SIG_W = 240;
-      const SIG_H = 90;
-      const sigX = MARGIN;
-      const sigY = pdfDoc.y;
+      // Side-by-side signature block: signature image sits above the left
+      // underline ("For"); the right underline ("Witness") stays blank —
+      // an e-signature flow has no witness.
+      const SIG_W   = 200;
+      const SIG_H   = 50;
+      const colW    = 250;
+      const rightX  = MARGIN + colW + 30;
+      const sigImgY = pdfDoc.y;
+      const lineY   = sigImgY + SIG_H + 4;
+
       try {
-        pdfDoc.image(signature.buf, sigX, sigY, { fit: [SIG_W, SIG_H] });
+        pdfDoc.image(signature.buf, MARGIN, sigImgY, { fit: [SIG_W, SIG_H] });
       } catch (_) {
-        pdfDoc.fontSize(10).fillColor('#a00').text('(signature image could not be embedded)', sigX, sigY);
+        pdfDoc.font('Helvetica-Oblique').fontSize(SMALL).fillColor('#a00')
+          .text('(signature image could not be embedded)', MARGIN, sigImgY + 18, { width: colW });
       }
-      pdfDoc.x = sigX;
-      pdfDoc.y = sigY + SIG_H + 8;
 
+      // Underlines beneath each signature column.
+      pdfDoc.save();
+      pdfDoc.moveTo(MARGIN, lineY).lineTo(MARGIN + colW, lineY)
+        .strokeColor('#222').lineWidth(0.5).stroke();
+      pdfDoc.moveTo(rightX, lineY).lineTo(rightX + colW, lineY)
+        .strokeColor('#222').lineWidth(0.5).stroke();
+      pdfDoc.restore();
+
+      // Captions ("For" / "Witness") beneath the underlines.
       pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222')
-        .text(`Signed by: ${signature.signerName}`, MARGIN, pdfDoc.y, { width: CONTENT_W });
-      pdfDoc.text(`Date: ${signature.signedAt.toISOString().slice(0, 10)}`,
-        MARGIN, pdfDoc.y, { width: CONTENT_W });
-      pdfDoc.moveDown(0.4);
+        .text('For', MARGIN, lineY + 4, { width: colW, align: 'center' });
+      pdfDoc.text('Witness', rightX, lineY + 4, { width: colW, align: 'center' });
+
+      pdfDoc.x = MARGIN;
+      pdfDoc.y = lineY + 24;
+      pdfDoc.moveDown(1.0);
+
+      // 14-day deemed-accepted clause (same as the unsigned variant).
+      pdfDoc.font('Helvetica-Oblique').fontSize(SMALL).fillColor('#444').text(
+        `Should either ${body.broker_firm || 'Inexpro'} or the Insured not have received the acknowledgement of receipt as above and/or any representation disputing the Terms and Conditions stated above, within 14 working days from the date of this confirmation, the cover as stipulated in this Confirmation of Cover will be deemed as accepted and contractually binding to the recipient and client.`,
+        MARGIN, pdfDoc.y, { width: CONTENT_W, align: 'justify' }
+      );
+
+      // Audit footer — IP / UA / exact timestamp for compliance.
+      // Also surface the signer's typed name when it differs from the
+      // broker-entered Client Name, so the trail shows exactly who
+      // pressed Sign on the public page.
+      pdfDoc.moveDown(0.8);
+      const typedNameNote = (signature.signerName && signature.signerName !== sClientName)
+        ? ` Typed name at sign time: "${signature.signerName}".`
+        : '';
       pdfDoc.font('Helvetica-Oblique').fontSize(8).fillColor('#666').text(
-        `Audit: signed ${signature.signedAt.toISOString()} from ${signature.signedIp || 'unknown IP'}; UA: ${signature.signedUa || '(none)'}`,
+        `Electronically signed: ${signature.signedAt.toISOString()} from ${signature.signedIp || 'unknown IP'}; UA: ${signature.signedUa || '(none)'}.${typedNameNote}`,
         MARGIN, pdfDoc.y, { width: CONTENT_W, lineGap: 2 }
       );
     } else {
       sectionHead('Acknowledgement of Receipt');
       pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222').text(
-        'I _____________________________________________ representing _____________________________________________,\n\n' +
+        `I ${clientNameLine} representing ${companyNameLine},\n\n` +
         'hereby acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover. Acceptance of this cover forms part of the agreement, that should any action arise without the conditions covered, it will be at own risk.\n\n' +
         'Signed on this ______ day of _______________________ ' + (new Date(body.date || Date.now()).getFullYear()) + ' at _______________________.\n\n\n\n' +
         '_______________________________                _______________________________\n' +

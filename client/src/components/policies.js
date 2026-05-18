@@ -1754,6 +1754,7 @@ const Policies = (() => {
               <button class="tab-btn"        data-tab="timeline">Timeline</button>
               <button class="tab-btn"        data-tab="versions">Versions</button>
               <button class="tab-btn"        data-tab="quotes">Quotes</button>
+              ${isTransport ? '<button class="tab-btn"        data-tab="git-confirmations">GIT Confirmations</button>' : ''}
             </div>
             <div class="tab-content" id="pol-tab-content">
               <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
@@ -2636,10 +2637,94 @@ const Policies = (() => {
           await renderQuotesTab(tabEl, policyId);
           break;
         }
+        case 'git-confirmations': {
+          await renderGitConfirmationsTab(tabEl, policyId);
+          break;
+        }
       }
     } catch (err) {
       tabEl.innerHTML = `<div class="alert alert-danger">Failed to load tab: ${esc(err.message)}</div>`;
     }
+  }
+
+  // ── GIT Confirmations tab — lists signature_requests of template
+  //   'git_confirmation' attached to this policy. Shows status, recipient,
+  //   created date, and a View link to the signed PDF once submitted.
+  async function renderGitConfirmationsTab(tabEl, policyId) {
+    const res = await Api.signatureRequests.list({
+      policy_id:    policyId,
+      template_key: 'git_confirmation',
+    }).catch(() => ({ data: [] }));
+    const rows = res.data || res || [];
+
+    if (!rows.length) {
+      tabEl.innerHTML = `
+        <div style="padding:.85rem 1rem;">
+          <p class="tab-empty" style="margin:0;">
+            No GIT Confirmations yet. Click <strong>GIT Confirmation</strong> at the top
+            of this page and "Send for Signature" to create one — once the client signs,
+            the PDF will appear here.
+          </p>
+        </div>`;
+      return;
+    }
+
+    const statusBadge = (s) => {
+      if (s === 'signed')   return '<span class="badge badge-success">Signed</span>';
+      if (s === 'pending')  return '<span class="badge badge-warning">Pending</span>';
+      if (s === 'expired')  return '<span class="badge badge-secondary">Expired</span>';
+      if (s === 'revoked')  return '<span class="badge badge-secondary">Revoked</span>';
+      return `<span class="badge">${esc(s || '—')}</span>`;
+    };
+
+    tabEl.innerHTML = `
+      <div style="padding:.85rem 1rem;">
+        <div class="table-responsive">
+          <table class="table" style="font-size:.85rem;">
+            <thead><tr>
+              <th>Sent</th>
+              <th>Recipient</th>
+              <th>Status</th>
+              <th>Signed</th>
+              <th>Signed By</th>
+              <th>File</th>
+              <th style="text-align:right;">Size</th>
+              <th></th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(r => {
+                const signed = r.status === 'signed' && r.document_id;
+                const sentDate   = r.created_at  ? formatDate(r.created_at)  : '—';
+                const signedDate = r.signed_at   ? formatDate(r.signed_at)   : '—';
+                const recipient  = esc(r.recipient_name || r.recipient_email || r.contact_name || r.account_name || '—');
+                const fileName   = signed ? esc(r.document_original_name || ('GIT Confirmation #' + r.id + '.pdf')) : '—';
+                const fileSize   = signed ? formatBytes(r.document_file_size) : '—';
+                const viewUrl    = signed ? Api.documents.viewUrl(r.document_id) : null;
+                const signLink   = !signed && r.token ? `/sign/${esc(r.token)}` : null;
+                return `
+                <tr>
+                  <td>${sentDate}</td>
+                  <td>${recipient}</td>
+                  <td>${statusBadge(r.status)}</td>
+                  <td>${signedDate}</td>
+                  <td>${esc(r.signer_typed_name || '—')}</td>
+                  <td>${signed
+                    ? `<a href="${viewUrl}" target="_blank" rel="noopener">${fileName}</a>`
+                    : fileName}</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;">${fileSize}</td>
+                  <td style="text-align:right;white-space:nowrap;">
+                    ${signed
+                      ? `<a class="btn btn-xs btn-outline" href="${viewUrl}" target="_blank" rel="noopener">View</a>`
+                      : (signLink
+                          ? `<a class="btn btn-xs btn-outline" href="${signLink}" target="_blank" rel="noopener">Open link</a>`
+                          : '')}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
   }
 
   // ── Quotes tab: upload, list, approve, delete ────────────────────────────
@@ -3074,6 +3159,23 @@ ${brokerName}`;
           <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Territorial Limits</h4>
           <textarea class="form-control" id="git-territory" rows="2">Republic of South Africa, Namibia, Botswana, Lesotho, Swaziland, Zimbabwe, Malawi, Mozambique, Zambia, Tanzania, Angola, and the Democratic Republic of the Congo.</textarea>
 
+          <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Acknowledgement of Receipt</h4>
+          <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .4rem;">
+            These names print on the final "Acknowledgement of Receipt" page —
+            "I <em>Client Name</em> representing <em>Company Name</em>". Leave
+            blank to print signing-line blanks instead.
+          </p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Client Name</label>
+              <input class="form-control" id="git-client-name" value="${esc(contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '')}">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Company Name</label>
+              <input class="form-control" id="git-company-name" value="${esc(account?.account_name || '')}">
+            </div>
+          </div>
+
           <div id="git-error" class="alert alert-danger" style="display:none;margin-top:.75rem;"></div>
         </div>
         <div class="modal-footer">
@@ -3170,6 +3272,9 @@ ${brokerName}`;
         vehicle_groups:     vehicleGroups,
         territorial_limits: modal.querySelector('#git-territory').value.trim(),
         prepared_by_name:   modal.querySelector('#git-prepared-by').value.trim(),
+        // Acknowledgement of Receipt — fill the "I __ representing __" line.
+        client_name:        modal.querySelector('#git-client-name').value.trim(),
+        company_name:       modal.querySelector('#git-company-name').value.trim(),
       };
     }
 

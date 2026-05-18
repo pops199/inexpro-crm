@@ -90,7 +90,12 @@ router.get('/:token', (req, res) => {
     bodyHtml,
     footerHtml,
     hasMarketingConsent: !!tpl.hasMarketingConsent,
-    prefillName: sr.recipient_name || ph.client_name || '',
+    // Always render the signer-name field blank so the client must type
+    // their own name. Pre-filling from the contact record meant most
+    // clients clicked through with the policy-holder name still in the
+    // box, which then ended up on the signed PDF audit trail instead of
+    // their actual typed name.
+    prefillName: '',
   }));
 });
 

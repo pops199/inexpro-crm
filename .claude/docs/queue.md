@@ -1855,3 +1855,81 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: 31d57743-dc09-486f-8ff3-893da8955986
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 07:29 — auto-detected change
+Files changed: 2
+- `RELEASES.md`
+- `package.json`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 07:40 — auto-detected change
+Files changed: 2
+- `server/db/sessions.db`
+- `server/routes/admin.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:30 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/git-confirmation-pdf.js`
+- `server/routes/signature-requests.js`
+- `~$ Confirmation of Insurance 22 April 2026.docx`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:41 — auto-detected change
+Files changed: 4
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:44 — auto-detected change
+Files changed: 4
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `~$ Confirmation of Insurance 22 April 2026.docx (deleted)`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:46 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:51 — auto-detected change
+Files changed: 3
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/git-confirmation-pdf.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 08:58 — auto-detected change
+Files changed: 5
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/git-confirmation-pdf.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 09:03 — auto-detected change
+Files changed: 5
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/public-signing.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

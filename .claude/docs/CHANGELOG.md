@@ -725,3 +725,39 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-18 07:28
 - Modified 3 files
 - Files: client/public/index.html, client/src/components/workflows.js, server/db/sessions.db
+
+## 2026-05-18 07:29
+- Modified 2 files
+- Files: RELEASES.md, package.json
+
+## 2026-05-18 07:40
+- Modified 2 files
+- Files: server/db/sessions.db, server/routes/admin.js
+
+## 2026-05-18 08:30
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db-wal, server/db/sessions.db, server/lib/git-confirmation-pdf.js (+2 more)
+
+## 2026-05-18 08:41
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-18 08:44
+- Modified 4 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-wal, server/db/sessions.db, ~$ Confirmation of Insurance 22 April 2026.docx (deleted)
+
+## 2026-05-18 08:46
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-18 08:51
+- Modified 3 files
+- Files: server/db/inexpro.db-wal, server/db/sessions.db, server/lib/git-confirmation-pdf.js
+
+## 2026-05-18 08:58
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/lib/git-confirmation-pdf.js
+
+## 2026-05-18 09:03
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/public-signing.js

@@ -540,43 +540,58 @@ router.delete('/users/:id', requireAdmin, (req, res) => {
 
   const adminId = req.session.userId; // the admin performing the deletion
 
-  // Nullify nullable FK references, reassign NOT NULL FK references to the deleting admin
+  // Enumerate every FK in the database that points at users(id), then clear
+  // or reassign each one according to its declared ON DELETE action and
+  // column nullability. Doing this dynamically (rather than hard-coding the
+  // ~40 FK columns that currently reference users) means new compliance
+  // tables added later automatically participate in user deletion without
+  // a code update — which previously caused this very error when columns
+  // like signature_requests.created_by or notifications.created_by_user_id
+  // were added without updating the delete handler.
+  //
+  // Rules:
+  //   - ON DELETE CASCADE  → skip (SQLite cascades the child rows itself)
+  //   - ON DELETE SET NULL → skip (SQLite nulls them itself)
+  //   - Nullable column    → UPDATE … SET col = NULL
+  //   - NOT NULL column    → UPDATE … SET col = <deleting admin> so the
+  //                          row stays valid; an audit_log row that we
+  //                          attribute to the deleting admin is more useful
+  //                          than blowing up the delete.
+  const tableNames = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+  ).all().map(r => r.name);
+
+  const fkRefs = [];
+  const colInfo = new Map();
+  for (const t of tableNames) {
+    let fks;
+    try { fks = db.prepare(`PRAGMA foreign_key_list("${t.replace(/"/g, '""')}")`).all(); }
+    catch (_) { continue; }
+    for (const fk of fks) {
+      if (fk.table !== 'users') continue;
+      const action = String(fk.on_delete || 'NO ACTION').toUpperCase();
+      if (action === 'CASCADE' || action === 'SET NULL') continue;
+      fkRefs.push({ table: t, col: fk.from, action });
+    }
+  }
+  function isNotNull(table, col) {
+    if (!colInfo.has(table)) {
+      colInfo.set(table, db.prepare(`PRAGMA table_info("${table.replace(/"/g, '""')}")`).all());
+    }
+    const info = colInfo.get(table).find(c => c.name === col);
+    return !!(info && info.notnull === 1);
+  }
+
   const deleteUser = db.transaction(() => {
-    // ── Nullable FK columns → set NULL ──────────────────────────────────
-    db.prepare('UPDATE contacts           SET assigned_broker_id      = NULL WHERE assigned_broker_id      = ?').run(id);
-    db.prepare('UPDATE contacts           SET assigned_admin_id       = NULL WHERE assigned_admin_id       = ?').run(id);
-    db.prepare('UPDATE contacts           SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE accounts           SET assigned_broker_id      = NULL WHERE assigned_broker_id      = ?').run(id);
-    db.prepare('UPDATE accounts           SET assigned_admin_id       = NULL WHERE assigned_admin_id       = ?').run(id);
-    db.prepare('UPDATE accounts           SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE policies           SET assigned_admin_id       = NULL WHERE assigned_admin_id       = ?').run(id);
-    db.prepare('UPDATE policies           SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE client_engagements SET assigned_admin_id       = NULL WHERE assigned_admin_id       = ?').run(id);
-    db.prepare('UPDATE client_engagements SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE policy_sections    SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE claims             SET broker_id               = NULL WHERE broker_id               = ?').run(id);
-    db.prepare('UPDATE claims             SET claims_handler_admin_id = NULL WHERE claims_handler_admin_id = ?').run(id);
-    db.prepare('UPDATE claims             SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE reviews            SET broker_id               = NULL WHERE broker_id               = ?').run(id);
-    db.prepare('UPDATE reviews            SET assigned_admin_id       = NULL WHERE assigned_admin_id       = ?').run(id);
-    db.prepare('UPDATE reviews            SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE complaints         SET broker_id               = NULL WHERE broker_id               = ?').run(id);
-    db.prepare('UPDATE complaints         SET complaint_owner_id      = NULL WHERE complaint_owner_id      = ?').run(id);
-    db.prepare('UPDATE complaints         SET assigned_to_id          = NULL WHERE assigned_to_id          = ?').run(id);
-    db.prepare('UPDATE complaints         SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE risk_details       SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE assets             SET created_by              = NULL WHERE created_by              = ?').run(id);
-    db.prepare('UPDATE audit_log          SET user_id                 = NULL WHERE user_id                 = ?').run(id);
-
-    // ── NOT NULL FK columns → reassign to the deleting admin ────────────
-    db.prepare('UPDATE policies           SET assigned_broker_id = ? WHERE assigned_broker_id = ?').run(adminId, id);
-    db.prepare('UPDATE client_engagements SET assigned_broker_id = ? WHERE assigned_broker_id = ?').run(adminId, id);
-    db.prepare('UPDATE advice_records     SET broker_id          = ? WHERE broker_id          = ?').run(adminId, id);
-    db.prepare('UPDATE advice_records     SET prepared_by_id     = ? WHERE prepared_by_id     = ?').run(adminId, id);
-    db.prepare('UPDATE advice_records     SET created_by         = ? WHERE created_by         = ?').run(adminId, id);
-    db.prepare('UPDATE documents          SET uploaded_by        = ? WHERE uploaded_by        = ?').run(adminId, id);
-    db.prepare('UPDATE saved_reports      SET creator_id         = ? WHERE creator_id         = ?').run(adminId, id);
-
+    for (const ref of fkRefs) {
+      const t = `"${ref.table.replace(/"/g, '""')}"`;
+      const c = `"${ref.col.replace(/"/g, '""')}"`;
+      if (isNotNull(ref.table, ref.col)) {
+        db.prepare(`UPDATE ${t} SET ${c} = ? WHERE ${c} = ?`).run(adminId, id);
+      } else {
+        db.prepare(`UPDATE ${t} SET ${c} = NULL WHERE ${c} = ?`).run(id);
+      }
+    }
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
   });
 

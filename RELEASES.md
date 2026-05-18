@@ -6,6 +6,47 @@ sits at the top.
 
 ---
 
+## v1.0.52 — 2026-05-18
+
+**User delete fixed for compliance tables · GIT Confirmation: Client/Company fields, signed PDF mirrors unsigned · signer-name no longer pre-filled**
+
+- **User Management — Delete fixed**: the admin "Delete user" flow now
+  enumerates every foreign key pointing at `users(id)` at runtime
+  (`PRAGMA foreign_key_list`) and clears or reassigns each one based on
+  its `ON DELETE` action and column nullability. Previously the handler
+  hard-coded ~15 tables; the dozens of compliance / signature / breach
+  / POPIA / FICA / workflow / notification tables added since were
+  missed, which produced the *"FOREIGN KEY constraint failed"* error
+  reported when deleting brokers with any activity history. The new
+  pass auto-handles future tables too — adding a new `REFERENCES
+  users(id)` column no longer requires updating the delete route.
+- **GIT Confirmation — Client Name & Company Name**: new pair of inputs
+  at the bottom of the GIT Confirmation modal (Acknowledgement of
+  Receipt section). Pre-filled from the policy's contact / account but
+  fully editable. The typed values now print into the "I __ representing
+  __" line on the PDF instead of underscored blanks, and flow through
+  to the signed copy as the authoritative client identity.
+- **GIT Confirmation — Signed PDF matches the unsigned layout**: the
+  signed page no longer looks like a separate "signature receipt" — it
+  now re-renders the same Acknowledgement of Receipt block the client
+  saw, with the names filled in, "Signed on this Xth day of Month YYYY",
+  the signature image stamped over the **For** line, the **Witness**
+  underline kept blank (e-sign has no witness), and the 14-day
+  deemed-accepted clause preserved. An audit footer at the bottom logs
+  the ISO timestamp, IP, user-agent, and the typed name when it differs
+  from the broker-entered Client Name.
+- **GIT Confirmations tab**: new tab on the Transport policy detail
+  view listing every GIT Confirmation signature request (pending +
+  signed) attached to that policy. Pending rows show an "Open link"
+  button; signed rows link the auto-attached PDF. Powered by
+  `GET /api/signature-requests?template_key=git_confirmation&policy_id=...`
+  which now also LEFT-JOINs `documents` for filename / size.
+- **Public signing page — "Full name (printed)" no longer pre-fills**:
+  the field used to come pre-populated with the policy-holder's name
+  from the contact record, which meant most clients clicked through
+  without typing their own name. It now renders blank on every signing
+  page (POPIA, GIT, ROA) and stays compulsory.
+
 ## v1.0.51 — 2026-05-18
 
 **Workflows "All" tab now hides Completed**
