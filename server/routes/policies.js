@@ -1504,8 +1504,15 @@ router.post('/:id/git-confirmation', async (req, res, next) => {
       return res.status(422).json({ error: 'GIT Confirmation is only available for Transport policies' });
     }
 
-    const { renderGitConfirmationPdf } = require('../lib/git-confirmation-pdf');
-    const buf = await renderGitConfirmationPdf({ policy, body: req.body || {} });
+    // Currency drives which letterhead / template the broker downloads.
+    // N$ uses the Belogix Namibia variant; everything else (default R) uses
+    // the existing Inexpro Confirmation of Insurance.
+    const reqBody = req.body || {};
+    const useNamibian = reqBody.currency === 'NAD';
+    const renderer = useNamibian
+      ? require('../lib/belogix-namibia-git-pdf').renderBelogixNamibiaGitConfirmationPdf
+      : require('../lib/git-confirmation-pdf').renderGitConfirmationPdf;
+    const buf = await renderer({ policy, body: reqBody });
 
     res.locals.logAudit({
       action: 'EXPORT',

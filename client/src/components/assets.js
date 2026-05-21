@@ -163,6 +163,8 @@ const Assets = (() => {
       'Emergency Assistance / Home Assist',
       'Theft from Bank Account / Cyber',
       'Sasria',
+      'Nasria',
+      'Levies & Stamp Duties',
       'Travel Insurance \u2013 Single Trip',
       'Travel Insurance \u2013 Annual Multi-Trip',
       'Extended Warranty',
@@ -1085,7 +1087,7 @@ const Assets = (() => {
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label">SASRIA (<span class="cur-label">R</span>)</label>
+                    <label class="form-label"><span class="sasria-label">${sasriaTerm(d.currency)}</span> (<span class="cur-label">R</span>)</label>
                     <input type="number" name="sasria" class="form-control" min="0" step="0.01"
                       placeholder="0.00" value="${esc(d.sasria != null ? d.sasria : '')}" />
                   </div>
@@ -2053,7 +2055,7 @@ const Assets = (() => {
               </div>` : ''}
               ${d.sasria != null ? `
               <div>
-                <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">SASRIA</span><br>
+                <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">${sasriaTerm(d.currency)}</span><br>
                 <span style="font-weight:600;">${cur(d.sasria)}</span>
               </div>` : ''}
               ${d.excess != null ? `
@@ -2435,7 +2437,7 @@ const Assets = (() => {
               <div class="detail-grid">
                 ${field('Asset Value', cur(d.asset_value) || '—')}
                 ${field('Premium',     cur(d.premium)     || '—')}
-                ${field('SASRIA',      cur(d.sasria)      || '—')}
+                ${field(sasriaTerm(d.currency), cur(d.sasria) || '—')}
                 ${field('Excess',      cur(d.excess)      || '—')}
                 ${d.policy_id ? field('Policy', `<a href="#/policies/${d.policy_id}">${esc(d.policy_name || d.policy_number || '—')}</a>`) : ''}
                 ${d.asset_section ? field('Section', esc(d.asset_section)) : ''}
@@ -2458,7 +2460,7 @@ const Assets = (() => {
                 ${row('Vehicle Extras Premium',     breakdown.extrasPremium)}
                 ${row('Additional Covers Premium',  breakdown.additionalCoversPremium)}
                 ${row('Excesses Premium',           breakdown.excessesPremium)}
-                ${row('SASRIA',                     breakdown.sasria)}
+                ${row(sasriaTerm(d.currency),       breakdown.sasria)}
                 ${row('Total Premium',              breakdown.premium, { bold: true })}
                 ${row('Basic Excess',               parseFloat(d.excess) || 0)}
                 ${d.policy_id ? `<div class="detail-field"><span class="detail-label">Policy</span><span class="detail-value"><a href="#/policies/${d.policy_id}">${esc(d.policy_name || d.policy_number || '—')}</a></span></div>` : ''}
@@ -3403,7 +3405,9 @@ ${brokerName}`;
   // Shared HTML renderer for an aggregate breakdown panel (used by policy /
   // sections / section-assets views). `agg` is the result of
   // calcAggregateBreakdown. `curFn` formats a number as currency (R xx.xx).
-  function renderAggregateBreakdownHtml(agg, curFn) {
+  // `currency` (optional, e.g. 'NAD') drives the SASRIA / NASRIA label —
+  // pass the policy currency when calling from a policy / section context.
+  function renderAggregateBreakdownHtml(agg, curFn, currency) {
     const fmt = (v) => v != null ? curFn(v) : '—';
     const row = (label, val, bold) => `
       <div class="detail-field" style="${bold ? 'font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;' : ''}">
@@ -3422,7 +3426,7 @@ ${brokerName}`;
         ${agg.extrasPremium           ? row('Vehicle Extras Premium', agg.extrasPremium) : ''}
         ${agg.additionalCoversPremium ? row('Additional Covers Premium', agg.additionalCoversPremium) : ''}
         ${agg.excessesPremium         ? row('Excesses Premium', agg.excessesPremium) : ''}
-        ${row('SASRIA', agg.sasria)}
+        ${row(sasriaTerm(currency), agg.sasria)}
         ${row('Total Premium', agg.premium, true)}
       </div>`;
   }

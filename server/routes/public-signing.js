@@ -138,13 +138,18 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
     // Other (static-template) requests go through renderSignedPdf as before.
     let pdfBuffer;
     if (sr.template_key === 'git_confirmation') {
-      const { renderGitConfirmationPdf } = require('../lib/git-confirmation-pdf');
       let formData = {};
       try { formData = sr.form_data ? JSON.parse(sr.form_data) : {}; } catch (_) {}
       const policy = sr.policy_id
         ? db.prepare('SELECT * FROM policies WHERE id = ?').get(sr.policy_id) || {}
         : {};
-      pdfBuffer = await renderGitConfirmationPdf({
+      // Currency captured at request-creation time picks the right
+      // Confirmation of Cover template. N$ → Belogix Namibia variant.
+      const useNamibian = formData.currency === 'NAD';
+      const renderer = useNamibian
+        ? require('../lib/belogix-namibia-git-pdf').renderBelogixNamibiaGitConfirmationPdf
+        : require('../lib/git-confirmation-pdf').renderGitConfirmationPdf;
+      pdfBuffer = await renderer({
         policy,
         body:      formData,
         signature: {
@@ -297,8 +302,12 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
 
 // Build the HTML version of a GIT Confirmation of Insurance for the
 // public signing page. Source of truth for fields is the form_data
-// payload captured at request-creation time.
+// payload captured at request-creation time. N$ requests render the
+// Belogix Namibia table-style template instead of the South African one.
 function renderGitConfirmationHtml(form) {
+  if (form && form.currency === 'NAD') {
+    return renderBelogixNamibiaGitHtml(form);
+  }
   const fmtR = (v) => {
     const n = Number(v);
     if (!Number.isFinite(n)) return String(v == null ? '' : v);
@@ -398,6 +407,91 @@ function renderGitConfirmationHtml(form) {
     <p>By signing below, I acknowledge and confirm that I have read and understood the terms and conditions contained in this Confirmation of Cover.</p>
 
     <p>Kind regards,<br><strong>${escHtml(form.prepared_by_name || 'Inexpro Broker')}</strong><br>Inexpro Short Term Insurance</p>
+  `;
+}
+
+// Belogix Namibia variant of the GIT Confirmation public-signing HTML.
+// Triggered when form.currency === 'NAD'. Mirrors the table-style layout
+// of "Belogix Namibia GIT Confirmation of Cover.docx" and the PDF
+// produced by server/lib/belogix-namibia-git-pdf.js, so what the client
+// sees on the signing page matches the document they will sign.
+function renderBelogixNamibiaGitHtml(form) {
+  const fmtN = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v == null ? '' : v);
+    return 'N$' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtDateLong = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+  const groups = Array.isArray(form.vehicle_groups) ? form.vehicle_groups : [];
+  const allVehicles = groups.flatMap(g => Array.isArray(g.vehicles) ? g.vehicles : []);
+  const truckCount = allVehicles.length;
+  const truckRegs  = allVehicles.join(' / ');
+  const loadLimit  = groups[0] && Number.isFinite(Number(groups[0].limit))
+    ? Number(groups[0].limit) : null;
+  const coverTypes = Array.isArray(form.cover_types) ? form.cover_types : [];
+  const typeOfCover = coverTypes.length ? coverTypes.join(', ') : 'All Risk Cover (First Loss Basis)';
+  const periodFrom = fmtDateLong(form.date) || fmtDateLong(new Date().toISOString());
+  const periodTo   = fmtDateLong(form.renewal_date);
+
+  const row = (label, value) => `
+    <tr>
+      <th style="background:#f2f6fa;text-align:left;padding:6px 10px;font-weight:600;width:32%;border:1px solid #bbb;vertical-align:top;">${escHtml(label)}</th>
+      <td style="padding:6px 10px;border:1px solid #bbb;vertical-align:top;white-space:pre-line;">${escHtml(value == null ? '' : String(value))}</td>
+    </tr>`;
+
+  return `
+    <p style="margin:0 0 4px;">Date: ${escHtml(periodFrom)}</p>
+    <p style="margin:0 0 12px;">Our reference: SG/GIT/${escHtml(form.insured_name || '—')}</p>
+
+    <p style="margin:0;">${escHtml(form.insured_name || '—')}</p>
+    ${String(form.insured_address || '').split(/\r?\n/).filter(Boolean).map(l => `<p style="margin:0;">${escHtml(l)}</p>`).join('')}
+    <p style="margin:0 0 12px;">NAMIBIA</p>
+
+    <p style="margin:0 0 6px;">To Whom It May Concern</p>
+    <h2 style="text-align:center;text-transform:uppercase;margin:12px 0;">Confirmation of Cover – Goods in Transit</h2>
+
+    <p>We hereby confirm that the undermentioned Goods in Transit cover is in place for <strong>${escHtml(form.insured_name || '—')}</strong>, underwritten by <strong>${escHtml(form.insurer || '—')}</strong>:</p>
+
+    <table role="presentation" style="border-collapse:collapse;width:100%;font-size:14px;line-height:1.45;margin:8px 0 14px;">
+      ${row('Insured',              form.insured_name || '')}
+      ${row('Insurer',              form.insurer || '')}
+      ${row('Policy Number',        form.policy_number || '')}
+      ${row('Type of Cover',        typeOfCover)}
+      ${row('Load Limit per Truck', loadLimit != null ? fmtN(loadLimit) : '—')}
+      ${row('Number of Trucks',     truckCount ? String(truckCount) : '—')}
+      ${row('Truck Registrations',  truckRegs || '—')}
+      ${row('Period of Cover',      periodTo ? `${periodFrom} to ${periodTo}` : periodFrom)}
+      ${row('NASRIA',               'Included')}
+      ${row('Fidelity',             'Drivers not excluded on current cover')}
+      ${row('Territorial Limits',   form.territorial_limits ||
+        'Republic of South Africa, Namibia, Botswana, Lesotho, Swaziland (Eswatini), Zimbabwe, Malawi, Mozambique, Zambia, Tanzania, Angola, and the Democratic Republic of the Congo.')}
+      ${row('Excluded Commodities',
+        (form.excluded_commodities && String(form.excluded_commodities).trim()) ||
+        'Antiques or antiquities of any description, arms, ammunition, artworks, live animals of any description, bank and treasury notes, cash, travellers cheques, bullion, platinum, cobalt, copper, deeds, designs, documents of any description, explosives, furs, jewellery, patterns, plans, precious metals or stones, specie, stamps, tickets, tobacco, brass and scrap metal, exotic sea foods including caviar, prawns, calamari and crayfish, aircraft and their parts and accessories.')}
+      ${row('Valid Driver’s Licence',
+        (form.valid_drivers_licence && String(form.valid_drivers_licence).trim()) ||
+        'A valid PDP (Professional Driving Permit) is a prerequisite for the operation of goods vehicles, and any claim arising in its absence shall be deemed null and void.')}
+      ${row('Security Conditions (Cross-border consignments exceeding N$1,000,000.00 in value)',
+        (form.security_conditions && String(form.security_conditions).trim()) ||
+        ('Cover under this section as a result of theft, hijack or any attempt thereat is subject to the following:\n' +
+        '(a) The Insured must be able to prove that, prior to the happening of such theft or hijack, a vehicle tracking and recovery device was installed in the insured vehicle.\n' +
+        '(b) To the best of the Insured’s knowledge, the vehicle tracking and recovery device was, at the time of the loss, in working order.\n' +
+        '(c) A legal contract must exist between the Insured and the vehicle recovery service provider, and any subscription fees must be paid up to date at the time of the theft or hijack.\n' +
+        '(d) The theft or hijacking is immediately reported to the service provider.\n\n' +
+        'Should the Insured not comply with all of points (a) to (d) above, and regardless of anything to the contrary contained in the policy schedule, no cover will be provided by this section.'))}
+    </table>
+
+    <p>This confirmation is issued in good faith and is subject at all times to the full terms, conditions, exceptions and warranties of the underlying policy issued by ${escHtml(form.insurer || 'the insurer')}. It does not amend, extend or otherwise alter the cover provided under that policy and confers no rights upon any third party.</p>
+
+    <p>Should you require any further information, please do not hesitate to contact our office.</p>
+
+    <p>Yours faithfully,<br><br><strong>${escHtml(form.prepared_by_name || 'Steph van der Vyver')}</strong><br>Inexpro Advisory / Crown Insurance Brokers CC<br>FSP Licence Number: SB/848</p>
   `;
 }
 

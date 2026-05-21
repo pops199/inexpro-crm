@@ -500,6 +500,16 @@ const Accounts = (() => {
         </div>
       `;
 
+      // ── Searchable Main Contact picker ──────────────────────────────────
+      // Mirrors the typeahead used on contact_id / account_id / policy_id
+      // selects elsewhere (wireContactAccountToggle in utils.js) — but the
+      // accounts form's field is named main_contact_id, so it isn't picked
+      // up by that helper. Call makeSearchable directly.
+      (function wireMainContactSearch() {
+        const sel = el.querySelector('select[name="main_contact_id"]');
+        if (sel && typeof makeSearchable === 'function') makeSearchable(sel);
+      })();
+
       // ── Cancel ──────────────────────────────────────────────────────────
       document.getElementById('account-cancel-btn').addEventListener('click', () => {
         navigate(id ? `accounts/${id}` : 'accounts');
@@ -1191,6 +1201,10 @@ const Accounts = (() => {
             <input class="form-control" id="mail-to" value="${Utils.esc(email)}" placeholder="recipient@email.com">
           </div>
           <div class="form-group">
+            <label class="form-label">CC <small style="color:var(--text-muted);font-weight:normal;">(optional — comma-separated for multiple)</small></label>
+            <input class="form-control" id="mail-cc" placeholder="cc@email.com">
+          </div>
+          <div class="form-group">
             <label class="form-label">Template</label>
             <select class="form-control" id="mail-template" onchange="Accounts._applyMailTemplate(this.value)">
               <option value="">— No Template —</option>
@@ -1665,6 +1679,7 @@ const Accounts = (() => {
 
   async function _sendMail() {
     const to = document.getElementById('mail-to')?.value?.trim();
+    const cc = document.getElementById('mail-cc')?.value?.trim();
     const subject = document.getElementById('mail-subject')?.value?.trim();
     const body = document.getElementById('mail-body')?.value?.trim();
     const errEl = document.getElementById('mail-error');
@@ -1677,6 +1692,10 @@ const Accounts = (() => {
     }
 
     const payload = { to, subject, html: body, text: body, audit_module: 'accounts', audit_record_id: modal?._accountId };
+    // Server accepts CC as a comma-separated string OR an array. The
+    // sender's own email is always added server-side, so we only forward
+    // what the broker actually typed.
+    if (cc) payload.cc = cc;
 
     if (modal?._userAttachments?.length) payload.user_attachments = modal._userAttachments;
 

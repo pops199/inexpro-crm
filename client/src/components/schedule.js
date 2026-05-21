@@ -19,9 +19,15 @@ const PolicySchedule = (() => {
     catch (_) { return String(d).slice(0, 10); }
   }
 
+  // Closure-scoped currency symbol. _renderSchedule sets this once based on
+  // the assets it's about to render (NAD only when every asset is NAD), so
+  // every downstream fmtCur call — grand totals, per-policy blocks, asset
+  // rows, subtotals — automatically picks up the right symbol without
+  // threading the currency through every call site.
+  let _schedSym = 'R';
   function fmtCur(v) {
     if (v == null || v === '') return '—';
-    return 'R ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return _schedSym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function numOrZero(v) { return Number(v) || 0; }
@@ -160,14 +166,26 @@ const PolicySchedule = (() => {
     // grandPremium = asset.premium + extras[].premium + additional_covers[].premium
     // grandSasria is tracked separately so the summary can show the breakdown.
     let grandPremium = 0, grandSasria = 0, grandExcess = 0, grandValue = 0;
+    const allAssetsFlat = [];
     policyDetails.forEach(({ assets }) => {
       assets.forEach(a => {
         grandPremium += assetPremiumNoSasria(a);
         grandValue   += assetValueAuto(a);
         grandSasria  += numOrZero(a.sasria);
         grandExcess  += numOrZero(a.excess);
+        allAssetsFlat.push(a);
       });
     });
+    // Schedule-wide SASRIA / NASRIA label — NASRIA only when every asset
+    // on the schedule is NAD-priced. Mixed-currency schedules default to
+    // the South African label, matching the existing UI behaviour.
+    const schedSasLabel = sasriaTermForAssets(allAssetsFlat);
+    // Currency symbol applies the same rule: N$ when every asset is NAD,
+    // else R. fmtCur (closure variable above) reads from _schedSym so the
+    // change propagates to every downstream call without parameter
+    // threading.
+    const schedCurrency = allAssetsFlat.length && allAssetsFlat.every(a => a && a.currency === 'NAD') ? 'NAD' : 'ZAR';
+    _schedSym = currencySymbol(schedCurrency);
 
     const today = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const policyNumbers = [...new Set(activePolicies.map(p => p.policy_number).filter(Boolean))].join(', ');
@@ -314,7 +332,7 @@ const PolicySchedule = (() => {
           <div class="sched-summary-item"><label>Total Policies</label><span>${activePolicies.length}</span></div>
           <div class="sched-summary-item"><label>Total Insured Value</label><span>${fmtCur(grandValue)}</span></div>
           <div class="sched-summary-item"><label>Total Premium</label><span>${fmtCur(grandPremium + grandSasria)}</span></div>
-          ${grandSasria ? `<div class="sched-summary-item"><label>Total SASRIA (incl.)</label><span>${fmtCur(grandSasria)}</span></div>` : ''}
+          ${grandSasria ? `<div class="sched-summary-item"><label>Total ${schedSasLabel} (incl.)</label><span>${fmtCur(grandSasria)}</span></div>` : ''}
           ${grandExcess ? `<div class="sched-summary-item"><label>Total Excess</label><span>${fmtCur(grandExcess)}</span></div>` : ''}
         </div>` : ''}
 
@@ -342,6 +360,13 @@ const PolicySchedule = (() => {
     const assetPrem   = assets.reduce((s, a) => s + assetPremiumNoSasria(a), 0);
     const assetSasria = assets.reduce((s, a) => s + numOrZero(a.sasria), 0);
     const assetExcess = assets.reduce((s, a) => s + numOrZero(a.excess), 0);
+    // Asset currency drives the SASRIA / NASRIA label — that's where the
+    // regulatory levy actually applies. policy.currency defaults to 'ZAR'
+    // for legacy rows, which would incorrectly force SASRIA on an N$
+    // schedule, so we ignore it when assets are present.
+    const polSasLabel = assets.length
+      ? sasriaTermForAssets(assets)
+      : sasriaTerm(policy.currency || 'ZAR');
 
     // Group assets by asset_section
     const sectionMap = new Map();
@@ -377,7 +402,7 @@ const PolicySchedule = (() => {
             <th>Reg / Serial</th>
             <th class="num">Insured Value</th>
             <th class="num">Premium</th>
-            <th class="num">SASRIA</th>
+            <th class="num">${polSasLabel}</th>
             <th class="num">Excess</th>
           </tr></thead>
           <tbody>
@@ -429,7 +454,7 @@ const PolicySchedule = (() => {
           <span>Policy Premium: <strong>${fmtCur(polPremium)}</strong></span>
           ${assetValue  ? `<span>Total Insured Value: <strong>${fmtCur(assetValue)}</strong></span>` : ''}
           ${assetPrem   ? `<span>Asset Premiums: <strong>${fmtCur(assetPrem)}</strong></span>` : ''}
-          ${assetSasria ? `<span>SASRIA: <strong>${fmtCur(assetSasria)}</strong></span>` : ''}
+          ${assetSasria ? `<span>${polSasLabel}: <strong>${fmtCur(assetSasria)}</strong></span>` : ''}
         </div>` : ''}
       </div>`;
   }

@@ -769,3 +769,39 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-18 10:35
 - Modified 5 files
 - Files: client/public/index.html, client/src/components/engagements.js, server/db/sessions.db, server/routes/advice-records.js, server/routes/engagements.js
+
+## 2026-05-18 10:39
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-21 05:19
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/accounts.js, client/src/components/contacts.js, server/db/sessions.db
+
+## 2026-05-21 05:25
+- Modified 6 files
+- Files: client/public/index.html, client/src/components/accounts.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
+
+## 2026-05-21 05:30
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-21 05:42
+- Modified 8 files
+- Files: client/public/index.html, client/src/components/assets.js, client/src/components/policies.js, client/src/components/schedule.js, client/src/utils.js (+3 more)
+
+## 2026-05-21 05:48
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/schedule.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)
+
+## 2026-05-21 06:03
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/schedule.js, server/db/sessions.db, server/routes/settings.js
+
+## 2026-05-21 06:11
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/sessions.db
+
+## 2026-05-21 06:17
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db-wal, server/db/sessions.db

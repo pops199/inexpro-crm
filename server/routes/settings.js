@@ -570,14 +570,23 @@ async function generateSchedulePdf(db, contactId, accountId) {
 
   // Grand totals (computed from parts, not stored aggregates)
   let grandPremium = 0, grandSasria = 0, grandExcess = 0, grandValue = 0;
+  const allAssetsFlat = [];
   policyDetails.forEach(({ assets }) => {
     assets.forEach(a => {
       grandPremium += assetPremiumAuto(a);
       grandValue   += assetValueAuto(a);
       grandSasria  += numOrZero(a.sasria);
       grandExcess  += numOrZero(a.excess);
+      allAssetsFlat.push(a);
     });
   });
+  // SASRIA → NASRIA label flips when every asset on the schedule is NAD.
+  // Mixed-currency schedules default to the South African label.
+  const schedIsNad = allAssetsFlat.length && allAssetsFlat.every(a => a && a.currency === 'NAD');
+  const schedSasLabel = schedIsNad ? 'NASRIA' : 'SASRIA';
+  // Currency symbol drives every fmtCur call below — N$ for an all-NAD
+  // schedule, otherwise R.
+  const schedCurSym = schedIsNad ? 'N$' : 'R';
 
   const PDFDocument = require('pdfkit');
   const chunks = [];
@@ -606,7 +615,7 @@ async function generateSchedulePdf(db, contactId, accountId) {
     const LIGHT_BG = '#f5f7fa';
     const BORDER = '#dee2e6';
     const dash = (v) => v || '\u2014';
-    const fmtCur = (v) => (v != null && v !== '' && v !== 0) ? 'R ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014';
+    const fmtCur = (v) => (v != null && v !== '' && v !== 0) ? schedCurSym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014';
     const fmtDate = (v) => v ? String(v).slice(0, 10) : '\u2014';
     const today = new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -687,7 +696,7 @@ async function generateSchedulePdf(db, contactId, accountId) {
         ['TOTAL INSURED VALUE', fmtCur(grandValue)],
         ['TOTAL PREMIUM', fmtCur(grandPremium)],
       ];
-      if (grandSasria) sumItems.push(['TOTAL SASRIA', fmtCur(grandSasria)]);
+      if (grandSasria) sumItems.push([`TOTAL ${schedSasLabel}`, fmtCur(grandSasria)]);
       if (grandExcess) sumItems.push(['TOTAL EXCESS', fmtCur(grandExcess)]);
       const sw = W / sumItems.length;
       sumItems.forEach(([label, value], i) => {
@@ -705,6 +714,12 @@ async function generateSchedulePdf(db, contactId, accountId) {
     // ═══ POLICY BLOCKS ═══
     policyDetails.forEach(({ policy, assets }) => {
       const polPremium = Number(policy.premium) || 0;
+      // Asset currency drives the SASRIA / NASRIA label. policy.currency
+      // defaults to 'ZAR' on legacy rows, so we can't trust it on an N$
+      // schedule — check the assets directly.
+      const polSasLabel = (assets.length && assets.every(a => a && a.currency === 'NAD')) || policy.currency === 'NAD'
+        ? 'NASRIA'
+        : 'SASRIA';
 
       // Group assets by section
       const sectionMap = new Map();
@@ -785,7 +800,7 @@ async function generateSchedulePdf(db, contactId, accountId) {
             { x: M + 22 + leftBlockW * 0.80,         w: leftBlockW * 0.20,     label: 'REG/SERIAL',  align: 'left'  },
             { x: numStart,                            w: numW,                  label: 'VALUE',       align: 'right' },
             { x: numStart + numW,                     w: numW,                  label: 'PREMIUM',     align: 'right' },
-            { x: numStart + numW * 2,                 w: numW,                  label: 'SASRIA',      align: 'right' },
+            { x: numStart + numW * 2,                 w: numW,                  label: polSasLabel,   align: 'right' },
             { x: numStart + numW * 3,                 w: numW,                  label: 'EXCESS',      align: 'right' },
           ];
           cols.forEach(c => {
@@ -886,7 +901,7 @@ async function generateSchedulePdf(db, contactId, accountId) {
         let subText = `Policy Premium: ${fmtCur(polPremium)}`;
         if (assetValue)  subText += `     Total Insured Value: ${fmtCur(assetValue)}`;
         if (assetPrem)   subText += `     Asset Premiums: ${fmtCur(assetPrem)}`;
-        if (assetSasria) subText += `     SASRIA: ${fmtCur(assetSasria)}`;
+        if (assetSasria) subText += `     ${polSasLabel}: ${fmtCur(assetSasria)}`;
         pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#1a5276')
           .text(subText, M + 12, stY + 6, { width: W - 24 });
         pdfDoc.y = stY + subH + 4;

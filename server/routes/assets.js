@@ -843,7 +843,9 @@ router.get('/:id/amendment-pdf', async (req, res) => {
       // ═══ INSURANCE FINANCIALS ═══
       sectionHead('Insurance Financials');
       fieldRow('Premium', fmtCur(asset.premium), 'premium');
-      fieldRow('SASRIA', fmtCur(asset.sasria), 'sasria');
+      // NAD-priced assets carry the Namibian regulatory levy (NASRIA);
+      // South African assets use the SASRIA label.
+      fieldRow(asset.currency === 'NAD' ? 'NASRIA' : 'SASRIA', fmtCur(asset.sasria), 'sasria');
       fieldRow('Basic Excess', fmtCur(asset.excess), 'excess');
       if (asset.excess_pct_claim != null) fieldRow('Excess % of Claim', asset.excess_pct_claim + '%', 'excess_pct_claim');
       if (asset.excess_pct_insured != null) fieldRow('Excess % of Insured', asset.excess_pct_insured + '%', 'excess_pct_insured');

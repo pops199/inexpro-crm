@@ -6,6 +6,76 @@ sits at the top.
 
 ---
 
+## v1.0.54 — 2026-05-21
+
+**Multi-currency (R / N$) across the app, Belogix Namibia GIT Confirmation, CC on emails, searchable Main Contact, and more**
+
+- **Multi-currency rendering across the asset / policy / schedule stack**:
+  the SASRIA label and the `R` currency symbol now flip to **NASRIA** and
+  **N$** wherever assets / policies / schedules are NAD-priced.
+  - `client/src/utils.js`: new `sasriaTerm(currency)` /
+    `sasriaTermForAssets(arr)` helpers; `wireCurrencySelector` now also
+    flips `.sasria-label` spans live as the broker changes the form
+    currency.
+  - `client/src/components/assets.js`: SASRIA label on the asset form,
+    detail card, detail field and breakdown row + `renderAggregateBreakdownHtml`
+    all currency-aware.
+  - `client/src/components/policies.js`: policy detail derives an
+    effective currency from its linked assets when `policy.currency`
+    defaults to `ZAR` but every asset is N$. That single override flows
+    through the Financial & Dates card (incl. Total Premium), the
+    Premium Breakdown panel, the Sections tab summary + table, the
+    Section-Assets sub-view, the Claims and Commission tabs, and the
+    "Previously Linked Assets" history table. A new module-level
+    `_polDetailCurrency` lets every tab pick the right symbol without
+    re-fetching the assets.
+  - `client/src/components/schedule.js`: `fmtCur` is now currency-aware
+    via a closure-scoped `_schedSym`; the schedule's effective currency
+    is derived from its assets, and the per-policy SASRIA / NASRIA label
+    falls back to asset currency when `policy.currency` is the default
+    ZAR.
+  - `server/routes/settings.js`: schedule PDF mirrors the same rule —
+    `fmtCur` reads a `schedCurSym` derived from the assets, and
+    `schedSasLabel` / `polSasLabel` flip accordingly.
+  - `server/routes/assets.js`: per-asset PDF flips its "SASRIA" /
+    "NASRIA" row label from `asset.currency`.
+- **Belogix Namibia GIT Confirmation of Cover**: brand-new variant of
+  the Transport "GIT Confirmation" generator triggered by picking N$
+  in the modal.
+  - New currency selector at the top of the GIT modal, defaulting to
+    the policy's effective currency.
+  - New `server/lib/belogix-namibia-git-pdf.js` renderer — Namibian
+    letterhead (Crown logo + wave header) and footer image, matching
+    the source "Belogix Namibia GIT Confirmation of Cover.docx"
+    table-style layout (Insured / Insurer / Policy Number / Type of
+    Cover / Load Limit per Truck / Number of Trucks / Truck
+    Registrations / Period of Cover / NASRIA / Fidelity / Territorial
+    Limits / Excluded Commodities / Valid Driver's Licence / Security
+    Conditions). N$ used throughout. Same Acknowledgement of Receipt
+    page + signing flow + auto-attach as the existing template.
+  - Modal now has three broker-editable textareas (shown only when N$
+    is selected) for **Excluded Commodities**, **Valid Driver's
+    Licence** and **Security Conditions (Cross-border consignments
+    exceeding N$1,000,000.00 in value)** — seeded with the source-docx
+    wording but overridable per policy.
+  - `server/routes/policies.js` and `public-signing.js` dispatch on
+    `form_data.currency === 'NAD'` to pick the right renderer for
+    download / send-for-signature / signed-PDF stamping. The public
+    signing HTML preview matches the chosen template too.
+  - New letterhead assets at `client/public/letterhead-belogix-namibia.jpg`
+    and `client/public/letterhead-belogix-namibia-footer.jpg`.
+- **Asset Miscellaneous sections**: added **Nasria** and **Levies &
+  Stamp Duties** to the Miscellaneous policy-section list.
+- **CC field on Email composer**: Contact and Account email modals now
+  have a CC field above the Subject input — comma-separated for multiple
+  recipients; flows through to the existing `POST /send-email` route
+  which already supported CC.
+- **Searchable Main Contact picker**: the Account form's Main Contact
+  dropdown now uses the same typeahead picker as the assets /
+  engagements / claims contact pickers (`makeSearchable`). Previously
+  only fields named exactly `contact_id` / `account_id` / `policy_id`
+  were auto-wired.
+
 ## v1.0.53 — 2026-05-18
 
 **Pre-Sale Disclosure: brief-description notes no longer compulsory**

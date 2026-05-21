@@ -4,6 +4,15 @@
 
 const Policies = (() => {
 
+  // Effective currency for the policy currently open in the detail view.
+  // Set by `detail()` to the policy's own currency, falling back to NAD when
+  // every linked asset is N$ priced (legacy policies default to ZAR even
+  // when their assets are NAD). Each tab in loadPolicyTab reads this so
+  // money values render with the right symbol without each tab re-fetching
+  // the assets.
+  let _polDetailCurrency = 'ZAR';
+  function _polFmtMoney(v) { return fmtMoney(v, _polDetailCurrency); }
+
   // ── Centred modal helpers (matches claims pattern) ────────────────────────
   function _openModal(title, bodyHtml, footerHtml) {
     const modal    = document.getElementById('global-modal');
@@ -951,8 +960,10 @@ const Policies = (() => {
 
     const renderTable = (rows, isLive) => {
       const curEl = document.querySelector('[name="currency"]');
-      const sym   = currencySymbol(curEl ? curEl.value : 'ZAR');
+      const polCurrency = curEl ? curEl.value : 'ZAR';
+      const sym   = currencySymbol(polCurrency);
       const cur = (v) => v != null && v !== '' ? sym + ' ' + Number(v).toLocaleString('en-ZA', {minimumFractionDigits:2}) : '—';
+      const sasLabel = sasriaTerm(polCurrency);
       const tableHtml = rows.length ? `
         <div class="table-responsive" style="margin-bottom:.5rem;">
           <table class="table" style="font-size:.82rem;">
@@ -960,7 +971,7 @@ const Policies = (() => {
               <th>Asset Name</th><th>Type</th><th>Section</th>
               <th style="text-align:right;">Value</th>
               <th style="text-align:right;">Premium</th>
-              <th style="text-align:right;">SASRIA</th>
+              <th style="text-align:right;">${sasLabel}</th>
               <th></th>
             </tr></thead>
             <tbody>
@@ -1267,7 +1278,7 @@ const Policies = (() => {
                     placeholder="0.00" value="${cur('premium')}" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">SASRIA (R)</label>
+                  <label class="form-label"><span class="sasria-label">SASRIA</span> (<span class="cur-label">R</span>)</label>
                   <input type="number" name="sasria" class="form-control" min="0" step="0.01"
                     placeholder="0.00" value="${cur('sasria')}" />
                 </div>
@@ -1559,12 +1570,30 @@ const Policies = (() => {
     const headerActions = document.getElementById('header-actions');
 
     try {
-      const [res, historyRes] = await Promise.all([
+      const [res, historyRes, assetRes] = await Promise.all([
         Api.policies.get(id),
         Api.policies.assetHistory(id).catch(() => []),
+        // Pre-fetch assets so we can derive the effective currency before
+        // rendering anything — Show-Breakdown / Sections tab will refetch,
+        // but that's OK (cheap query, results are cached client-side).
+        Api.assets.list({ policy_id: id, limit: 500 }).catch(() => ({ data: [] })),
       ]);
       const d       = res.data || res || {};
       const history = Array.isArray(historyRes) ? historyRes : (historyRes?.data || []);
+
+      // Effective currency for the policy detail view: respect policy.currency
+      // when set to NAD; otherwise, if every linked asset is N$ priced,
+      // treat the policy as NAD for display purposes too. This lets the
+      // policy header show N$ / NASRIA even on legacy policies whose own
+      // `currency` column defaulted to 'ZAR' when their assets are NAD.
+      const _polAssetsForCurrency = (assetRes && (assetRes.data || assetRes)) || [];
+      if (d.currency !== 'NAD'
+          && _polAssetsForCurrency.length
+          && _polAssetsForCurrency.every(a => a && a.currency === 'NAD')) {
+        d.currency = 'NAD';
+      }
+      // Stash for every tab to read — saves re-fetching assets per tab.
+      _polDetailCurrency = d.currency || 'ZAR';
 
       // Transport policies (or Mixed/Transport-category) get the GIT
       // Confirmation of Insurance generator — others don't see the button.
@@ -1631,7 +1660,7 @@ const Policies = (() => {
               </label>
             </div>
             <div class="detail-grid">
-              ${field('Total Premium', (d.total_premium != null ? formatCurrency(d.total_premium) : (d.premium ? formatCurrency(d.premium) : '—')))}
+              ${field('Total Premium', (d.total_premium != null ? fmtMoney(d.total_premium, d.currency) : (d.premium ? fmtMoney(d.premium, d.currency) : '—')))}
               ${field('Inception Date', d.inception_date ? formatDate(d.inception_date) : '—')}
               ${field('Renewal Date', d.renewal_date ? formatDate(d.renewal_date) : '—')}
               ${field('Last Review Date', d.last_review_date ? formatDate(d.last_review_date) : '—')}
@@ -1674,8 +1703,8 @@ const Policies = (() => {
                     <td>${esc(h.asset_type || '—')}</td>
                     <td>${[h.make, h.model, h.year].filter(Boolean).map(esc).join(' ') || '—'}</td>
                     <td>${esc(h.registration_number || h.vin_number || h.serial_number || '—')}</td>
-                    <td style="text-align:right;">${h.asset_value != null ? formatCurrency(h.asset_value) : '—'}</td>
-                    <td style="text-align:right;">${h.premium != null ? formatCurrency(h.premium) : '—'}</td>
+                    <td style="text-align:right;">${h.asset_value != null ? fmtMoney(h.asset_value, d.currency) : '—'}</td>
+                    <td style="text-align:right;">${h.premium != null ? fmtMoney(h.premium, d.currency) : '—'}</td>
                     <td>${h.cancelled_at ? formatDate(h.cancelled_at) : '—'}${h.cancelled_by_name ? ` <span style="color:var(--text-muted);font-size:.75rem;">by ${esc(h.cancelled_by_name)}</span>` : ''}</td>
                   </tr>`).join('')}
               </tbody>
@@ -1797,7 +1826,7 @@ const Policies = (() => {
             const assets = (res.data || res || []).filter(a =>
               !['Sold', 'Decommissioned', 'Inactive', 'Cancelled'].includes(a.asset_status));
             const agg = Assets.calcAggregateBreakdown(assets);
-            bodyEl.innerHTML = Assets.renderAggregateBreakdownHtml(agg, fmtCur);
+            bodyEl.innerHTML = Assets.renderAggregateBreakdownHtml(agg, fmtCur, d.currency);
           } catch (err) {
             bodyEl.innerHTML = `<p class="text-danger" style="padding:.5rem;">Could not load breakdown: ${esc(err.message || String(err))}</p>`;
           }
@@ -1906,7 +1935,7 @@ const Policies = (() => {
             <div class="detail-field"><span class="detail-label">Total Assets</span><span class="detail-value">${sAssets.length}</span></div>
             <div class="detail-field"><span class="detail-label">Total Insured Value</span><span class="detail-value">${cur(agg.assetValue) || '—'}</span></div>
             <div class="detail-field"><span class="detail-label">Total Premium</span><span class="detail-value">${cur(agg.premium) || '—'}</span></div>
-            ${agg.sasria ? `<div class="detail-field"><span class="detail-label">Total SASRIA</span><span class="detail-value">${cur(agg.sasria)}</span></div>` : ''}
+            ${agg.sasria ? `<div class="detail-field"><span class="detail-label">Total ${sasriaTerm(polCurrency)}</span><span class="detail-value">${cur(agg.sasria)}</span></div>` : ''}
             ${agg.excess ? `<div class="detail-field"><span class="detail-label">Total Excess</span><span class="detail-value">${cur(agg.excess)}</span></div>` : ''}
           </div>`;
       } else {
@@ -1923,7 +1952,7 @@ const Policies = (() => {
             ${agg.extrasPremium           ? `<div class="detail-field"><span class="detail-label">Vehicle Extras Premium</span><span class="detail-value">${fmtCur(agg.extrasPremium)}</span></div>` : ''}
             ${agg.additionalCoversPremium ? `<div class="detail-field"><span class="detail-label">Add'l Covers Premium</span><span class="detail-value">${fmtCur(agg.additionalCoversPremium)}</span></div>` : ''}
             ${agg.excessesPremium         ? `<div class="detail-field"><span class="detail-label">Excesses Premium</span><span class="detail-value">${fmtCur(agg.excessesPremium)}</span></div>` : ''}
-            <div class="detail-field"><span class="detail-label">SASRIA</span><span class="detail-value">${fmtCur(agg.sasria)}</span></div>
+            <div class="detail-field"><span class="detail-label">${sasriaTerm(polCurrency)}</span><span class="detail-value">${fmtCur(agg.sasria)}</span></div>
             <div class="detail-field" style="font-weight:600;border-top:1px solid #dee2e6;padding-top:.4rem;margin-top:.2rem;"><span class="detail-label">Total Premium</span><span class="detail-value">${fmtCur(agg.premium)}</span></div>
             ${agg.excess ? `<div class="detail-field"><span class="detail-label">Total Basic Excess</span><span class="detail-value">${fmtCur(agg.excess)}</span></div>` : ''}
           </div>`;
@@ -1982,7 +2011,17 @@ const Policies = (() => {
           const SECTION_INACTIVE = ['Sold', 'Decommissioned', 'Inactive', 'Cancelled'];
           const secHiddenCount = _allSectionAssets.filter(a => SECTION_INACTIVE.includes(a.asset_status)).length;
           const polRes = await Api.policies.get(policyId).catch(() => null);
-          const polSym = currencySymbol((polRes && (polRes.data || polRes).currency) || 'ZAR');
+          let polCurrency = (polRes && (polRes.data || polRes).currency) || 'ZAR';
+          // Effective-currency fallback: legacy policies default to 'ZAR'
+          // even when every linked asset is N$ priced. Treat them as NAD
+          // for display so the table flips to N$ / NASRIA.
+          if (polCurrency !== 'NAD'
+              && _allSectionAssets.length
+              && _allSectionAssets.every(a => a && a.currency === 'NAD')) {
+            polCurrency = 'NAD';
+          }
+          const polSym = currencySymbol(polCurrency);
+          const polSasLabel = sasriaTerm(polCurrency);
           const cur = (v) => v != null && Number(v) !== 0
             ? polSym + ' ' + Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '—';
 
@@ -2014,14 +2053,14 @@ const Policies = (() => {
                    ${grandAgg.extrasPremium           ? `<span>Extras Premium: <strong>${cur(grandAgg.extrasPremium)}</strong></span>` : ''}
                    ${grandAgg.additionalCoversPremium ? `<span>Add'l Covers Premium: <strong>${cur(grandAgg.additionalCoversPremium)}</strong></span>` : ''}
                    ${grandAgg.excessesPremium         ? `<span>Excesses Premium: <strong>${cur(grandAgg.excessesPremium)}</strong></span>` : ''}
-                   <span>SASRIA: <strong>${cur(grandAgg.sasria)}</strong></span>
+                   <span>${polSasLabel}: <strong>${cur(grandAgg.sasria)}</strong></span>
                    <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
                  </div>`
               : `<div class="pol-sections-summary" style="display:flex;gap:1.5rem;padding:0 .25rem .75rem;flex-wrap:wrap;font-size:.85rem;color:var(--text-muted);">
                    <span><strong>${sectionKeys.length}</strong> section${sectionKeys.length !== 1 ? 's' : ''} (${allAssets.length} asset${allAssets.length !== 1 ? 's' : ''})</span>
                    <span>Total Value: <strong>${cur(grandAgg.assetValue)}</strong></span>
                    <span>Total Premium: <strong>${cur(grandAgg.premium)}</strong></span>
-                   ${grandAgg.sasria ? `<span>SASRIA: <strong>${cur(grandAgg.sasria)}</strong></span>` : ''}
+                   ${grandAgg.sasria ? `<span>${polSasLabel}: <strong>${cur(grandAgg.sasria)}</strong></span>` : ''}
                  </div>`;
 
             const tableHtml = showBreakdown
@@ -2039,7 +2078,7 @@ const Policies = (() => {
                     <th style="text-align:right;">Extras Prem</th>
                     <th style="text-align:right;">Add'l Cov Prem</th>
                     <th style="text-align:right;">Excesses Prem</th>
-                    <th style="text-align:right;">SASRIA</th>
+                    <th style="text-align:right;">${polSasLabel}</th>
                     <th style="text-align:right;">Total Premium</th>
                     <th style="text-align:right;">Excess</th>
                   </tr></thead>
@@ -2097,7 +2136,7 @@ const Policies = (() => {
                     <th style="text-align:right;">Assets</th>
                     <th style="text-align:right;">Total Value</th>
                     <th style="text-align:right;">Total Premium</th>
-                    <th style="text-align:right;">SASRIA</th>
+                    <th style="text-align:right;">${polSasLabel}</th>
                     <th style="text-align:right;">Excess</th>
                   </tr></thead>
                   <tbody>
@@ -2184,7 +2223,7 @@ const Policies = (() => {
                   <td>${esc(c.claim_type || '—')}</td>
                   <td>${statusBadgeHtml(c.claim_status)}</td>
                   <td>${c.claim_date ? formatDate(c.claim_date) : '—'}</td>
-                  <td>${c.estimated_value ? formatCurrency(c.estimated_value) : '—'}</td>
+                  <td>${c.estimated_value ? _polFmtMoney(c.estimated_value) : '—'}</td>
                   <td><a href="#/claims/${c.id}/edit" class="btn btn-sm btn-primary">Edit</a></td>
                 </tr>`).join('') : '<tr><td colspan="6" class="table-empty">No claims.</td></tr>'}
               </tbody>
@@ -2275,10 +2314,10 @@ const Policies = (() => {
                 const rateAmtCell = hasRate
                   ? `<span style="font-weight:600;">${esc(r.commission_rate)}%</span>`
                   : (hasAmount
-                      ? `<span style="font-weight:600;">R ${Number(r.commission_amount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`
+                      ? `<span style="font-weight:600;">${_polFmtMoney(r.commission_amount)}</span>`
                       : '—');
                 const calcCell = hasRate && hasAmount
-                  ? formatCurrency(r.commission_amount)
+                  ? _polFmtMoney(r.commission_amount)
                   : (hasRate ? '<span style="color:#888;">auto</span>' : '—');
                 return `
                 <tr>
@@ -3034,6 +3073,33 @@ ${brokerName}`;
       || contact?.physical_address || contact?.postal_address || '';
     const today = new Date().toISOString().slice(0, 10);
     const renewalIso = policy.renewal_date ? String(policy.renewal_date).slice(0, 10) : '';
+    // Default the modal's currency to the policy's effective currency.
+    // _polDetailCurrency reflects the asset-fallback that detail() applied
+    // (legacy ZAR policies with NAD assets are treated as NAD); fall back
+    // to policy.currency for safety if the modal is opened outside of
+    // detail().
+    const initialCurrency = (_polDetailCurrency && _polDetailCurrency !== 'ZAR')
+      ? _polDetailCurrency
+      : (policy.currency || 'ZAR');
+
+    // Default boilerplate for the Belogix Namibia template's editable
+    // sections. Seeded into the textareas so a broker who doesn't change
+    // anything still gets the same wording as the source docx; the broker
+    // can override per-policy when the terms differ. Kept in sync with the
+    // server-side defaults in server/lib/belogix-namibia-git-pdf.js.
+    const NAM_DEFAULTS = {
+      excluded_commodities:
+        'Antiques or antiquities of any description, arms, ammunition, artworks, live animals of any description, bank and treasury notes, cash, travellers cheques, bullion, platinum, cobalt, copper, deeds, designs, documents of any description, explosives, furs, jewellery, patterns, plans, precious metals or stones, specie, stamps, tickets, tobacco, brass and scrap metal, exotic sea foods including caviar, prawns, calamari and crayfish, aircraft and their parts and accessories.',
+      valid_drivers_licence:
+        'A valid PDP (Professional Driving Permit) is a prerequisite for the operation of goods vehicles, and any claim arising in its absence shall be deemed null and void.',
+      security_conditions:
+        'Cover under this section as a result of theft, hijack or any attempt thereat is subject to the following:\n' +
+        '(a) The Insured must be able to prove that, prior to the happening of such theft or hijack, a vehicle tracking and recovery device was installed in the insured vehicle.\n' +
+        '(b) To the best of the Insured’s knowledge, the vehicle tracking and recovery device was, at the time of the loss, in working order.\n' +
+        '(c) A legal contract must exist between the Insured and the vehicle recovery service provider, and any subscription fees must be paid up to date at the time of the theft or hijack.\n' +
+        '(d) The theft or hijacking is immediately reported to the service provider.\n\n' +
+        'Should the Insured not comply with all of points (a) to (d) above, and regardless of anything to the contrary contained in the policy schedule, no cover will be provided by this section.',
+    };
 
     const existing = document.getElementById('git-modal');
     if (existing) existing.remove();
@@ -3050,10 +3116,19 @@ ${brokerName}`;
         <div class="modal-body" style="overflow:auto;flex:1;">
           <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;">
             Generates a Goods-in-Transit Confirmation of Insurance PDF for this policy. Fields are pre-filled from the policy / insured records — adjust as needed.
+            <strong>Currency = R</strong> renders the South African "Confirmation of Insurance" template.
+            <strong>Currency = N$</strong> renders the "Belogix Namibia GIT Confirmation of Cover" variant.
           </p>
 
           <h4 style="margin:.5rem 0;font-size:.95rem;color:var(--primary);">Header</h4>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Currency</label>
+              <select class="form-control" id="git-currency" name="currency">
+                <option value="ZAR" ${initialCurrency === 'NAD' ? '' : 'selected'}>ZAR (R)</option>
+                <option value="NAD" ${initialCurrency === 'NAD' ? 'selected' : ''}>NAD (N$)</option>
+              </select>
+            </div>
             <div class="form-group" style="margin:0;">
               <label class="form-label">Confirmation date</label>
               <input class="form-control" type="date" id="git-date" value="${esc(today)}">
@@ -3102,7 +3177,7 @@ ${brokerName}`;
             <input class="form-control" id="git-premium-note" value="Continuation of cover is dependent on monthly payment of premium when presented">
           </div>
 
-          <h4 style="margin:.6rem 0 .4rem;font-size:.95rem;color:var(--primary);">Coverage &amp; Limits (R)</h4>
+          <h4 style="margin:.6rem 0 .4rem;font-size:.95rem;color:var(--primary);">Coverage &amp; Limits (<span class="cur-label">${initialCurrency === 'NAD' ? 'N$' : 'R'}</span>)</h4>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
             <div class="form-group" style="margin:0;">
               <label class="form-label">Goods in Transit (Carriers Liability)</label>
@@ -3159,6 +3234,21 @@ ${brokerName}`;
           <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Territorial Limits</h4>
           <textarea class="form-control" id="git-territory" rows="2">Republic of South Africa, Namibia, Botswana, Lesotho, Swaziland, Zimbabwe, Malawi, Mozambique, Zambia, Tanzania, Angola, and the Democratic Republic of the Congo.</textarea>
 
+          <!-- Belogix Namibia-only sections: hidden when currency = R. -->
+          <div id="git-nam-only" style="${initialCurrency === 'NAD' ? '' : 'display:none;'}">
+            <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Excluded Commodities</h4>
+            <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .3rem;">
+              Edit to override the default exclusions for this confirmation.
+            </p>
+            <textarea class="form-control" id="git-excluded-commodities" rows="4">${esc(NAM_DEFAULTS.excluded_commodities)}</textarea>
+
+            <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Valid Driver’s Licence</h4>
+            <textarea class="form-control" id="git-valid-drivers-licence" rows="2">${esc(NAM_DEFAULTS.valid_drivers_licence)}</textarea>
+
+            <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Security Conditions <span style="font-size:.78rem;color:var(--text-muted);font-weight:normal;">(Cross-border consignments exceeding N$1,000,000.00 in value)</span></h4>
+            <textarea class="form-control" id="git-security-conditions" rows="9">${esc(NAM_DEFAULTS.security_conditions)}</textarea>
+          </div>
+
           <h4 style="margin:1rem 0 .4rem;font-size:.95rem;color:var(--primary);">Acknowledgement of Receipt</h4>
           <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .4rem;">
             These names print on the final "Acknowledgement of Receipt" page —
@@ -3202,7 +3292,7 @@ ${brokerName}`;
             <input class="form-control git-grp-desc" value="${esc(initial?.description || 'CARGO & PACKAGING MATERIALS')}">
           </div>
           <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-size:.78rem;">Limit (R)</label>
+            <label class="form-label" style="font-size:.78rem;">Limit (<span class="cur-label">R</span>)</label>
             <input class="form-control git-grp-limit" type="number" step="0.01" value="${initial?.limit ?? ''}">
           </div>
           <button type="button" class="btn btn-sm btn-danger git-grp-remove" title="Remove group">✕</button>
@@ -3219,6 +3309,25 @@ ${brokerName}`;
     addGroup({ description: 'CARGO & PACKAGING MATERIALS', limit: 1500000, vehicles: [] });
 
     modal.querySelector('#git-add-group').addEventListener('click', () => addGroup());
+
+    // ── Currency selector: flip every .cur-label inside the modal
+    // (Coverage & Limits heading, vehicle-group Limit labels) live as
+    // the broker switches between R and N$. Also toggles the Namibia-only
+    // section (Excluded Commodities / Driver's Licence / Security
+    // Conditions) — those blocks only appear on the Belogix Namibia
+    // template, so we hide them on R requests to keep the modal short.
+    (function wireGitCurrencySelector() {
+      const sel = modal.querySelector('#git-currency');
+      if (!sel) return;
+      const namOnlyEl = modal.querySelector('#git-nam-only');
+      function apply() {
+        const sym = sel.value === 'NAD' ? 'N$' : 'R';
+        modal.querySelectorAll('.cur-label').forEach(el => { el.textContent = sym; });
+        if (namOnlyEl) namOnlyEl.style.display = sel.value === 'NAD' ? '' : 'none';
+      }
+      sel.addEventListener('change', apply);
+      apply();
+    })();
 
     // ── Close handlers ───────────────────────────────────────────
     const close = () => modal.remove();
@@ -3250,6 +3359,7 @@ ${brokerName}`;
         return Number.isFinite(v) ? v : null;
       };
       return {
+        currency:          modal.querySelector('#git-currency').value || 'ZAR',
         date:              modal.querySelector('#git-date').value || null,
         insured_name:      insuredName,
         insured_address:   modal.querySelector('#git-address').value.trim(),
@@ -3275,6 +3385,12 @@ ${brokerName}`;
         // Acknowledgement of Receipt — fill the "I __ representing __" line.
         client_name:        modal.querySelector('#git-client-name').value.trim(),
         company_name:       modal.querySelector('#git-company-name').value.trim(),
+        // Belogix Namibia-only sections. Always submitted (even when R is
+        // selected) so a broker who pre-seeds them then flips to N$ keeps
+        // their values; the server only reads them when currency === 'NAD'.
+        excluded_commodities:   modal.querySelector('#git-excluded-commodities')?.value.trim() || '',
+        valid_drivers_licence:  modal.querySelector('#git-valid-drivers-licence')?.value.trim() || '',
+        security_conditions:    modal.querySelector('#git-security-conditions')?.value.trim() || '',
       };
     }
 

@@ -169,8 +169,30 @@ function currencyFieldHtml(current) {
 }
 
 /**
+ * Returns 'NASRIA' for Namibian (NAD / N$) currency, else 'SASRIA'.
+ * Centralised so every label that mentions the regulatory levy can flip
+ * based on the asset / policy / schedule currency without each caller
+ * re-implementing the rule.
+ */
+function sasriaTerm(currency) {
+  return currency === 'NAD' ? 'NASRIA' : 'SASRIA';
+}
+
+/**
+ * Returns 'NASRIA' when every asset in the array has currency='NAD',
+ * else 'SASRIA'. For mixed or empty datasets the South African default
+ * wins. Used by aggregates (policy schedules, breakdown panels) where
+ * we choose a single label for a group of assets.
+ */
+function sasriaTermForAssets(assets) {
+  if (!Array.isArray(assets) || !assets.length) return 'SASRIA';
+  return assets.every(a => a && a.currency === 'NAD') ? 'NASRIA' : 'SASRIA';
+}
+
+/**
  * Wire a form's currency selector so that every label element with
- * class "cur-label" gets its text updated to the chosen symbol.
+ * class "cur-label" gets its text updated to the chosen symbol, and
+ * every element with class "sasria-label" flips between SASRIA / NASRIA.
  * Call after the form is inserted into the DOM.
  */
 function wireCurrencySelector(formEl) {
@@ -180,6 +202,8 @@ function wireCurrencySelector(formEl) {
   function apply() {
     const sym = currencySymbol(sel.value);
     formEl.querySelectorAll('.cur-label').forEach(el => { el.textContent = sym; });
+    const term = sasriaTerm(sel.value);
+    formEl.querySelectorAll('.sasria-label').forEach(el => { el.textContent = term; });
   }
   sel.addEventListener('change', apply);
   apply();

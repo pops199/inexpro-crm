@@ -1954,3 +1954,91 @@ Files changed: 5
 - `server/routes/engagements.js`
 Session: 31d57743-dc09-486f-8ff3-893da8955986
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-18 10:39 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 05:19 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/accounts.js`
+- `client/src/components/contacts.js`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 05:25 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/accounts.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 05:30 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 05:42 — auto-detected change
+Files changed: 8
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `client/src/components/policies.js`
+- `client/src/components/schedule.js`
+- `client/src/utils.js`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+- `server/routes/settings.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 05:48 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/schedule.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/settings.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 06:03 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/schedule.js`
+- `server/db/sessions.db`
+- `server/routes/settings.js`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 06:11 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-21 06:17 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 31d57743-dc09-486f-8ff3-893da8955986
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
