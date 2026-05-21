@@ -78,7 +78,7 @@ const Notifications = (() => {
         const dimmed = n.dismissed_at ? 'opacity:.55;' : '';
         return `
           <div class="card nf-row" data-id="${n.id}"
-               style="display:flex;gap:.85rem;padding:.85rem 1rem;margin-bottom:.5rem;align-items:flex-start;${dimmed}
+               style="display:flex;gap:.85rem;padding:.85rem 1rem;margin:0;align-items:flex-start;${dimmed}
                       border-left:4px solid ${sev.bg};${isUnread ? 'background:#fffef7;' : ''}">
             <div style="flex:0 0 auto;background:${sev.bg};color:${sev.fg};border-radius:4px;padding:.15rem .5rem;font-size:.7rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;">
               ${esc(sev.label)}
@@ -108,14 +108,62 @@ const Notifications = (() => {
           </div>`;
       };
 
+      // Group notifications by created-date so the list reads like a
+      // chronological log. Preserves the API's newest-first order within
+      // each group. Today / Yesterday get friendlier headings; older
+      // entries use a full "21 May 2026" date label.
+      function dayKey(iso) {
+        return String(iso || '').slice(0, 10); // YYYY-MM-DD
+      }
+      function dayLabel(key) {
+        if (!key) return 'Earlier';
+        const now = new Date();
+        const today    = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yest     = new Date(today.getTime() - 86400000);
+        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        if (key === fmt(today)) return 'Today';
+        if (key === fmt(yest))  return 'Yesterday';
+        const d = new Date(key + 'T00:00:00');
+        if (Number.isNaN(d.getTime())) return key;
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+        // "Monday, 18 May 2026" — week-of-year context without being noisy.
+        return `${dayName}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      }
+
+      const groups = [];
+      let cur = null;
+      items.forEach(n => {
+        const k = dayKey(n.created_at);
+        if (!cur || cur.key !== k) {
+          cur = { key: k, label: dayLabel(k), items: [] };
+          groups.push(cur);
+        }
+        cur.items.push(n);
+      });
+
+      // Each group renders as: full-width date heading, then a 2-column
+      // grid of cards. auto-fit + minmax(360px, 1fr) keeps it responsive
+      // — collapses to a single column when the pane is too narrow.
+      const groupHtml = (g) => `
+        <div class="nf-group" style="margin-bottom:1.25rem;">
+          <h3 style="margin:0 0 .55rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:#777;border-bottom:1px solid var(--border,#dee2e6);padding-bottom:.3rem;">
+            ${esc(g.label)}
+            <span style="float:right;font-size:.7rem;font-weight:normal;color:#999;text-transform:none;letter-spacing:0;">${g.items.length} item${g.items.length === 1 ? '' : 's'}</span>
+          </h3>
+          <div class="nf-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:.6rem;align-items:start;">
+            ${g.items.map(row).join('')}
+          </div>
+        </div>`;
+
       el.innerHTML = `
-        <div class="page-wrapper" style="max-width:880px;">
+        <div class="page-wrapper" style="max-width:1400px;">
           <div style="margin-bottom:.75rem;color:#666;font-size:.9rem;">
             ${unread ? `<strong style="color:#c0392b;">${unread} unread</strong> — ` : ''}
             ${items.length} notification(s) ${_showDismissed ? '(including dismissed)' : ''}
           </div>
           ${items.length
-            ? items.map(row).join('')
+            ? groups.map(groupHtml).join('')
             : `<div class="card" style="padding:2rem;text-align:center;color:#666;">
                  You have no notifications${_showDismissed ? '' : ' — try "Show dismissed".'}
                </div>`}

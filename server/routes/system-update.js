@@ -16,7 +16,7 @@ const path = require('path');
 const multer = require('multer');
 const Database = require('better-sqlite3');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { getDb } = require('../db/database');
+const { getDb, closeDb } = require('../db/database');
 const updater = require('../lib/updater');
 const migrate = require('../db/migrate');
 const { notifyAdminsIfUpdateAvailable } = require('../lib/system-update-notifier');
@@ -314,12 +314,6 @@ router.post('/restore', restoreUpload.single('dbfile'), (req, res) => {
     //    Reuse the updater's snapshot dir + format so the same Rollback
     //    UI catches it.
     const liveDb = getDb();
-    const snapshots = updater.listSnapshots();
-    const before = snapshots.length;
-    // We piggy-back on the updater's snapshotDb logic by calling its
-    // applyUpdate-style snapshot helper indirectly: there's no public
-    // wrapper, so we reach in via the module's exported listSnapshots
-    // and create the snapshot manually here.
     const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
     const SNAPSHOT_DIR = path.join(PROJECT_ROOT, '.update-snapshots');
     if (!fs.existsSync(SNAPSHOT_DIR)) fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
@@ -339,22 +333,55 @@ router.post('/restore', restoreUpload.single('dbfile'), (req, res) => {
     }, null, 2));
     result.snapshot_id = snapId;
 
-    // 5. Swap the live DB file. Close the connection first so the file
-    //    handle is released (Windows can't replace open files).
-    try { liveDb.close(); } catch (_) {}
+    // 4a. Write the audit entry to the LIVE DB *before* we close it. This
+    //     way the "restored from X" event lands in the snapshot we just
+    //     took (which becomes the recoverable history) rather than being
+    //     lost when the file is replaced.
+    res.locals.logAudit({
+      action: 'RESTORE_APPLIED', module: 'system_update',
+      newValue: {
+        source_filename: sourceName, source_size_bytes: sourceSize,
+        snapshot_id: result.snapshot_id,
+      },
+      description: `Restored DB from upload ${sourceName} (${Math.round(sourceSize/1024/1024 * 10)/10} MB) — pre-restore snapshot ${result.snapshot_id}`,
+    });
+
+    // 5. Swap the live DB file. closeDb() closes AND nulls out the
+    //    module-level cache, so any subsequent getDb() — including post
+    //    -response middleware — reopens against the new file instead of
+    //    using a dead handle (which would crash the process and surface
+    //    as a 502 from the reverse proxy).
+    closeDb();
     const dbPath = path.resolve(process.env.DB_PATH || './server/db/inexpro.db');
-    for (const ext of ['', '-wal', '-shm']) {
-      const p = dbPath + ext;
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+    // On Windows the OS sometimes holds the file handle for a fraction
+    // of a second after close(); retry a few times before giving up.
+    function unlinkWithRetry(p) {
+      if (!fs.existsSync(p)) return;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try { fs.unlinkSync(p); return; }
+        catch (err) {
+          if (err.code !== 'EBUSY' && err.code !== 'EPERM') throw err;
+          // Spin briefly — synchronous so we stay inside the route's
+          // try/catch and report a clean error if the file truly is
+          // locked by something else.
+          const until = Date.now() + 100;
+          while (Date.now() < until) { /* noop */ }
+        }
+      }
+      throw new Error(`Could not release file handle on ${p} (locked).`);
     }
+    for (const ext of ['', '-wal', '-shm']) unlinkWithRetry(dbPath + ext);
     fs.copyFileSync(tmpUpload, dbPath);
   } catch (err) {
+    console.error('[restore] failed:', err && err.stack || err);
     result.error = err.message;
-    res.locals.logAudit({
-      action: 'RESTORE_FAILED', module: 'system_update',
-      newValue: { source_filename: sourceName, snapshot_id: result.snapshot_id },
-      description: `Restore aborted: ${err.message}`,
-    });
+    try {
+      res.locals.logAudit({
+        action: 'RESTORE_FAILED', module: 'system_update',
+        newValue: { source_filename: sourceName, snapshot_id: result.snapshot_id },
+        description: `Restore aborted: ${err.message}`,
+      });
+    } catch (_) {}
     cleanup();
     return res.status(400).json(result);
   }
@@ -368,22 +395,24 @@ router.post('/restore', restoreUpload.single('dbfile'), (req, res) => {
   result.will_restart = true;
   result.needs_manual_restart = !(process.env.DOCKER === '1' || process.env.PM2_HOME || process.env.NODEMON);
 
-  res.locals.logAudit({
-    action: 'RESTORE_APPLIED', module: 'system_update',
-    newValue: {
-      source_filename: sourceName, source_size_bytes: sourceSize,
-      snapshot_id: result.snapshot_id,
-    },
-    description: `Restored DB from upload ${sourceName} (${Math.round(sourceSize/1024/1024 * 10)/10} MB) — pre-restore snapshot ${result.snapshot_id}`,
-  });
-
+  // Send the response, then *wait for it to actually flush to the socket*
+  // before scheduling process.exit. A bare setTimeout can race the
+  // response when the reverse proxy is slow on the way out, surfacing as
+  // a 502 to the browser. res.on('finish') fires after Node has handed
+  // every byte to the OS — safe to exit after a small grace period.
   res.json(result);
-
-  // Schedule restart after the response has been flushed.
+  res.on('finish', () => {
+    setTimeout(() => {
+      console.log('[restore] restarting process to open the restored DB…');
+      process.exit(0);
+    }, 1500);
+  });
+  // Belt-and-braces: if 'finish' never fires (client disconnect, etc.),
+  // still exit after a longer grace window so the new DB takes effect.
   setTimeout(() => {
-    console.log('[restore] restarting process to open the restored DB…');
+    console.log('[restore] fallback restart timer fired');
     process.exit(0);
-  }, 1500);
+  }, 10000);
 });
 
 module.exports = router;

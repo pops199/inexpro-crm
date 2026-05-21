@@ -6,6 +6,44 @@ sits at the top.
 
 ---
 
+## v1.0.55 — 2026-05-21
+
+**DB Restore 502 fix · notifications grouped by date in 2 columns · clickable sidebar logo · default broker on create**
+
+- **System Update → Restore Database fix**: uploading a backup no longer
+  returns a 502 from the reverse proxy. Three issues fixed together:
+  1. `server/db/database.js` now exports `closeDb()` which closes the
+     connection *and* nulls out the module-level cache. `getDb()` also
+     detects an already-closed cached connection and re-opens. The
+     restore route previously left a dead handle in the cache, so the
+     post-restore audit log call crashed the process mid-response.
+  2. The post-restore audit-log call moved to *before* the DB is
+     swapped, so the "Restored from X" entry now lands in the
+     pre-restore snapshot (recoverable history) instead of being lost.
+  3. `process.exit(0)` is now scheduled inside `res.on('finish')` so
+     Node fully flushes the response before exiting. Reverse proxies
+     no longer see a half-delivered response → no more 502. A 10-second
+     fallback timer still fires if the client disconnects mid-response.
+  4. `fs.unlinkSync` of `.db` / `.db-wal` / `.db-shm` retries up to 5x
+     on Windows `EBUSY` / `EPERM`, covering the brief window where the
+     OS hasn't released the file handle yet.
+- **Notifications view: grouped by date, two columns**: clicking the
+  bell now shows a CSS-grid layout with two cards per row
+  (`minmax(360px, 1fr)` so it collapses to one column on narrow
+  screens). Items are grouped by their `created_at` date with full-
+  width headings — **TODAY**, **YESTERDAY**, then `Monday, 18 May 2026`
+  for older entries — each with an item count. Page wrapper widened
+  to 1400px to fit two columns of full-width cards.
+- **Sidebar logo is now a link to the dashboard**: clicking the Inexpro
+  logo in the sidebar (`<img class="sidebar-logo-img">`) navigates to
+  `#/dashboard`. Implemented as a hash anchor so the SPA router handles
+  it without a page reload.
+- **Default broker on new records**: Claim, Client Engagement and
+  Record-of-Advice forms now pre-fill the broker field with the
+  logged-in user on create (`window.currentUser.id`). The dropdown
+  remains editable so admins / supervisors can still re-assign. Edit
+  mode is unaffected — existing broker assignments are preserved.
+
 ## v1.0.54 — 2026-05-21
 
 **Multi-currency (R / N$) across the app, Belogix Namibia GIT Confirmation, CC on emails, searchable Main Contact, and more**

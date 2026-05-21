@@ -431,6 +431,12 @@ const AdviceRecords = (() => {
             if (!d.broker_id  && eng.assigned_broker_id) d.broker_id = eng.assigned_broker_id;
           }
         }
+        // Fallback default: when no engagement context supplied the
+        // broker, drop the logged-in user in there. They can still pick
+        // a different broker on the form if needed.
+        if (!d.broker_id && window.currentUser?.id) {
+          d.broker_id = window.currentUser.id;
+        }
       }
 
       el.innerHTML = `

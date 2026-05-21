@@ -436,6 +436,12 @@ const Claims = (() => {
         if (hashParams.contact_id) d.contact_id = hashParams.contact_id;
         if (hashParams.account_id) d.account_id = hashParams.account_id;
         if (hashParams.asset_id)   d.asset_id   = hashParams.asset_id;
+        // Default the Broker field to the logged-in user on create.
+        // Admins can still pick anyone, but the common case (broker
+        // logging their own claim) doesn't need a manual selection.
+        if (!d.broker_id && window.currentUser?.id) {
+          d.broker_id = window.currentUser.id;
+        }
       }
 
       el.innerHTML = `

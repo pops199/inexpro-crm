@@ -72,10 +72,12 @@
     <!-- ─── Sidebar ─────────────────────────── -->
     <aside class="sidebar" id="sidebar">
 
-      <!-- Brand -->
+      <!-- Brand — clicking the logo navigates to the dashboard. -->
       <div class="sidebar-brand">
-        <img src="/logo.png" alt="Inexpro" class="sidebar-logo-img"
-          onerror="this.style.display='none';">
+        <a href="#/dashboard" class="sidebar-brand-link" aria-label="Go to dashboard" style="display:inline-block;">
+          <img src="/logo.png" alt="Inexpro" class="sidebar-logo-img"
+            onerror="this.style.display='none';">
+        </a>
       </div>
 
       <!-- Hamburger close (mobile) -->
@@ -244,16 +246,16 @@
   <script src="/src/api.js?v=49"></script>
   <script src="/src/router.js?v=25"></script>
   <script src="/src/components/view-prefs.js?v=5"></script>
-  <script src="/src/components/notifications.js?v=2"></script>
+  <script src="/src/components/notifications.js?v=4"></script>
   <script src="/src/components/dashboard.js?v=21"></script>
   <script src="/src/components/contacts.js?v=58"></script>
   <script src="/src/components/accounts.js?v=50"></script>
-  <script src="/src/components/engagements.js?v=22"></script>
+  <script src="/src/components/engagements.js?v=23"></script>
   <script src="/src/components/policies.js?v=76"></script>
   <script src="/src/components/assets.js?v=82"></script>
   <script src="/src/components/risk-details.js?v=25"></script>
-  <script src="/src/components/claims.js?v=40"></script>
-  <script src="/src/components/advice-records.js?v=36"></script>
+  <script src="/src/components/claims.js?v=41"></script>
+  <script src="/src/components/advice-records.js?v=37"></script>
   <script src="/src/components/complaints.js?v=17"></script>
   <script src="/src/components/reviews.js?v=11"></script>
   <script src="/src/components/reports.js?v=16"></script>

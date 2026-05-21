@@ -387,6 +387,12 @@ const Engagements = (() => {
       const accounts = accountsRes.data || accountsRes || [];
       const d        = engData.data || engData || {};
 
+      // Default the Assigned Broker to the logged-in user on create.
+      // Admins / supervisors can still re-assign before saving.
+      if (!isEdit && !d.assigned_broker_id && window.currentUser?.id) {
+        d.assigned_broker_id = window.currentUser.id;
+      }
+
       el.innerHTML = `
         <div class="form-page">
           <div class="card">

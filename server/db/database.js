@@ -10,6 +10,13 @@ const schemaPath = path.join(__dirname, 'schema.sql');
 let db;
 
 function getDb() {
+  // A previously cached connection that was explicitly closed (via
+  // closeDb during a restore) leaves `db` truthy but unusable. Detect
+  // that and re-open against the on-disk file so post-restore audit
+  // calls and any in-flight handlers don't blow up on a dead handle.
+  if (db && db.open === false) {
+    db = null;
+  }
   if (!db) {
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
@@ -21,6 +28,18 @@ function getDb() {
     db.pragma('wal_checkpoint(TRUNCATE)');
   }
   return db;
+}
+
+/**
+ * Cleanly close the cached connection so the next getDb() reopens
+ * against the on-disk file. Used by the restore flow which has to
+ * release the file handle before swapping the DB file underneath it.
+ */
+function closeDb() {
+  if (db) {
+    try { db.close(); } catch (_) {}
+    db = null;
+  }
 }
 
 function initDb() {
@@ -1629,4 +1648,4 @@ function initDb() {
   return database;
 }
 
-module.exports = { getDb, initDb };
+module.exports = { getDb, initDb, closeDb };
