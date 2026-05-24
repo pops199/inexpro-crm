@@ -763,7 +763,7 @@ const Assets = (() => {
       { name: 'gvm', label: 'GVM (kg)', type: 'text' },
       { name: 'tracking_device', label: 'Tracking Device', type: 'text', placeholder: 'e.g. Tracker, Netstar, Matrix' },
       { name: 'territory', label: 'Territory', type: 'select', options: ['RSA Only','RSA & Neighbouring','Cross-border / SADC','Worldwide'] },
-      { name: 'cover_type', label: 'Cover Type', type: 'select', options: ['Comprehensive','Third Party Fire & Theft','Third Party Only','Balance of Third Party'] },
+      { name: 'cover_type', label: 'Cover Type', type: 'select', options: ['Comprehensive','Comprehensive (Excl Theft & Hijacking)','Third Party Fire & Theft','Third Party & Fire','Third Party Only','Balance of Third Party'] },
       { name: 'regular_driver', label: 'Regular Driver', type: 'text' },
       { name: 'credit_shortfall', label: 'Credit Shortfall Cover', type: 'checkbox' },
     ],

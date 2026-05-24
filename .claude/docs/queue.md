@@ -2042,3 +2042,27 @@ Files changed: 4
 - `server/db/sessions.db`
 Session: 31d57743-dc09-486f-8ff3-893da8955986
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-24 18:38 — auto-detected change
+Files changed: 19
+- `Belogix Namibia GIT Confirmation of Cover.docx`
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/advice-records.js`
+- `client/src/components/assets.js`
+- `client/src/components/claims.js`
+- `client/src/components/engagements.js`
+- `client/src/components/notifications.js`
+- `client/src/components/policies.js`
+- `package.json`
+- `server/db/database.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/belogix-namibia-git-pdf.js`
+- `server/routes/policies.js`
+- `server/routes/public-signing.js`
+- `server/routes/system-update.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

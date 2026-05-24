@@ -6,6 +6,17 @@ sits at the top.
 
 ---
 
+## v1.0.56 — 2026-05-24
+
+**Assets: two extra Motor cover-type options**
+
+- Asset create/edit form, Motor section, **Cover Type** picklist now
+  includes `Comprehensive (Excl Theft & Hijacking)` and
+  `Third Party & Fire` alongside the existing four options
+  (`client/src/components/assets.js`).
+
+---
+
 ## v1.0.55 — 2026-05-21
 
 **DB Restore 502 fix · notifications grouped by date in 2 columns · clickable sidebar logo · default broker on create**
