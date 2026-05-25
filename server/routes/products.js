@@ -28,8 +28,8 @@ const CATEGORY_OPTS = [
 // produce the suitability score.
 const CLIENT_TYPE_OPTS = [
   // Contact client categories
-  'Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Mixed',
-  'Supplier', 'Prospect Only',
+  'Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Life Insurance',
+  'Mixed', 'Supplier', 'Prospect Only',
   // Account business types
   'Company', 'Close Corporation', 'Sole Proprietor', 'Partnership',
   'Trust', 'NPO', 'School', 'Church', 'Body Corporate', 'Other',

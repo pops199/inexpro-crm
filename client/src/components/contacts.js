@@ -6,7 +6,7 @@ const Contacts = (() => {
 
   // ── Enum option sets ────────────────────────────────────────────────────
   const CONTACT_TYPES    = ['Individual Client', 'Business Contact Person', 'Trustee', 'Member', 'Director', 'Employee Contact', 'Supplier', 'Other'];
-  const CLIENT_CATS      = ['Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Mixed', 'Supplier', 'Prospect Only'];
+  const CLIENT_CATS      = ['Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Life Insurance', 'Mixed', 'Supplier', 'Prospect Only'];
   const CLIENT_SEGS      = ['A', 'B', 'C', 'VIP', 'Standard', 'High Risk', 'Strategic'];
   const STATUSES         = ['Prospect', 'Active Client', 'Inactive Client', 'Former Client', 'Do Not Service', 'Deceased', '3rd Party', 'Co-Insured', 'Contact', 'Other'];
   const FICA_STATUSES    = ['Not Started', 'Pending Documents', 'In Review', 'Verified', 'Expired', 'Exempt'];

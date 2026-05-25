@@ -2066,3 +2066,71 @@ Files changed: 19
 - `server/routes/system-update.js`
 Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-24 18:40 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:02 — auto-detected change
+Files changed: 8
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/contacts.js`
+- `package.json`
+- `server/db/database.js`
+- `server/db/schema.sql`
+- `server/db/sessions.db`
+- `server/routes/products.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:04 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `package.json`
+- `server/lib/email-signature.js`
+- `server/routes/assets.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:09 — auto-detected change
+Files changed: 8
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `package.json`
+- `server/db/migrations/0007_claims_claim_name.sql`
+- `server/db/schema.sql`
+- `server/routes/claims.js`
+- `server/routes/view-prefs.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:17 — auto-detected change
+Files changed: 7
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:19 — auto-detected change
+Files changed: 7
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/assets.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     'Member','Director','Employee Contact','Supplier','Other'
   )),
   client_category TEXT NOT NULL CHECK(client_category IN (
-    'Personal Lines','Commercial Lines','Agri','Transport','Mixed','Supplier','Prospect Only'
+    'Personal Lines','Commercial Lines','Agri','Transport','Life Insurance','Mixed','Supplier','Prospect Only'
   )),
   client_segment TEXT CHECK(client_segment IN (
     'A','B','C','VIP','Standard','High Risk','Strategic'
@@ -358,6 +358,7 @@ CREATE TABLE IF NOT EXISTS risk_details (
 CREATE TABLE IF NOT EXISTS claims (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   claim_number TEXT NOT NULL UNIQUE,
+  claim_name TEXT,
   contact_id INTEGER REFERENCES contacts(id),
   account_id INTEGER REFERENCES accounts(id),
   policy_id INTEGER NOT NULL REFERENCES policies(id),

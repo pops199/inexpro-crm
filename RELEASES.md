@@ -6,6 +6,64 @@ sits at the top.
 
 ---
 
+## v1.0.61 — 2026-05-25
+
+**Life Insurance category · Claim Name field · Confirmation of Cover signature**
+
+### Contacts — Client Category
+- Added `Life Insurance` to the **Client Category** dropdown in the
+  Classification section of the contact create/edit form
+  (`client/src/components/contacts.js`).
+- DB CHECK constraint extended in both fresh-DB schema
+  (`server/db/schema.sql`) and the in-place migration
+  (`server/db/database.js`) so existing installs accept the new value
+  on next boot.
+- Product target-market matching (`server/routes/products.js`
+  `CLIENT_TYPE_OPTS`) extended in lockstep so advice-records
+  suitability scoring can match Life Insurance contacts against Life
+  Insurance products.
+
+### Claims — new "Claim Name" field
+- Claim create/edit form (Core Details section) now has a
+  **Claim Name** text input directly above **Claim Status** — a short
+  human-readable label that lives alongside the auto-generated
+  `claim_number`. Optional, free text.
+- New column `claims.claim_name TEXT` shipped via versioned migration
+  `server/db/migrations/0007_claims_claim_name.sql` and added to fresh
+  schema in `server/db/schema.sql`.
+- Claims list view: `Claim Name` is now a toggleable, sortable column
+  (default-visible), wired through `server/routes/view-prefs.js` and
+  the CLAIM_CELLS catalog in `client/src/components/claims.js`.
+- Claim detail page: `Claim Name` displayed in the **Claim Details**
+  card between Claim Number and Claim Type.
+- POST/PUT routes in `server/routes/claims.js` accept and persist
+  `claim_name`; UPDATE uses `COALESCE` so omitting the field doesn't
+  clear an existing value.
+
+### Assets — Confirmation of Cover PDF signature
+- The Confirmation of Cover PDF (Assets → top-right *Confirmation of
+  Cover*) now embeds the sending user's signature image between
+  `Regards,` and the rest of the page, matching the signature already
+  used in outgoing emails.
+- New helper `resolveSignaturePath(userId)` exported from
+  `server/lib/email-signature.js` — reuses the existing lookup chain
+  (`users.signature_filename` first, then the `smtp_from_list` entry,
+  then null) so PDFs, exports, and emails all resolve the same file.
+- Signature image is scaled to the full body width (LEFT→RIGHT,
+  ~475pt) while preserving aspect ratio (no stretch). Height capped
+  at 220pt so an unusually tall/square signature can't push content
+  off the page. Uses `pdfDoc.openImage()` to read natural dimensions
+  and compute the scale factor; falls back to `fit:[W, 220]` on
+  failure.
+- 22pt gap added between `Regards,` and the image so the descender on
+  "g" is no longer clipped by the image.
+- Printed broker name removed when a signature image is present — the
+  signature itself identifies the sender. The name fallback is
+  preserved for users with no signature file mapped, so the PDF can
+  still be hand-signed.
+
+---
+
 ## v1.0.56 — 2026-05-24
 
 **Assets: two extra Motor cover-type options**

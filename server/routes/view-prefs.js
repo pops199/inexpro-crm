@@ -323,6 +323,7 @@ const MODULES = {
     label: 'Claims',
     columns: [
       { id: 'claim_number',     label: 'Claim Number',      sortable: true,  defaultVisible: true  },
+      { id: 'claim_name',       label: 'Claim Name',        sortable: true,  defaultVisible: true  },
       { id: 'policy_name',      label: 'Policy',            sortable: true,  defaultVisible: true  },
       { id: 'party_name',       label: 'Contact / Account', sortable: true,  defaultVisible: true  },
       { id: 'claim_type',       label: 'Type',              sortable: true,  defaultVisible: true  },
@@ -344,6 +345,7 @@ const MODULES = {
     ],
     sortAllowlist: {
       claim_number:           'cl.claim_number',
+      claim_name:             'cl.claim_name',
       policy_name:            'p.policy_name',
       party_name:             'COALESCE((c.first_name || \' \' || c.last_name), ac.account_name)',
       claim_type:             'cl.claim_type',

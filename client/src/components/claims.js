@@ -147,6 +147,7 @@ const Claims = (() => {
   // ── Catalog cell renderers ──────────────────────────────────────────────
   const CLAIM_CELLS = {
     claim_number:        c => `<a href="#/claims/${c.id}">${esc(c.claim_number || '—')}</a>`,
+    claim_name:          c => esc(c.claim_name || '—'),
     policy_name:         c => c.policy_id ? `<a href="#/policies/${c.policy_id}">${esc(c.policy_name || '—')}</a>` : esc(c.policy_name || '—'),
     party_name:          c => esc(c.contact_name || c.account_name || '—'),
     claim_type:          c => esc(c.claim_type || '—'),
@@ -461,6 +462,12 @@ const Claims = (() => {
                     <label class="form-label required">Claim Number</label>
                     <input type="text" name="claim_number" class="form-control" required
                       value="${esc(d.claim_number || '')}" placeholder="e.g. CLM-2024-0001" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Claim Name</label>
+                    <input type="text" name="claim_name" class="form-control"
+                      value="${esc(d.claim_name || '')}" placeholder="Short label for this claim" />
                   </div>
 
                   <div class="form-group">
@@ -1313,6 +1320,7 @@ const Claims = (() => {
             <div class="detail-section-title">Claim Details</div>
             <div class="detail-grid">
               ${field('Claim Number', esc(d.claim_number || '—'))}
+              ${field('Claim Name', esc(d.claim_name || '—'))}
               ${field('Claim Type', esc(d.claim_type || '—'))}
               ${field('Status', statusBadgeHtml(d.claim_status))}
               ${field('Claim Date', d.claim_date ? formatDate(d.claim_date) : '—')}

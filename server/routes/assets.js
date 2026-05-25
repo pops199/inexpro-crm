@@ -1043,11 +1043,17 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
       const makeModel = [asset.make, asset.model].filter(Boolean).join(' ') || '\u2014';
       const effectiveDate = fmtDate(asset.date_acquired || new Date().toISOString());
 
-      // Signature (sending user)
+      // Signature (sending user) — name + optional image from /signatures/
       let signerName = 'Inexpro CC';
+      let signaturePath = null;
       try {
         const u = db.prepare('SELECT full_name FROM users WHERE id = ?').get(req.session?.userId);
         if (u && u.full_name) signerName = u.full_name;
+      } catch (_) {}
+      try {
+        const { resolveSignaturePath } = require('../lib/email-signature');
+        const sig = resolveSignaturePath(req.session?.userId, { db });
+        if (sig && sig.fullPath) signaturePath = sig.fullPath;
       } catch (_) {}
 
       // Start writing content — start below the letterhead header area (~150pt down)
@@ -1109,9 +1115,32 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
       // Signature
       pdfDoc.font('Helvetica').fontSize(10).fillColor('#000')
         .text('Regards,', LEFT, y);
-      y += 48;
-      pdfDoc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
-        .text(signerName, LEFT, y);
+      if (signaturePath) {
+        // Embed broker signature image (same source as email signature).
+        // Drop a clear line below "Regards," so the descender isn't clipped
+        // by the image, then scale the signature to the full body width
+        // (LEFT→RIGHT) while preserving aspect ratio. Capped at 220pt
+        // tall so an unusually square signature doesn't dominate the
+        // page. Name is intentionally omitted — the signature itself
+        // identifies the sender.
+        y += 22;
+        try {
+          const img = pdfDoc.openImage(signaturePath);
+          const maxH = 220;
+          const ratio = Math.min(W / img.width, maxH / img.height);
+          const dispW = img.width * ratio;
+          const dispH = img.height * ratio;
+          pdfDoc.image(signaturePath, LEFT, y, { width: dispW, height: dispH });
+        } catch (_) {
+          // Fallback: aspect-preserving fit box if openImage fails
+          pdfDoc.image(signaturePath, LEFT, y, { fit: [W, 220] });
+        }
+      } else {
+        // No signature image — keep a hand-sign gap and print the name.
+        y += 48;
+        pdfDoc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
+          .text(signerName, LEFT, y);
+      }
 
       pdfDoc.end();
     });

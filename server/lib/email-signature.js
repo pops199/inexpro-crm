@@ -172,4 +172,43 @@ function buildSignature(userId, opts = {}) {
   };
 }
 
-module.exports = { buildSignature, SIG_CID };
+/**
+ * Resolve just the filesystem path of a user's signature image, using the
+ * same lookup chain as buildSignature:
+ *   1. users.signature_filename
+ *   2. smtp_from_list entry for the user
+ * Returns { fullPath, filename } if a valid file is found inside the
+ * signatures/ dir, otherwise null. Intended for non-email renderers
+ * (PDFs, exports) that need to embed the signature directly rather than
+ * via CID.
+ *
+ * @param {number|string|null|undefined} userId
+ * @param {object} [opts]
+ * @param {object} [opts.db]
+ * @returns {{ fullPath: string, filename: string } | null}
+ */
+function resolveSignaturePath(userId, opts = {}) {
+  if (!userId) return null;
+  let db;
+  try { db = opts.db || getDb(); } catch (_) { return null; }
+
+  let userRow = null;
+  try {
+    userRow = db.prepare(
+      'SELECT id, signature_filename FROM users WHERE id = ?'
+    ).get(userId);
+  } catch (_) { /* pre-migration / table missing */ }
+
+  const fromList = _loadFromList(db);
+  const entry = fromList.find(f => String(f.user_id) === String(userId)) || null;
+
+  const filenameCandidate =
+    (userRow && userRow.signature_filename) ||
+    (entry && entry.signature) ||
+    null;
+  if (!filenameCandidate) return null;
+
+  return _safeSignaturePath(filenameCandidate);
+}
+
+module.exports = { buildSignature, resolveSignaturePath, SIG_CID };

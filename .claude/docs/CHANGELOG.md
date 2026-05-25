@@ -809,3 +809,27 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-24 18:38
 - Modified 19 files
 - Files: Belogix Namibia GIT Confirmation of Cover.docx, RELEASES.md, client/public/index.html, client/src/components/advice-records.js, client/src/components/assets.js (+14 more)
+
+## 2026-05-24 18:40
+- Modified 4 files
+- Files: client/public/index.html, server/db/inexpro.db, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-25 16:02
+- Modified 8 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/contacts.js, package.json, server/db/database.js (+3 more)
+
+## 2026-05-25 16:04
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/lib/email-signature.js, server/routes/assets.js
+
+## 2026-05-25 16:09
+- Modified 8 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, package.json, server/db/migrations/0007_claims_claim_name.sql (+3 more)
+
+## 2026-05-25 16:17
+- Modified 7 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)
+
+## 2026-05-25 16:19
+- Modified 7 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)

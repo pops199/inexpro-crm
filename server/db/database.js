@@ -1487,8 +1487,8 @@ function initDb() {
         'Member', 'Director', 'Employee Contact', 'Supplier', 'Other',
       ]);
       newSql = replaceTextCheckList(newSql, 'client_category', [
-        'Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Mixed',
-        'Supplier', 'Prospect Only',
+        'Personal Lines', 'Commercial Lines', 'Agri', 'Transport', 'Life Insurance',
+        'Mixed', 'Supplier', 'Prospect Only',
       ]);
       newSql = replaceTextCheckList(newSql, 'contact_status', [
         'Prospect', 'Active Client', 'Inactive Client', 'Former Client',

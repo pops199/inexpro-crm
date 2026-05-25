@@ -181,6 +181,7 @@ router.post('/', (req, res) => {
   try {
     const {
       claim_number,
+      claim_name,
       policy_id,
       claim_date,
       date_reported,
@@ -306,7 +307,7 @@ router.post('/', (req, res) => {
     const insertAndIncrement = db.transaction(() => {
       const result = db.prepare(`
         INSERT INTO claims (
-          claim_number, policy_id, claim_date, date_reported,
+          claim_number, claim_name, policy_id, claim_date, date_reported,
           claim_type, incident_description, claim_status,
           contact_id, account_id, policy_section_id, asset_id,
           broker_id, claims_handler_admin_id, claims_handler_name,
@@ -325,7 +326,7 @@ router.post('/', (req, res) => {
           post_claim_satisfaction, outcome_vs_roa_expectation, complaint_arising,
           created_by, created_at, updated_at
         ) VALUES (
-          ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?, ?,
           ?, ?, ?,
@@ -345,7 +346,7 @@ router.post('/', (req, res) => {
           ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
       `).run(
-        claim_number, policy_id, claim_date, date_reported,
+        claim_number, claim_name || null, policy_id, claim_date, date_reported,
         claim_type, incident_description, claim_status,
         contact_id || null, account_id || null, policy_section_id || null, asset_id || null,
         broker_id || null, claims_handler_admin_id || null, claims_handler_name || null,
@@ -424,6 +425,7 @@ router.put('/:id', (req, res) => {
 
     const {
       claim_number,
+      claim_name,
       policy_id,
       claim_date,
       date_reported,
@@ -519,6 +521,7 @@ router.put('/:id', (req, res) => {
     db.prepare(`
       UPDATE claims SET
         claim_number             = COALESCE(?, claim_number),
+        claim_name               = COALESCE(?, claim_name),
         policy_id                = COALESCE(?, policy_id),
         claim_date               = COALESCE(?, claim_date),
         date_reported            = COALESCE(?, date_reported),
@@ -572,6 +575,7 @@ router.put('/:id', (req, res) => {
       WHERE id = ?
     `).run(
       claim_number ?? null,
+      claim_name ?? null,
       policy_id ?? null,
       claim_date ?? null,
       date_reported ?? null,
