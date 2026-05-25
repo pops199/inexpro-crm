@@ -425,11 +425,11 @@ const RiskDetails = (() => {
 
     try {
       const [contactsRes, accountsRes, sectionsRes, assetsRes, policiesRes, rdData] = await Promise.all([
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policySections.list({ limit: 500 }),
-        Api.assets.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policySections.list({ limit: 5000 }),
+        Api.assets.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
         isEdit ? Api.riskDetails.get(id) : Promise.resolve({}),
       ]);
 

@@ -393,11 +393,11 @@ const Workflows = (() => {
 
     try {
       const [contactsRes, accountsRes, policiesRes, assetsRes, claimsRes, usersRes, data] = await Promise.all([
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
-        Api.assets.list({ limit: 500 }),
-        Api.claims.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
+        Api.assets.list({ limit: 5000 }),
+        Api.claims.list({ limit: 5000 }),
         Api.admin.users().catch(() => ({ data: [] })),
         isEdit ? Api.workflows.get(id) : Promise.resolve({}),
       ]);

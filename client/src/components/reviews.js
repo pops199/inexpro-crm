@@ -311,9 +311,9 @@ const Reviews = (() => {
     try {
       const [usersRes, contactsRes, accountsRes, policiesRes, reviewData] = await Promise.all([
         Api.admin.users(),
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
         isEdit ? Api.reviews.get(id) : Promise.resolve({}),
       ]);
 

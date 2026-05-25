@@ -6,6 +6,27 @@ sits at the top.
 
 ---
 
+## v1.0.62 — 2026-05-25
+
+**Form dropdowns now load up to 5,000 records (was 500)**
+
+- All `Api.*.list({ limit: 500 })` calls across the client bumped to
+  `limit: 5000` — 44 instances across 14 components (contacts,
+  accounts, engagements, policies, policy-sections, assets,
+  risk-details, claims, advice-records, complaints, reviews, reports,
+  workflows, compliance).
+- **Why:** with 594 assets on the book, the create-claim Asset
+  dropdown was silently dropping the last ~94. Same cap was hiding
+  records in every other create/edit form that populates a dropdown
+  from a list call.
+- The two `reports.js` instances are report-result row caps (run a
+  predefined / custom report → render up to N rows in the report
+  window) — also bumped to 5000 so future reports don't truncate.
+- Server respects whatever limit the client sends — no server cap
+  change needed.
+
+---
+
 ## v1.0.61 — 2026-05-25
 
 **Life Insurance category · Claim Name field · Confirmation of Cover signature**

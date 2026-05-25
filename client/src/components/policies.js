@@ -505,10 +505,10 @@ const Policies = (() => {
     try {
       const [usersRes, contactsRes, accountsRes, engsRes, allPoliciesRes, polData] = await Promise.all([
         Api.admin.users(),
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.engagements.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.engagements.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
         isEdit ? Api.policies.get(id) : Promise.resolve({}),
       ]);
 
@@ -1125,7 +1125,7 @@ const Policies = (() => {
     let allAssets = [];
 
     // Load all assets that are NOT already linked to this policy
-    Api.assets.list({ limit: 500 }).then(res => {
+    Api.assets.list({ limit: 5000 }).then(res => {
       const all = res.data || res || [];
       allAssets = all.filter(a => !a.policy_id || String(a.policy_id) !== String(policyId));
       renderLinkResults('');
@@ -1576,7 +1576,7 @@ const Policies = (() => {
         // Pre-fetch assets so we can derive the effective currency before
         // rendering anything — Show-Breakdown / Sections tab will refetch,
         // but that's OK (cheap query, results are cached client-side).
-        Api.assets.list({ policy_id: id, limit: 500 }).catch(() => ({ data: [] })),
+        Api.assets.list({ policy_id: id, limit: 5000 }).catch(() => ({ data: [] })),
       ]);
       const d       = res.data || res || {};
       const history = Array.isArray(historyRes) ? historyRes : (historyRes?.data || []);
@@ -1822,7 +1822,7 @@ const Policies = (() => {
           if (loaded) return;
           loaded = true;
           try {
-            const res = await Api.assets.list({ policy_id: id, limit: 500 });
+            const res = await Api.assets.list({ policy_id: id, limit: 5000 });
             const assets = (res.data || res || []).filter(a =>
               !['Sold', 'Decommissioned', 'Inactive', 'Cancelled'].includes(a.asset_status));
             const agg = Assets.calcAggregateBreakdown(assets);

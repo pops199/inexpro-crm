@@ -1330,7 +1330,7 @@ const Contacts = (() => {
 
         case 'sections': {
           // Load all assets for this contact, group by asset_section to show sections overview
-          const assetRes = await Api.assets.list({ contact_id: contactId, limit: 500 }).catch(() => ({ data: [] }));
+          const assetRes = await Api.assets.list({ contact_id: contactId, limit: 5000 }).catch(() => ({ data: [] }));
           const _allSecAssets = assetRes.data || assetRes || [];
           const _SEC_INACTIVE = ['Sold', 'Decommissioned', 'Inactive', 'Cancelled'];
           const allAssets = _allSecAssets.filter(a => !_SEC_INACTIVE.includes(a.asset_status));

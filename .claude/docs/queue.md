@@ -2134,3 +2134,66 @@ Files changed: 7
 - `server/routes/assets.js`
 Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 16:22 — auto-detected change
+Files changed: 5
+- `RELEASES.md`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 18:09 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 18:23 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 18:24 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 18:28 — auto-detected change
+Files changed: 28
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/api.js`
+- `client/src/components/accounts.js`
+- `client/src/components/admin.js`
+- `client/src/components/advice-records.js`
+- `client/src/components/assets.js`
+- `client/src/components/claims.js`
+- `client/src/components/complaints.js`
+- `client/src/components/compliance.js`
+- `client/src/components/contacts.js`
+- `client/src/components/dashboard.js`
+- `client/src/components/engagements.js`
+- `client/src/components/notifications.js`
+- `client/src/components/policies.js`
+- `client/src/components/policy-sections.js`
+- `client/src/components/profile.js`
+- `client/src/components/reports.js`
+- `client/src/components/reviews.js`
+- `client/src/components/risk-details.js`
+- `client/src/components/schedule.js`
+- `client/src/components/view-prefs.js`
+- `client/src/components/workflows.js`
+- `client/src/main.js`
+- `client/src/router.js`
+- `client/src/utils.js`
+- `package.json`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

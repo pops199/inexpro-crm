@@ -1078,7 +1078,7 @@ const Accounts = (() => {
         }
 
         case 'sections': {
-          const assetRes = await Api.assets.list({ account_id: accountId, limit: 500 }).catch(() => ({ data: [] }));
+          const assetRes = await Api.assets.list({ account_id: accountId, limit: 5000 }).catch(() => ({ data: [] }));
           const _allAcctSecAssets = assetRes.data || assetRes || [];
           const _ACCT_SEC_INACTIVE = ['Sold', 'Decommissioned', 'Inactive', 'Cancelled'];
           const allAssets = _allAcctSecAssets.filter(a => !_ACCT_SEC_INACTIVE.includes(a.asset_status));

@@ -561,7 +561,7 @@ const Reports = (() => {
       runBtn.textContent = 'Loading…';
       try {
         await loadUsers();
-        const params = { page: 1, limit: 500 };
+        const params = { page: 1, limit: 5000 };
         if (dateFrom) params.date_from = dateFrom;
         if (dateTo)   params.date_to   = dateTo;
         if (brokerId) params.broker_id = brokerId;
@@ -1751,7 +1751,7 @@ ${xlsSections}
     await loadUsers();
 
     try {
-      const config = { ...buildCustomConfig(), page: 1, limit: 500 };
+      const config = { ...buildCustomConfig(), page: 1, limit: 5000 };
       const res  = await Api.reports.runCustom(config);
       const rows = res.data || res.rows || [];
 

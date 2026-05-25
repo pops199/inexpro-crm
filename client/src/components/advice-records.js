@@ -399,12 +399,12 @@ const AdviceRecords = (() => {
 
     try {
       const [contactsRes, accountsRes, policiesRes, engagementsRes, usersRes, productsRes, arData] = await Promise.all([
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
-        Api.engagements.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
+        Api.engagements.list({ limit: 5000 }),
         Api.admin.users(),
-        Api.products.list({ limit: 500 }).catch(() => []),
+        Api.products.list({ limit: 5000 }).catch(() => []),
         isEdit ? Api.adviceRecords.get(id) : Promise.resolve({}),
       ]);
 

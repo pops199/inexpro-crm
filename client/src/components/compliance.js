@@ -2560,7 +2560,7 @@
         const [opts, event, policies] = await Promise.all([
           Api.postSaleEvents.options(),
           isEdit ? Api.postSaleEvents.get(id) : Promise.resolve({}),
-          Api.policies.list({ limit: 500 }).then(r => r.data || r).catch(() => []),
+          Api.policies.list({ limit: 5000 }).then(r => r.data || r).catch(() => []),
         ]);
 
         const polOpts = policies.map(p =>
@@ -2732,7 +2732,7 @@
         const [opts, entry, policies] = await Promise.all([
           Api.commissionLog.options(),
           isEdit ? Api.commissionLog.get(id) : Promise.resolve({}),
-          Api.policies.list({ limit: 500 }).then(r => r.data || r).catch(() => []),
+          Api.policies.list({ limit: 5000 }).then(r => r.data || r).catch(() => []),
         ]);
 
         const polOpts = policies.map(p =>

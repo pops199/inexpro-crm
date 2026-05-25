@@ -951,9 +951,9 @@ const Assets = (() => {
 
     try {
       const [contactsRes, accountsRes, policiesRes, assetData, productsRes] = await Promise.all([
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
         isEdit ? Api.assets.get(id) : Promise.resolve({}),
         Api.products.list({ status: 'Active' }).catch(() => []),
       ]);

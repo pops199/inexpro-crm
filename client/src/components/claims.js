@@ -409,11 +409,11 @@ const Claims = (() => {
     try {
       const [usersRes, contactsRes, accountsRes, policiesRes, assetsRes, adviceRes, claimData] = await Promise.all([
         Api.admin.users(),
-        Api.contacts.list({ limit: 500 }),
-        Api.accounts.list({ limit: 500 }),
-        Api.policies.list({ limit: 500 }),
-        Api.assets.list({ limit: 500 }),
-        Api.adviceRecords.list({ limit: 500 }).catch(() => ({ data: [] })),
+        Api.contacts.list({ limit: 5000 }),
+        Api.accounts.list({ limit: 5000 }),
+        Api.policies.list({ limit: 5000 }),
+        Api.assets.list({ limit: 5000 }),
+        Api.adviceRecords.list({ limit: 5000 }).catch(() => ({ data: [] })),
         isEdit ? Api.claims.get(id) : Promise.resolve({}),
       ]);
 
