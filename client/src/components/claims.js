@@ -747,6 +747,33 @@ const Claims = (() => {
                       value="${esc(d.settlement_date ? d.settlement_date.slice(0,10) : '')}" />
                   </div>
 
+                  <!-- Repudiation / Dispute Resolution (TCF Outcome 5) — visible when status = Rejected -->
+                  <div class="form-group form-group-full" id="claim-repudiation-group"
+                    style="${d.claim_status === 'Rejected' ? '' : 'display:none;'}">
+                    <div class="form-grid form-grid-2" style="margin:0;">
+                      <div class="form-group">
+                        <label class="form-label required">Repudiation Reason</label>
+                        <select name="repudiation_reason" class="form-control">
+                          <option value="">— Select Reason —</option>
+                          ${['Non-disclosure','Exclusion applied','Late notification','Fraudulent claim','Policy lapsed','Other']
+                            .map(o => `<option value="${o}" ${d.repudiation_reason === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label required">Broker Dispute Action</label>
+                        <select name="broker_dispute_action" class="form-control">
+                          <option value="">— Select Action —</option>
+                          ${['Accepted','Challenged','Referred to Ombudsman','Client declined to dispute']
+                            .map(o => `<option value="${o}" ${d.broker_dispute_action === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group form-group-full">
+                        <label class="form-label">Repudiation Notes <span style="font-weight:400;color:var(--text-muted);">(optional supporting detail)</span></label>
+                        <textarea name="repudiation_reason_notes" class="form-control" rows="2">${esc(d.repudiation_reason_notes || '')}</textarea>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="form-group form-group-full">
                     <label class="form-label">Rejection Reason</label>
                     <textarea name="rejection_reason" class="form-control" rows="2">${esc(d.rejection_reason || '')}</textarea>
@@ -1079,6 +1106,17 @@ const Claims = (() => {
     if (disputeEl && disputeGroup) {
       disputeEl.addEventListener('change', () => {
         disputeGroup.style.display = disputeEl.checked ? '' : 'none';
+      });
+    }
+
+    // Claim status → reveal Repudiation/Dispute fields when 'Rejected' so the
+    // user can satisfy the TCF Outcome 5 server gate (repudiation_reason +
+    // broker_dispute_action required when rejecting).
+    const statusEl   = formEl?.querySelector('[name="claim_status"]');
+    const repudGroup = document.getElementById('claim-repudiation-group');
+    if (statusEl && repudGroup) {
+      statusEl.addEventListener('change', () => {
+        repudGroup.style.display = statusEl.value === 'Rejected' ? '' : 'none';
       });
     }
 

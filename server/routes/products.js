@@ -14,7 +14,7 @@ const CATEGORY_OPTS = [
   'Personal Lines — Motor',
   'Commercial Lines — Property',
   'Commercial Lines — Liability',
-  'Commercial — Motor fleet',
+  'Commercial — Motor',
   'Specialty',
   'Other',
 ];

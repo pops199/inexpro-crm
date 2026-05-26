@@ -45,6 +45,8 @@ const Assets = (() => {
     'Property': [
       'Property \u2013 Buildings (Commercial)',
       'Property \u2013 Buildings (Domestic / Homeowners)',
+      'Property \u2013 Buildings Combined - Buildings',
+      'Property \u2013 Buildings Combined - Contents',
       'Property \u2013 Household Contents',
       'Property \u2013 Office Contents',
       'Property \u2013 Business Contents',
@@ -98,6 +100,7 @@ const Assets = (() => {
       'Liability \u2013 Personal Legal Liability',
       'Liability \u2013 Extended Personal Legal Liability',
       'Liability \u2013 Commercial Legal Liability',
+      'Liability \u2013 Public Legal Liability',
       'Liability \u2013 Defective Workmanship',
       'Liability \u2013 Cyber Liability',
       'Liability \u2013 Employment Practices Liability (EPLI)',

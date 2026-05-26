@@ -2197,3 +2197,59 @@ Files changed: 28
 - `server/db/sessions.db`
 Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-25 18:37 — auto-detected change
+Files changed: 1
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-26 19:06 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `package.json`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-26 19:10 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-26 19:12 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-26 19:15 — auto-detected change
+Files changed: 5
+- `RELEASES.md`
+- `server/db/inexpro.db-wal`
+- `server/db/migrations/0008_products_motor_category_rename.sql`
+- `server/db/sessions.db`
+- `server/routes/products.js`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-26 19:21 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/risk-details.js`
+- `server/db/sessions.db`
+Session: 24c080e4-0293-40ae-9125-56f0e8b4fcff
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

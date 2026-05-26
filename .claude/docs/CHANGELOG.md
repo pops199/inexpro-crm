@@ -853,3 +853,27 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-25 18:28
 - Modified 28 files
 - Files: RELEASES.md, client/public/index.html, client/src/api.js, client/src/components/accounts.js, client/src/components/admin.js (+23 more)
+
+## 2026-05-25 18:37
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-26 19:06
+- Modified 6 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, package.json, server/db/inexpro.db-wal (+1 more)
+
+## 2026-05-26 19:10
+- Modified 6 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/assets.js, server/db/inexpro.db, server/db/inexpro.db-wal (+1 more)
+
+## 2026-05-26 19:12
+- Modified 4 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/assets.js, server/db/sessions.db
+
+## 2026-05-26 19:15
+- Modified 5 files
+- Files: RELEASES.md, server/db/inexpro.db-wal, server/db/migrations/0008_products_motor_category_rename.sql, server/db/sessions.db, server/routes/products.js
+
+## 2026-05-26 19:21
+- Modified 4 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/risk-details.js, server/db/sessions.db

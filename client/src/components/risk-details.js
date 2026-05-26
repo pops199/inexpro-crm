@@ -78,10 +78,18 @@ const RiskDetails = (() => {
   }
 
   function serializeForm(formEl) {
-    const fd = new FormData(formEl);
+    // Walk inputs directly (rather than FormData on the whole form) so we can
+    // skip fields inside a hidden .risk-type-fields fieldset. Risk-type
+    // sections share some field names (e.g. route_operating_area appears in
+    // both Motor and GIT sections); the hidden section's empty value would
+    // otherwise overwrite the visible section's content during save.
     const data = {};
-    for (const [key, val] of fd.entries()) {
-      data[key] = sanitiseInput(val);
+    const inputs = formEl.querySelectorAll('input, select, textarea');
+    for (const input of inputs) {
+      if (!input.name) continue;
+      const hiddenSection = input.closest('.risk-type-fields');
+      if (hiddenSection && hiddenSection.style.display === 'none') continue;
+      data[input.name] = sanitiseInput(input.value);
     }
     return data;
   }
@@ -180,17 +188,13 @@ const RiskDetails = (() => {
             <label class="form-label">Maximum Exposure Value</label>
             <div class="input-prefix-group">
               <span class="input-prefix">R</span>
-              <input type="number" name="max_exposure_value" class="form-control" step="0.01" min="0"
-                value="${esc(d.max_exposure_value || '')}" />
+              <input type="number" name="maximum_exposure_value" class="form-control" step="0.01" min="0"
+                value="${esc(d.maximum_exposure_value != null ? d.maximum_exposure_value : '')}" />
             </div>
           </div>
           <div class="form-group form-group-full">
             <label class="form-label">Route / Operating Area</label>
-            <textarea name="git_route_operating_area" class="form-control" rows="2">${esc(d.git_route_operating_area || d.route_operating_area || '')}</textarea>
-          </div>
-          <div class="form-group form-group-full">
-            <label class="form-label">Security Details (GIT)</label>
-            <textarea name="git_security_details" class="form-control" rows="2">${esc(d.git_security_details || '')}</textarea>
+            <textarea name="route_operating_area" class="form-control" rows="2">${esc(d.route_operating_area || '')}</textarea>
           </div>
         </div>
       </fieldset>`;
@@ -782,8 +786,7 @@ const RiskDetails = (() => {
             <div class="detail-grid">
               ${field('Goods / Load Type', esc(d.goods_load_type || '—'))}
               ${field('Max Exposure Value', d.max_exposure_value ? formatCurrency(d.max_exposure_value) : '—')}
-              ${field('Route / Operating Area', esc(d.git_route_operating_area || d.route_operating_area || '—'))}
-              ${field('Security Details (GIT)', esc(d.git_security_details || '—'))}
+              ${field('Route / Operating Area', esc(d.route_operating_area || '—'))}
             </div>
           </div>`;
       }

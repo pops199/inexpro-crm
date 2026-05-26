@@ -6,6 +6,84 @@ sits at the top.
 
 ---
 
+## v1.0.63 — 2026-05-26
+
+**Claims Rejected-status fix · Assets Liability section additions**
+
+### Claims: Rejected status now savable (TCF Outcome 5 fields wired in)
+
+- **Bug fix**: setting a claim's status to `Rejected` returned
+  `Save failed: Repudiation reason is required when the claim is
+  rejected/repudiated.` and there was no way to clear the error
+  because the form had no fields for the required compliance data.
+- Added a **Repudiation / Dispute Resolution** sub-block inside the
+  *Settlement & Outcome* section of the claim form. It contains:
+  - **Repudiation Reason** (required picklist): Non-disclosure /
+    Exclusion applied / Late notification / Fraudulent claim /
+    Policy lapsed / Other.
+  - **Broker Dispute Action** (required picklist): Accepted /
+    Challenged / Referred to Ombudsman / Client declined to dispute.
+  - **Repudiation Notes** (optional textarea) for supporting detail.
+- The block is **hidden by default** and **revealed automatically**
+  when `claim_status` is changed to `Rejected`. When editing a claim
+  already at `Rejected`, the block is visible on load.
+- All three fields persist via the existing POST/PUT routes — schema,
+  inline migration, and route validation were already in place; only
+  the form UI was missing.
+
+### Assets: new policy-section options
+
+- **Liability** (Asset Type): added
+  `Liability – Public Legal Liability` after the existing Personal /
+  Extended Personal / Commercial Legal Liability options.
+- **Property** (Asset Type): added
+  `Property – Buildings Combined - Buildings` and
+  `Property – Buildings Combined - Contents` right after the two
+  existing Buildings entries — keeps all Buildings variants grouped
+  in the dropdown.
+
+### Risk Details: GIT-section fields now actually save
+
+- **Bug fix**: on a Goods-in-Transit risk-detail, the *Maximum Exposure
+  Value*, *Route / Operating Area*, and *Security Details* fields
+  appeared to save but came back blank when re-opening the record.
+- **Root cause**: the GIT form section used `name=` attributes that
+  didn't match the server columns:
+  - `max_exposure_value` → should have been `maximum_exposure_value`
+  - `git_route_operating_area` → should have been `route_operating_area`
+  - `git_security_details` → no matching column (redundant with the
+    common "Security Details" textarea below)
+  The server destructured only the canonical column names from the
+  request body, so those three keys were silently dropped on every
+  save.
+- **Fix**: renamed the form `name=` attributes to canonical column
+  names, removed the redundant GIT-specific Security Details textarea
+  (the common "Security Details" field in the always-visible
+  *Security & Notes* section already covers it), and removed the
+  now-stale `git_*` fallbacks from the detail view.
+- **Bonus fix** (latent regression that the rename would have
+  introduced): `serializeForm` now skips fields inside hidden
+  `.risk-type-fields` sections. The Motor and GIT sections both have a
+  `route_operating_area` textarea, but only one is visible at a time
+  — the hidden one's empty value was about to overwrite the visible
+  section's content during save. The serializer now ignores hidden
+  risk-type sections entirely.
+
+### Admin → Product Library: category rename
+
+- Renamed product category `Commercial — Motor fleet` →
+  `Commercial — Motor` in the Product-Library picklist
+  (`server/routes/products.js` `CATEGORY_OPTS`). The "fleet"
+  qualifier was too narrow — the same category covers
+  single-vehicle commercial motor as well.
+- New migration
+  `server/db/migrations/0008_products_motor_category_rename.sql`
+  updates the 15 existing products that used the old value, so
+  none become orphaned. `products.product_category` is plain
+  `TEXT NOT NULL` — no CHECK constraint to alter.
+
+---
+
 ## v1.0.62 — 2026-05-25
 
 **Form dropdowns now load up to 5,000 records (was 500)**
