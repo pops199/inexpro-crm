@@ -6,6 +6,56 @@ sits at the top.
 
 ---
 
+## v1.0.64 — 2026-05-27
+
+**CPD Activity Report: missing-file handling + each certificate prints on its own page**
+
+### Bug fix: "File cannot be found" on some certificates
+
+- The Broker CPD Activity Report previously embedded every certificate
+  linked to an activity via the `cpd_activity_id` foreign key. When a
+  certificate had been **replaced** during an Edit, both the old and
+  new docs were still linked, and any doc whose underlying file was
+  no longer on disk surfaced Chrome's native *"File cannot be found"*
+  message inside an empty iframe.
+- The server-side report now resolves each activity's **canonical**
+  certificate — the one the broker-profile detail view shows via the
+  `certificate_path = 'doc:<id>'` pointer — so stale, replaced
+  certificates no longer reappear in the report.
+- The `cpd_activity_id` FK is used **only as a fallback** for legacy
+  activities created before the canonical pointer existed.
+- Each certificate file is checked on disk before being sent to the
+  client. Missing files now render a clearly-worded **"Certificate
+  file is missing from storage"** placeholder prompting re-upload,
+  instead of a broken iframe.
+
+### Print layout: each attached PDF / image is its own report page
+
+- The previous addendum embedded PDFs as scrollable `<iframe>`s. When
+  printing, browsers only emit the **first page** of a PDF iframe —
+  every subsequent page was silently dropped from the printout.
+- The addendum now uses **PDF.js** (loaded from the jsdelivr CDN) to
+  render every page of every PDF certificate to a canvas at 2× scale
+  and embeds each page as its own image block.
+- Each block — image certificate, PDF page, missing-file placeholder,
+  or unsupported-type fallback — receives a CSS `break-before: page`
+  rule so it always starts on its own printed sheet. Multi-page PDFs
+  print **all pages**, each on its own sheet, in order.
+- The Print / Save PDF button is disabled while certificates render,
+  with a live "Rendering certificate X of N…" status, then enables
+  automatically when the addendum is ready.
+- Certificates render sequentially rather than concurrently so a
+  broker with many large PDFs doesn't exhaust browser memory mid-job.
+
+### Compliance impact
+
+- Aligns the printed CPD register with FSCA evidence-of-CPD
+  expectations: a single canonical certificate per activity, every
+  page of every certificate captured in the printout, and missing
+  evidence flagged in writing rather than silently broken.
+
+---
+
 ## v1.0.63 — 2026-05-26
 
 **Claims Rejected-status fix · Assets Liability section additions**

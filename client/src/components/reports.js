@@ -781,11 +781,13 @@ const Reports = (() => {
           </table>`
         : `<p class="no-activities">No CPD activities recorded for this broker in the selected period.</p>`;
 
-      // Build the per-broker Certificate Addendum: one block per linked
-      // certificate file. PDFs are embedded as inline iframes (browsers will
-      // attempt to render them and include them in print output, though
-      // multi-page PDFs may print only their first page — a known browser
-      // limitation we accept here in lieu of server-side PDF merging).
+      // Build the per-broker Certificate Addendum. Each certificate becomes a
+      // sequence of full-page blocks: one printed sheet per image, or one
+      // printed sheet per PDF page (rendered to a canvas via PDF.js so every
+      // page survives the print pipeline — browser iframes only print the
+      // first page of a PDF). Missing files show a clearly-worded placeholder
+      // so the report no longer surfaces Chrome's "File cannot be found"
+      // chrome inside an empty iframe.
       const certBlocks = [];
       activities.forEach(a => {
         const certs = Array.isArray(a.certificates) ? a.certificates : [];
@@ -796,24 +798,50 @@ const Reports = (() => {
         certs.forEach(doc => {
           const type = (doc.file_type || '').toLowerCase();
           const url  = doc.view_url || (doc.id ? `/api/documents/${doc.id}/view` : null);
-          if (!url) return;
-          let embed;
-          if (type.startsWith('image/')) {
-            embed = `<img class="cert-image" src="${esc(url)}" alt="${esc(doc.name || 'Certificate')}" />`;
-          } else if (type === 'application/pdf') {
-            // The #toolbar=0 hint hides Chrome's PDF chrome inside the iframe.
-            embed = `<iframe class="cert-pdf" src="${esc(url)}#toolbar=0&amp;navpanes=0" loading="eager"></iframe>`;
-          } else {
-            embed = `<p class="cert-fallback">
-              File type <code>${esc(type || 'unknown')}</code> can't be inlined.
-              <a href="${esc(url)}" target="_blank">Open ${esc(doc.name || 'certificate')} in a new tab</a>.
-            </p>`;
-          }
-          certBlocks.push(`
-            <div class="cert-block">
+          const heading = `
+            <div class="cert-heading">
               <h4 class="cert-title">${esc(label)} — ${esc(dateLong)}</h4>
               <p class="cert-meta">${esc(doc.name || '')}</p>
-              ${embed}
+            </div>`;
+          if (!url || doc.missing) {
+            certBlocks.push(`
+              <div class="cert-page cert-missing-page">
+                ${heading}
+                <div class="cert-missing">
+                  <p><strong>Certificate file is missing from storage.</strong></p>
+                  <p>The CPD activity record exists, but the uploaded file <code>${esc(doc.name || 'certificate')}</code> can no longer be located on the server. Re-upload the certificate against this activity to restore it in future reports.</p>
+                </div>
+              </div>`);
+            return;
+          }
+          if (type.startsWith('image/')) {
+            certBlocks.push(`
+              <div class="cert-page cert-image-page">
+                ${heading}
+                <img class="cert-image" src="${esc(url)}" alt="${esc(doc.name || 'Certificate')}" />
+              </div>`);
+            return;
+          }
+          if (type === 'application/pdf') {
+            // Placeholder block; PDF.js fills these in after the document loads.
+            // Each <div data-pdf-url> expands into N <div class="cert-page"> nodes,
+            // one per PDF page, so multi-page PDFs print as separate sheets.
+            certBlocks.push(`
+              <div class="cert-pdf-host" data-pdf-url="${esc(url)}" data-pdf-name="${esc(doc.name || 'Certificate')}" data-cert-label="${esc(label)}" data-cert-date="${esc(dateLong)}">
+                <div class="cert-page cert-pdf-loading">
+                  ${heading}
+                  <div class="cert-loading">Rendering PDF certificate…</div>
+                </div>
+              </div>`);
+            return;
+          }
+          certBlocks.push(`
+            <div class="cert-page cert-fallback-page">
+              ${heading}
+              <p class="cert-fallback">
+                File type <code>${esc(type || 'unknown')}</code> cannot be embedded in this report.
+                <a href="${esc(url)}" target="_blank">Open ${esc(doc.name || 'certificate')} in a new tab</a> to view or print it separately.
+              </p>
             </div>`);
         });
       });
@@ -966,29 +994,51 @@ ${xlsSections}
           font-size: 12pt; color: #1f6491; margin-bottom: 12px;
           text-transform: uppercase; letter-spacing: .04em;
         }
-        .cert-block {
-          margin-bottom: 22px; padding: 10px 12px;
+        .cert-page {
+          margin: 18px auto 0; padding: 14px 16px 18px;
           border: 1px solid #cfd8e0; border-radius: 4px; background: #fafbfc;
-          page-break-inside: avoid; break-inside: avoid;
+          max-width: 100%;
         }
+        .cert-heading { margin-bottom: 10px; }
         .cert-title {
           font-size: 11pt; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;
         }
-        .cert-meta { font-size: 9.5pt; color: #666; margin-bottom: 8px; }
-        .cert-image { display: block; max-width: 100%; height: auto; border: 1px solid #ddd; }
-        .cert-pdf {
-          display: block; width: 100%; height: 820px;
-          border: 1px solid #ddd; background: #fff;
+        .cert-meta { font-size: 9.5pt; color: #666; }
+        .cert-image, .cert-pdf-canvas {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          margin: 0 auto;
+          border: 1px solid #ddd;
+          background: #fff;
         }
         .cert-fallback { font-size: 10pt; color: #555; padding: 8px 0; }
+        .cert-loading {
+          font-size: 10pt; color: #555; font-style: italic;
+          padding: 16px 0; text-align: center;
+        }
+        .cert-missing {
+          font-size: 10pt; color: #8a3b3b; padding: 12px 14px;
+          border: 1px dashed #d6a3a3; background: #fdf3f3; border-radius: 4px;
+        }
+        .cert-missing p { margin: 0; }
+        .cert-missing p + p { margin-top: 6px; }
         @media print {
           .toolbar { display: none !important; }
           body { padding: 12px; font-size: 9.5pt; }
           .section-title { background: #ddd !important; -webkit-print-color-adjust: exact; }
           th { background: #ddd !important; color: #000 !important; -webkit-print-color-adjust: exact; }
-          .cert-block { break-before: page; page-break-before: always; }
-          .cert-block:first-of-type { break-before: auto; page-break-before: auto; }
-          .cert-pdf { height: 95vh; }
+          /* Each certificate page (image, PDF page, missing-placeholder, fallback)
+             starts on its own sheet so the printout matches "attachment as a
+             page as-is". */
+          .cert-page {
+            break-before: page; page-break-before: always;
+            break-inside: avoid; page-break-inside: avoid;
+            border: none; background: #fff; padding: 0; margin: 0;
+          }
+          .cert-image, .cert-pdf-canvas {
+            max-width: 100%; max-height: 95vh; border: none;
+          }
         }
       </style>
     </head><body>
@@ -999,10 +1049,14 @@ ${xlsSections}
         </div>
       </div>
       <div class="toolbar">
-        <button class="btn btn-primary" onclick="window.print()">🖨 Print / Save PDF</button>
+        <button class="btn btn-primary" id="print-btn" disabled title="Rendering certificates…">🖨 Print / Save PDF</button>
         <button class="btn btn-excel"   id="xls-btn">↓ Download Excel</button>
+        <span id="pdf-status" style="font-size:11pt;color:#555;align-self:center;">Preparing certificate addendum…</span>
       </div>
       ${sections}
+      <!-- PDF.js renders each PDF page to a canvas so multi-page PDFs print
+           as individual sheets (browser iframes only print page 1). -->
+      <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"><\/script>
       <script>
         function _download(blob, filename) {
           const url = URL.createObjectURL(blob);
@@ -1016,6 +1070,72 @@ ${xlsSections}
           _download(new Blob(['﻿' + xls], { type: 'application/vnd.ms-excel;charset=utf-8;' }),
                     'cpd-register.xls');
         });
+
+        function _escHtml(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        async function _renderPdfHost(host) {
+          const url   = host.getAttribute('data-pdf-url');
+          const name  = host.getAttribute('data-pdf-name')  || 'Certificate';
+          const label = host.getAttribute('data-cert-label') || '';
+          const date  = host.getAttribute('data-cert-date')  || '';
+          try {
+            const loadingTask = pdfjsLib.getDocument({ url: url, withCredentials: true });
+            const pdf = await loadingTask.promise;
+            const pages = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              // 2× scale gives a sharp print at A4. Higher scales raise memory cost
+              // proportionally; 2× is the sweet spot for laser-printed certificates.
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement('canvas');
+              canvas.width  = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d');
+              await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+              const headLabel = (i === 1)
+                ? '<div class="cert-heading"><h4 class="cert-title">' + _escHtml(label) + ' — ' + _escHtml(date) + '</h4><p class="cert-meta">' + _escHtml(name) + (pdf.numPages > 1 ? ' (page ' + i + ' of ' + pdf.numPages + ')' : '') + '</p></div>'
+                : '<div class="cert-heading"><p class="cert-meta">' + _escHtml(name) + ' — page ' + i + ' of ' + pdf.numPages + '</p></div>';
+              pages.push('<div class="cert-page cert-pdf-page">' + headLabel + '<img class="cert-pdf-canvas" src="' + dataUrl + '" alt="' + _escHtml(name) + ' page ' + i + '" /></div>');
+              // Release the canvas eagerly so a long addendum doesn't pin GPU memory.
+              canvas.width = 0; canvas.height = 0;
+            }
+            host.outerHTML = pages.join('');
+          } catch (err) {
+            console.error('PDF render failed for', url, err);
+            host.outerHTML = '<div class="cert-page cert-missing-page">' +
+              '<div class="cert-heading"><h4 class="cert-title">' + _escHtml(label) + ' — ' + _escHtml(date) + '</h4><p class="cert-meta">' + _escHtml(name) + '</p></div>' +
+              '<div class="cert-missing"><p><strong>Could not render PDF.</strong></p><p>The certificate exists, but it could not be loaded inline in this report. Open it directly: <a href="' + _escHtml(url) + '" target="_blank">' + _escHtml(name) + '</a>.</p></div>' +
+              '</div>';
+          }
+        }
+
+        (async function() {
+          const printBtn = document.getElementById('print-btn');
+          const statusEl = document.getElementById('pdf-status');
+          if (typeof pdfjsLib === 'undefined') {
+            if (statusEl) statusEl.textContent = 'Certificate previews unavailable (PDF library blocked).';
+            if (printBtn) { printBtn.disabled = false; printBtn.title = ''; printBtn.onclick = function(){ window.print(); }; }
+            return;
+          }
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+          const hosts = Array.from(document.querySelectorAll('.cert-pdf-host'));
+          if (statusEl) statusEl.textContent = hosts.length
+            ? 'Rendering ' + hosts.length + ' PDF certificate' + (hosts.length === 1 ? '' : 's') + '…'
+            : '';
+          // Render sequentially — concurrent rendering of many large PDFs can
+          // exhaust browser memory and stall the print preview.
+          for (let i = 0; i < hosts.length; i++) {
+            if (statusEl) statusEl.textContent = 'Rendering certificate ' + (i + 1) + ' of ' + hosts.length + '…';
+            await _renderPdfHost(hosts[i]);
+          }
+          if (statusEl) statusEl.textContent = hosts.length ? 'Certificates ready — use Print / Save PDF.' : '';
+          if (printBtn) { printBtn.disabled = false; printBtn.title = ''; printBtn.onclick = function(){ window.print(); }; }
+        })();
       <\/script>
     </body></html>`);
     win.document.close();

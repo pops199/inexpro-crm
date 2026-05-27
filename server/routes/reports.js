@@ -1152,29 +1152,69 @@ function runPredefinedQuery(key, { date_from, date_to, broker_id } = {}) {
       // certificate_present is a Yes/No convenience for the register's
       // "Certificate" column — true when an evidence path is set.
 
-      // Batch-load every linked certificate document for the activities in this
+      // Resolve every linked certificate document for the activities in this
       // result set so the CPD register can render a per-broker "Addendum" of
-      // the actual certificate files. Joining documents directly into the
-      // activity SQL would multiply rows when an activity has multiple files;
-      // group them here instead.
-      const activityIds = [...new Set(rows.map(r => r.cpd_activity_id).filter(Boolean))];
+      // the actual certificate files. The detail view shows the *canonical*
+      // certificate via the `certificate_path = 'doc:<id>'` pointer; we mirror
+      // that so the report stays in sync with what a broker sees on screen.
+      // Fall back to the cpd_activity_id FK when no canonical pointer is set
+      // (handles legacy activities created before the FK column existed) and
+      // verify each file is actually present on disk so the addendum can show
+      // a clear "missing" placeholder rather than a 404 inside an iframe.
+      const uploadRoot = process.env.UPLOAD_PATH
+        ? path.resolve(process.env.UPLOAD_PATH)
+        : path.resolve(__dirname, '../../client/uploads');
+      const fileExists = (filePath) => {
+        if (!filePath) return false;
+        const full = path.resolve(uploadRoot, filePath);
+        const rel  = path.relative(uploadRoot, full);
+        if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return false;
+        return fs.existsSync(full);
+      };
+
       const docsByActivity = {};
-      if (activityIds.length) {
-        const placeholders = activityIds.map(() => '?').join(',');
+      const seenDocs = new Set();
+      const addDocForActivity = (activityId, doc) => {
+        if (!doc) return;
+        const dedupeKey = `${activityId}:${doc.id}`;
+        if (seenDocs.has(dedupeKey)) return;
+        seenDocs.add(dedupeKey);
+        const key = String(activityId);
+        (docsByActivity[key] = docsByActivity[key] || []).push({
+          id:        doc.id,
+          name:      doc.original_name || doc.file_name,
+          file_type: doc.file_type,
+          view_url:  `/api/documents/${doc.id}/view`,
+          missing:   !fileExists(doc.file_path),
+        });
+      };
+
+      // 1) Canonical: the doc pointed to by certificate_path = 'doc:<id>'.
+      const docByIdStmt = db.prepare(
+        'SELECT id, original_name, file_name, file_type, file_path FROM documents WHERE id = ?'
+      );
+      rows.forEach(r => {
+        const m = /^doc:(\d+)$/.exec(r.certificate_path || '');
+        if (!m) return;
+        const doc = docByIdStmt.get(parseInt(m[1], 10));
+        if (doc) addDocForActivity(r.cpd_activity_id, doc);
+      });
+
+      // 2) Fallback for activities with no canonical doc: anything linked by
+      // the cpd_activity_id FK. Skips activities that already received a
+      // canonical doc above (so replaced/stale certificates don't reappear).
+      const fallbackIds = rows
+        .filter(r => !docsByActivity[String(r.cpd_activity_id)] && r.cpd_activity_id)
+        .map(r => r.cpd_activity_id);
+      const uniqueFallbackIds = [...new Set(fallbackIds)];
+      if (uniqueFallbackIds.length) {
+        const placeholders = uniqueFallbackIds.map(() => '?').join(',');
         const docs = db.prepare(`
-          SELECT id, cpd_activity_id, original_name, file_name, file_type
+          SELECT id, cpd_activity_id, original_name, file_name, file_type, file_path
           FROM documents
           WHERE cpd_activity_id IN (${placeholders})
-        `).all(...activityIds);
-        docs.forEach(d => {
-          const key = String(d.cpd_activity_id);
-          (docsByActivity[key] = docsByActivity[key] || []).push({
-            id:        d.id,
-            name:      d.original_name || d.file_name,
-            file_type: d.file_type,
-            view_url:  `/api/documents/${d.id}/view`,
-          });
-        });
+        `).all(...uniqueFallbackIds);
+        docs.forEach(d => addDocForActivity(d.cpd_activity_id, d));
       }
 
       return rows.map(r => {

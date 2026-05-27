@@ -877,3 +877,11 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-26 19:21
 - Modified 4 files
 - Files: RELEASES.md, client/public/index.html, client/src/components/risk-details.js, server/db/sessions.db
+
+## 2026-05-27 15:33
+- Modified server/db/sessions.db
+- Files: server/db/sessions.db
+
+## 2026-05-27 15:46
+- Modified 5 files
+- Files: client/public/index.html, client/src/components/reports.js, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/reports.js
