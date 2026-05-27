@@ -6,6 +6,44 @@ sits at the top.
 
 ---
 
+## v1.0.65 — 2026-05-27
+
+**Asset form: Additional Cover sub-totals · Multi-currency fix in section-asset tables**
+
+### New: Additional Cover sub-totals at the bottom of the section
+
+- The **Additional Cover** section on the asset form now shows a
+  **sub-totals strip** directly under the cover rows, matching the
+  existing Vehicle Extras footer:
+  - **Amount Total** — sum of cover amounts for rows where the per-row
+    "In total" tickbox is on (so it lines up with what's contributing
+    to the asset's Sum Insured / Asset Value).
+  - **Premium Total** — sum of all additional-cover premiums (they
+    always contribute to the asset's total Premium).
+- The currency symbol on the sub-totals follows the asset's selected
+  currency: **N\$** for NAD policies, **R** for ZAR.
+- Sub-totals update live as covers are added, removed, edited, or as
+  the per-row "In total" tickbox is toggled. Swapping currency on the
+  form also re-renders the symbol immediately.
+
+### Bug fix: section-asset table showed R for NAD policies
+
+- In the policy module, opening a section under the **Sections** tab
+  to drill into its assets showed the section header (Total Insured
+  Value, Total Premium, NASRIA) correctly in **N\$**, but the
+  individual asset rows and the table's footer **Total Asset Value**
+  were hardcoded to **R** — a confusing mismatch on Namibian policies.
+- `Assets.renderAssetsTab` now formats each row's **Asset Value**,
+  **Sum Insured**, and **Premium** using that row's own currency, and
+  derives the footer total's symbol from the rows themselves. Single-
+  currency lists (the normal case) take that row currency; mixed-
+  currency lists fall back to ZAR so the total stays unambiguous.
+- The same fix carries through to the **Assets** tabs on Contact,
+  Account, Claim, and Policy detail pages, since they share the same
+  renderer.
+
+---
+
 ## v1.0.64 — 2026-05-27
 
 **CPD Activity Report: missing-file handling + each certificate prints on its own page**

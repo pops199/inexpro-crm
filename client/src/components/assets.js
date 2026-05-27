@@ -369,9 +369,9 @@ const Assets = (() => {
     item_number:         a => esc(a.item_number || '—'),
     fleet_number:        a => esc(a.fleet_number || '—'),
     asset_status:        a => `<span class="badge" data-status="${esc(a.asset_status || '')}">${esc(a.asset_status || '—')}</span>`,
-    asset_value:         a => a.asset_value != null ? formatCurrency(a.asset_value) : '—',
-    sum_insured:         a => a.sum_insured != null ? formatCurrency(a.sum_insured) : '—',
-    premium:             a => a.premium != null ? formatCurrency(a.premium) : '—',
+    asset_value:         a => a.asset_value != null ? fmtMoney(a.asset_value, a.currency) : '—',
+    sum_insured:         a => a.sum_insured != null ? fmtMoney(a.sum_insured, a.currency) : '—',
+    premium:             a => a.premium     != null ? fmtMoney(a.premium,     a.currency) : '—',
     party_name:          a => esc(a.contact_name || a.account_name || '—'),
     policy_name:         a => a.policy_id ? `<a href="#/policies/${a.policy_id}">${esc(a.policy_name || a.policy_number || '—')}</a>` : '—',
     policy_section_name: a => esc(a.policy_section_name || a.asset_section || '—'),
@@ -1487,6 +1487,10 @@ const Assets = (() => {
                     }).join('');
                   })()}
                 </div>
+                <div id="additional-cover-total-row" style="display:none;text-align:right;padding:.4rem .5rem;font-weight:600;border-top:1px solid #dee2e6;margin-bottom:.25rem;">
+                  Amount Total <span style="font-weight:400;color:var(--text-muted);font-size:.78rem;">(included only)</span>: <span id="additional-cover-total-display">R 0.00</span>
+                  <span style="margin-left:1rem;">Premium Total: <span id="additional-cover-premium-total-display">R 0.00</span></span>
+                </div>
                 <div style="margin-top:.5rem;">
                   <button type="button" class="btn btn-secondary btn-sm" id="add-additional-cover-btn">+ Add Cover</button>
                 </div>
@@ -1769,6 +1773,28 @@ const Assets = (() => {
           acPremTotal += prm;
         });
 
+        // Surface the Additional Cover totals to the user. Mirrors the
+        // Vehicle Extras footer so brokers can verify the section's
+        // sub-totals at a glance — useful when many small covers are
+        // added under one asset. Symbol follows the asset's currency
+        // (N$ for Namibian Dollar policies).
+        const acTotalRow         = document.getElementById('additional-cover-total-row');
+        const acTotalDisplay     = document.getElementById('additional-cover-total-display');
+        const acPremiumDisplay   = document.getElementById('additional-cover-premium-total-display');
+        if (acTotalRow) acTotalRow.style.display = acRows.length ? '' : 'none';
+        if (acTotalDisplay || acPremiumDisplay) {
+          const curEl = document.querySelector('[name="currency"]');
+          const acSym = currencySymbol(curEl ? curEl.value : 'ZAR');
+          if (acTotalDisplay) {
+            acTotalDisplay.textContent = acSym + ' ' +
+              acIncluded.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          if (acPremiumDisplay) {
+            acPremiumDisplay.textContent = acSym + ' ' +
+              acPremTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
+
         const sumInsured = parseFloat(sumInsuredEl?.value) || 0;
         const assetValue = sumInsured + acIncluded + extrasIncluded;
 
@@ -1929,6 +1955,11 @@ const Assets = (() => {
 
       // ── Multi-currency selector ──
       wireCurrencySelector(formEl);
+      // Re-render Additional Cover sub-totals when the asset's currency
+      // changes, so the R / N$ symbol on the section's footer reflects
+      // the latest selection without waiting for the next row edit.
+      const _curSel = formEl.querySelector('select[name="currency"]');
+      if (_curSel) _curSel.addEventListener('change', () => refreshAssetTotals());
 
       // ── Add Product button (jumps to Product Library) ──
       wireAssetProductPicker(formEl);
@@ -3513,6 +3544,15 @@ ${brokerName}`;
       const totalValue = visRows.reduce((s, a) => s + (Number(a.asset_value) || 0), 0);
       const valueColIdx = visibleCols.findIndex(c => c.id === 'asset_value');
 
+      // Derive the footer total's currency symbol from the rows themselves.
+      // Section / contact / account asset lists are normally single-currency,
+      // so use that currency; if rows mix (rare), fall back to ZAR so the
+      // total stays unambiguous instead of guessing.
+      const _rowCurrencies = new Set(
+        visRows.filter(a => a.asset_value != null).map(a => a.currency || 'ZAR')
+      );
+      const _totalCurrency = _rowCurrencies.size === 1 ? [..._rowCurrencies][0] : 'ZAR';
+
       const headCells = visibleCols.map(c => {
         const rightAlign = (c.id === 'asset_value' || c.id === 'sum_insured' || c.id === 'premium');
         const sortable = !!c.sortable;
@@ -3537,9 +3577,10 @@ ${brokerName}`;
 
       let tfoot = '';
       if (showTotalRow && valueColIdx >= 0) {
+        const totalFmt = fmtMoney(totalValue, _totalCurrency);
         const cells = visibleCols.map((c, i) => {
           if (i === valueColIdx) {
-            return `<td style="text-align:right;font-weight:600;">R ${totalValue.toLocaleString('en-ZA', {minimumFractionDigits: 2})}</td>`;
+            return `<td style="text-align:right;font-weight:600;">${totalFmt}</td>`;
           }
           if (i === valueColIdx - 1) {
             return `<td style="text-align:right;font-weight:600;">Total Asset Value</td>`;
