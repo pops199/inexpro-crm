@@ -2297,3 +2297,32 @@ Files changed: 4
 - `server/db/sessions.db`
 Session: 51317763-86fb-4d8f-bf54-c30f9c831acc
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-27 16:00 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: 51317763-86fb-4d8f-bf54-c30f9c831acc
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-28 07:11 — auto-detected change
+Files changed: 9
+- `WORKFLOW_RULES.md`
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `docs/manual/build-manual.js`
+- `server/db/database.js`
+- `server/db/inexpro.db-wal`
+- `server/db/schema.sql`
+- `server/db/sessions.db`
+- `server/db/validate.js`
+Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-28 07:19 — auto-detected change
+Files changed: 2
+- `client/public/index.html`
+- `client/src/components/assets.js`
+Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

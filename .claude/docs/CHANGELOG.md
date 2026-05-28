@@ -897,3 +897,15 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-27 15:59
 - Modified 4 files
 - Files: client/public/index.html, client/src/components/assets.js, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-27 16:00
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-05-28 07:11
+- Modified 9 files
+- Files: WORKFLOW_RULES.md, client/public/index.html, client/src/components/policies.js, docs/manual/build-manual.js, server/db/database.js (+4 more)
+
+## 2026-05-28 07:19
+- Modified 2 files
+- Files: client/public/index.html, client/src/components/assets.js

@@ -35,7 +35,7 @@ const Policies = (() => {
 
   // ── Constants ────────────────────────────────────────────────────────────
 
-  const POLICY_STATUSES = ['Pending', 'Active', 'Amended', 'Cancelled', 'Lapsed', 'Expired'];
+  const POLICY_STATUSES = ['Quote sent', 'Pending', 'Active', 'Amended', 'Cancelled', 'Lapsed', 'Expired'];
 
   const PRODUCT_CATEGORIES = [
     'Personal Lines',

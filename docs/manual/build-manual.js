@@ -1092,7 +1092,7 @@ children.push(p('Complaints process disclosed: Yes — Written / Yes — Verbal 
 children.push(p('Disclosure method: In-person meeting / Phone call / Video call / Email / WhatsApp / Signed form.'));
 
 children.push(h2('17.4 Policy & cover'));
-children.push(p('Policy statuses: Pending · Active · Amended · Cancelled · Lapsed · Expired.'));
+children.push(p('Policy statuses: Quote sent · Pending · Active · Amended · Cancelled · Lapsed · Expired.'));
 children.push(p('Policy section needs analysis status: Not Assessed · Assessed · Recommendation Made · Accepted · Declined · Implemented · Not Applicable.'));
 
 children.push(h2('17.5 Claims'));

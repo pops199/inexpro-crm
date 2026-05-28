@@ -1633,6 +1633,50 @@ function initDb() {
     }
   } catch (_) {}
 
+  // Policies — extend policy_status CHECK list to include 'Quote sent'.
+  // SQLite CHECK constraints are immutable, so the table is rebuilt.
+  // sqlite_master.sql tracks ALTER TABLE ADD COLUMN edits, so reusing it
+  // preserves every column added by the inline migrations above without
+  // having to enumerate them here.
+  try {
+    const row = database
+      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='policies'")
+      .get();
+    if (row && row.sql && !row.sql.includes("'Quote sent'")) {
+      const newCreateSql = row.sql
+        .replace(
+          /CHECK\s*\(\s*policy_status\s+IN\s*\(([^)]*)\)\s*\)/i,
+          (_m, list) => `CHECK(policy_status IN ('Quote sent',${list.trim()}))`
+        )
+        .replace(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?policies\b/i, 'CREATE TABLE policies_new');
+      if (newCreateSql.includes("'Quote sent'") && newCreateSql.includes('policies_new')) {
+        const colList = database
+          .prepare('PRAGMA table_info(policies)')
+          .all()
+          .map(c => `"${c.name}"`)
+          .join(', ');
+        database.pragma('foreign_keys = OFF');
+        try {
+          database.transaction(() => {
+            database.exec(newCreateSql);
+            database.exec(`INSERT INTO policies_new (${colList}) SELECT ${colList} FROM policies`);
+            database.exec('DROP TABLE policies');
+            database.exec('ALTER TABLE policies_new RENAME TO policies');
+            database.exec('CREATE INDEX IF NOT EXISTS idx_policies_contact ON policies(contact_id)');
+            database.exec('CREATE INDEX IF NOT EXISTS idx_policies_status ON policies(policy_status)');
+            database.exec('CREATE INDEX IF NOT EXISTS idx_policies_renewal ON policies(renewal_date)');
+          })();
+        } finally {
+          database.pragma('foreign_keys = ON');
+        }
+        console.log("policies: widened policy_status CHECK to include 'Quote sent'");
+      }
+    }
+  } catch (err) {
+    try { database.pragma('foreign_keys = ON'); } catch (_) {}
+    console.error("policies policy_status CHECK widening failed:", err.message);
+  }
+
   // ── Versioned migrations (server/db/migrations/*.sql) ──────────────────
   // Runs after the legacy inline migrations above so any new schema change
   // ships as a numbered file going forward. Existing live DBs already have

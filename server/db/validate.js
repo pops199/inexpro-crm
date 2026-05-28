@@ -347,7 +347,7 @@ function runValidation() {
     '3rd Party', 'Co-Insured', 'Contact', 'Other',
   ];
   const allowedPolicyStatuses = [
-    'Pending', 'Active', 'Amended', 'Cancelled', 'Lapsed', 'Expired',
+    'Quote sent', 'Pending', 'Active', 'Amended', 'Cancelled', 'Lapsed', 'Expired',
   ];
   const allowedSectionCategories = [
     'Personal Lines', 'Commercial Lines', 'Transport', 'Liability', 'Specialist',

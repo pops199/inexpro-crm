@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS policies (
   inception_date DATE NOT NULL,
   renewal_date DATE,
   policy_status TEXT NOT NULL CHECK(policy_status IN (
-    'Pending','Active','Amended','Cancelled','Lapsed','Expired'
+    'Quote sent','Pending','Active','Amended','Cancelled','Lapsed','Expired'
   )) DEFAULT 'Pending',
   disclosure_completed INTEGER NOT NULL DEFAULT 0,
   last_review_date DATE,

@@ -6,6 +6,38 @@ sits at the top.
 
 ---
 
+## v1.0.66 — 2026-05-28
+
+**Policy: new "Quote sent" status · Asset form: Policy Section is now searchable and back-fills the asset type**
+
+### New: "Quote sent" policy status
+
+- A new policy status **Quote sent** appears at the **top** of the
+  policy status dropdown — both on the create / edit form and on the
+  policy list filter.
+- The schema `CHECK` constraint on `policies.policy_status` is widened
+  on existing databases via an inline migration that introspects the
+  current table definition and rebuilds it with the extended set
+  (`'Quote sent','Pending','Active','Amended','Cancelled','Lapsed','Expired'`),
+  preserving every column added by previous inline migrations.
+- The default on create is still `Pending` — `Quote sent` is opt-in.
+
+### New: Policy Section is now searchable on the Asset form
+
+- The **Policy Section** dropdown on the asset form now uses the same
+  searchable widget as the **Contact / Account / Policy** fields:
+  type to filter, click to pick.
+- **If you pick an asset type first**, the section list stays narrowed
+  to that asset type's sections — same as before.
+- **If you type into the section box without choosing an asset type**,
+  every section is searchable across all types (each option is tagged
+  with its parent type, so a search like *"Motor"* or *"Sasria"* still
+  narrows correctly). Picking a section in this mode **auto-fills the
+  Asset Type** to the section's parent type and reveals the
+  type-specific fields below.
+
+---
+
 ## v1.0.65 — 2026-05-27
 
 **Asset form: Additional Cover sub-totals · Multi-currency fix in section-asset tables**

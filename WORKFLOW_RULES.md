@@ -61,7 +61,7 @@ Stage order array: `server/routes/engagements.js:44-57`.
 ### 1.4 Policy
 **Schema:** `server/db/schema.sql:177-213`
 
-`policy_status` values: `Pending`, `Active`, `Amended`, `Cancelled`, `Lapsed`, `Expired`. Default on create: `Pending`.
+`policy_status` values: `Quote sent`, `Pending`, `Active`, `Amended`, `Cancelled`, `Lapsed`, `Expired`. Default on create: `Pending`.
 
 **Creation gates** (`server/routes/policies.js:68-94`):
 - Linked Contact must have `fica_status = 'Verified'` AND `popia_consent_obtained = 1`.

@@ -252,6 +252,42 @@ const Assets = (() => {
   const ASSET_TYPES = Object.keys(SECTIONS_BY_TYPE);
   const ASSET_SECTION_TYPES = Object.values(SECTIONS_BY_TYPE).reduce((a, b) => a.concat(b), []);
 
+  // Reverse lookup: section name → parent asset type. Used to autofill
+  // asset_type when a user searches & picks a section before choosing the
+  // type. Two sections share names across types (e.g. "Sasria") — first
+  // declared wins, which is fine for this UX hint.
+  const SECTION_TO_TYPE = (() => {
+    const map = {};
+    for (const [t, secs] of Object.entries(SECTIONS_BY_TYPE)) {
+      for (const s of secs) {
+        if (!(s in map)) map[s] = t;
+      }
+    }
+    return map;
+  })();
+
+  // Build the option list HTML for the asset_section dropdown.
+  //  - When asset_type is set: only that type's sections (current behavior).
+  //  - When asset_type is empty: every section, suffixed with "(Type)" so
+  //    a free-text search like "Motor" still narrows results, and picking
+  //    one back-fills the asset_type select.
+  function buildSectionOptionsHtml(currentType, currentValue) {
+    if (currentType) {
+      const allowed = SECTIONS_BY_TYPE[currentType] || [];
+      const placeholder = allowed.length
+        ? '— Select Section —'
+        : '— No sections for this type —';
+      return `<option value="">${placeholder}</option>` +
+        allowed.map(s => `<option value="${esc(s)}" ${currentValue === s ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    }
+    const all = [];
+    for (const [t, secs] of Object.entries(SECTIONS_BY_TYPE)) {
+      secs.forEach(s => all.push({ section: s, type: t }));
+    }
+    return `<option value="">— Search any section —</option>` +
+      all.map(o => `<option value="${esc(o.section)}" ${currentValue === o.section ? 'selected' : ''}>${esc(o.section)} (${esc(o.type)})</option>`).join('');
+  }
+
   const SA_PROVINCES = [
     'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
     'Limpopo', 'Mpumalanga', 'Northern Cape', 'North West', 'Western Cape',
@@ -737,18 +773,25 @@ const Assets = (() => {
         else                                         legend.textContent = 'Item Details';
       }
 
-      // Refresh Policy Section dropdown to only show sections for the chosen type.
+      // Refresh Policy Section dropdown.
+      //   - type set    → only that type's sections (narrowed, as before)
+      //   - type empty  → every section, suffixed with "(Type)" so the
+      //                   searchable wrapper can search across types and
+      //                   autofill the asset_type when one is picked.
       const sectionEl = document.querySelector('[name="asset_section"]');
       if (sectionEl && sectionEl.tagName === 'SELECT') {
-        const allowed = SECTIONS_BY_TYPE[type] || [];
         const current = sectionEl.value;
-        sectionEl.innerHTML =
-          `<option value="">${allowed.length ? '— Select Section —' : '— Select asset type first —'}</option>` +
-          allowed.map(s => `<option value="${esc(s)}" ${current === s ? 'selected' : ''}>${esc(s)}</option>`).join('');
-        // If the prior value is no longer valid for this type, clear it and re-render dependent fields.
-        if (current && !allowed.includes(current)) {
+        const allowed = type ? (SECTIONS_BY_TYPE[type] || []) : null;
+        sectionEl.innerHTML = buildSectionOptionsHtml(type, current);
+        // Clear the section if it's no longer valid for the chosen type.
+        if (allowed && current && !allowed.includes(current)) {
           sectionEl.value = '';
           sectionEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        // Resync the searchable wrapper so its option cache + visible
+        // input value reflect the new <option> set.
+        if (typeof sectionEl._searchableSync === 'function') {
+          sectionEl._searchableSync();
         }
       }
     }
@@ -1041,17 +1084,10 @@ const Assets = (() => {
 
                   <div class="form-group">
                     <label class="form-label required">Policy Section
-                      <span style="font-size:.72rem;color:var(--text-muted);font-weight:normal;margin-left:.3rem;">filtered by asset type</span>
+                      <span style="font-size:.72rem;color:var(--text-muted);font-weight:normal;margin-left:.3rem;">${d.asset_type ? 'filtered by asset type' : 'searchable — picks asset type for you'}</span>
                     </label>
                     <select name="asset_section" id="ast-section-select" class="form-control" required>
-                      ${(() => {
-                        const allowed = SECTIONS_BY_TYPE[d.asset_type] || [];
-                        const placeholder = d.asset_type
-                          ? '— Select Section —'
-                          : '— Select asset type first —';
-                        return `<option value="">${placeholder}</option>` +
-                          allowed.map(s => `<option value="${esc(s)}" ${d.asset_section === s ? 'selected' : ''}>${esc(s)}</option>`).join('');
-                      })()}
+                      ${buildSectionOptionsHtml(d.asset_type, d.asset_section)}
                     </select>
                   </div>
 
@@ -1984,6 +2020,25 @@ const Assets = (() => {
       // ── Dynamic section-specific fields based on asset_section ──
       const sectionInput = document.querySelector('[name="asset_section"]');
       if (sectionInput) wireSectionFields(sectionInput, d);
+
+      // ── Searchable Policy Section + asset-type autofill ──
+      // Mirrors the makeSearchable behaviour used on contact_id / account_id /
+      // policy_id. When the user picks a section before choosing an asset
+      // type, look up the parent type and set it — that re-narrows the
+      // section list and reveals the type-specific fields via applyType.
+      if (sectionInput && sectionInput.tagName === 'SELECT' && typeof makeSearchable === 'function') {
+        makeSearchable(sectionInput);
+        sectionInput.addEventListener('change', () => {
+          const picked = sectionInput.value;
+          if (!picked) return;
+          const typeEl = document.querySelector('[name="asset_type"]');
+          if (!typeEl || typeEl.value) return;
+          const parentType = SECTION_TO_TYPE[picked];
+          if (!parentType) return;
+          typeEl.value = parentType;
+          typeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }
 
       // ── Excess % auto-calculation ──
       const pctClaimEl     = document.getElementById('excess-pct-claim');
