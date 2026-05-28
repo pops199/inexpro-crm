@@ -2383,3 +2383,24 @@ Files changed: 15
 - `server/routes/contacts.js`
 Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-28 13:40 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-28 15:17 — auto-detected change
+Files changed: 5
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/migrations/0009_signature_requests_view_count.sql`
+- `server/db/sessions.db`
+- `server/routes/public-signing.js`
+Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

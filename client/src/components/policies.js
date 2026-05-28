@@ -2725,6 +2725,7 @@ const Policies = (() => {
               <th>Sent</th>
               <th>Recipient</th>
               <th>Status</th>
+              <th>Link</th>
               <th>Signed</th>
               <th>Signed By</th>
               <th>File</th>
@@ -2741,11 +2742,17 @@ const Policies = (() => {
                 const fileSize   = signed ? formatBytes(r.document_file_size) : '—';
                 const viewUrl    = signed ? Api.documents.viewUrl(r.document_id) : null;
                 const signLink   = !signed && r.token ? `/sign/${esc(r.token)}` : null;
+                const views      = Number(r.view_count) || 0;
+                const lastViewed = r.last_viewed_at ? formatDate(r.last_viewed_at) : null;
+                const linkCell   = views > 0
+                  ? `<span title="Last opened ${esc(lastViewed || '—')}">Viewed (${views})</span>`
+                  : `<span style="color:var(--text-muted);">Not opened</span>`;
                 return `
                 <tr>
                   <td>${sentDate}</td>
                   <td>${recipient}</td>
                   <td>${statusBadge(r.status)}</td>
+                  <td>${linkCell}</td>
                   <td>${signedDate}</td>
                   <td>${esc(r.signer_typed_name || '—')}</td>
                   <td>${signed

@@ -58,6 +58,21 @@ router.get('/:token', (req, res) => {
       'The document template is no longer available. Please contact your broker.'));
   }
 
+  // Engagement tracking — bump view counter while the link is still
+  // pending. After 'signed' / 'expired' / 'revoked' the count freezes,
+  // which matches the broker-facing "opens before signing" meaning.
+  // Wrapped in try/catch so a missing column on a very old DB doesn't
+  // break the signing flow.
+  try {
+    db.prepare(`
+      UPDATE signature_requests
+         SET view_count      = COALESCE(view_count, 0) + 1,
+             first_viewed_at = COALESCE(first_viewed_at, CURRENT_TIMESTAMP),
+             last_viewed_at  = CURRENT_TIMESTAMP
+       WHERE id = ?
+    `).run(sr.id);
+  } catch (_) {}
+
   // Build placeholder context from the linked contact / account.
   const ph = buildPlaceholders(db, sr);
 

@@ -6,6 +6,42 @@ sits at the top.
 
 ---
 
+## v1.0.68 — 2026-05-28
+
+**GIT Confirmations: track how many times the signing link was opened**
+
+### New: "Link" column on the GIT Confirmations tab
+
+When a Transport policy's GIT Confirmation is sent for signature, the
+**GIT Confirmations** tab now shows a new **Link** column between
+**Status** and **Signed**:
+
+- `Viewed (N)` once the recipient has opened the signing link, with a
+  tooltip showing the date of the last open.
+- `Not opened` until they click it the first time.
+
+The counter increments on every visit to `/sign/:token` **while the
+request is still pending**, then freezes once they sign — so the
+number reflects "opens before signing".
+
+### Schema / migration
+
+`signature_requests` gets three new columns: `view_count`,
+`first_viewed_at`, `last_viewed_at` (migration
+`0009_signature_requests_view_count.sql`). Applied automatically on
+server start; no manual step required.
+
+### Known caveat — email link previewers
+
+Some inbox services (Microsoft Defender Safe Links, Gmail / Outlook URL
+scanners, WhatsApp / Slack link unfurls) pre-fetch URLs to scan them
+for malware. That counts as 1–2 extra "views" before the client ever
+clicks. If that becomes noisy in real usage we can switch the counter
+to a JavaScript beacon on the page (so only real browser opens
+register).
+
+---
+
 ## v1.0.67 — 2026-05-28
 
 **Per-record Print → PDF reports on Claim, Policy, Contact, Account and Asset detail pages**
