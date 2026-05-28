@@ -1307,11 +1307,13 @@ const Claims = (() => {
           headerActions.innerHTML = `
             <button class="btn btn-secondary" onclick="Claims._sendClaimMail(${id})">Send to Underwriter</button>
             <button class="btn btn-secondary" onclick="Claims._openClaimEmailModal(${id})">Email</button>
+            <a class="btn btn-secondary" href="/api/claims/${id}/report.pdf" target="_blank" rel="noopener">Print</a>
             ${isAdmin ? `<button class="btn btn-warning" onclick="Claims._reopenClaim(${id})">Re-open Claim</button>` : ''}`;
         } else {
           headerActions.innerHTML = `
             <button class="btn btn-secondary" onclick="Claims._sendClaimMail(${id})">Send to Underwriter</button>
             <button class="btn btn-secondary" onclick="Claims._openClaimEmailModal(${id})">Email</button>
+            <a class="btn btn-secondary" href="/api/claims/${id}/report.pdf" target="_blank" rel="noopener">Print</a>
             <a href="#/claims/${id}/edit" class="btn btn-primary">Edit</a>`;
         }
       }

@@ -1340,4 +1340,108 @@ router.delete('/:assetId/amendments/:amendmentId', requireAdmin, (req, res) => {
   }
 });
 
+// ============================================================
+// GET /:id/report.pdf — full asset detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const assetId = parseInt(req.params.id, 10);
+
+    const asset = db.prepare(`
+      SELECT
+        a.*,
+        (c.first_name || ' ' || c.last_name) AS contact_name,
+        c.email AS contact_email,
+        ac.account_name,
+        p.policy_name,
+        p.policy_number,
+        ps.section_name AS policy_section_name,
+        ps.section_type AS policy_section_type
+      FROM assets a
+      LEFT JOIN contacts c          ON a.contact_id = c.id
+      LEFT JOIN accounts ac         ON a.account_id = ac.id
+      LEFT JOIN policies p          ON a.policy_id = p.id
+      LEFT JOIN policy_sections ps  ON a.policy_section_id = ps.id
+      WHERE a.id = ?
+    `).get(assetId);
+
+    if (!asset) return res.status(404).json({ error: 'Asset not found' });
+
+    // Broker isolation via the linked policy — same rule as GET /:id
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && asset.policy_id) {
+      const policy = db.prepare('SELECT assigned_broker_id FROM policies WHERE id = ?').get(asset.policy_id);
+      if (policy && policy.assigned_broker_id !== scopedBrokerId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    let amendments = [];
+    try {
+      amendments = db.prepare(`
+        SELECT aa.*, u.full_name AS created_by_name
+        FROM asset_amendments aa
+        LEFT JOIN users u ON u.id = aa.created_by
+        WHERE aa.asset_id = ?
+        ORDER BY aa.amendment_date DESC, aa.id DESC
+      `).all(assetId);
+    } catch (_) {}
+
+    const claims = db.prepare(`
+      SELECT id, claim_number, claim_type, claim_status, claim_date, estimated_value
+      FROM claims WHERE asset_id = ?
+      ORDER BY claim_date DESC, id DESC
+    `).all(assetId);
+
+    const documents = db.prepare(`
+      SELECT d.*, u.full_name AS uploaded_by_name
+      FROM documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.asset_id = ?
+      ORDER BY d.uploaded_at DESC
+    `).all(assetId);
+
+    let workflows = [];
+    try {
+      workflows = db.prepare(`
+        SELECT * FROM workflows
+        WHERE asset_id = ?
+        ORDER BY due_date IS NULL, due_date ASC, id DESC
+      `).all(assetId);
+    } catch (_) {}
+
+    let riskDetails = [];
+    try {
+      riskDetails = db.prepare(`
+        SELECT rd.*, ps.section_name
+        FROM risk_details rd
+        LEFT JOIN policy_sections ps ON ps.id = rd.policy_section_id
+        WHERE rd.asset_id = ?
+        ORDER BY rd.updated_at DESC
+      `).all(assetId);
+    } catch (_) {}
+
+    const { renderAssetReportPdf } = require('../lib/asset-report-pdf');
+    const pdfBuffer = await renderAssetReportPdf({
+      asset, amendments, claims, documents, workflows, riskDetails,
+    });
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'assets',
+      recordId:    assetId,
+      description: `Asset report PDF generated for ${asset.asset_name || assetId}`,
+    });
+
+    const safeName = (asset.asset_name || ('asset-' + assetId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="AssetReport-${safeName}.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('GET /assets/:id/report.pdf error:', err);
+    return next(err);
+  }
+});
+
 module.exports = router;

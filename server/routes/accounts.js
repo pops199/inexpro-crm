@@ -521,4 +521,148 @@ router.get('/:id/contacts', (req, res) => {
   return res.json(contacts);
 });
 
+// ============================================================
+// GET /:id/report.pdf — full account detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const accountId = parseInt(req.params.id, 10);
+
+    const account = db.prepare(`
+      SELECT
+        a.*,
+        c.first_name || ' ' || c.last_name AS main_contact_name,
+        b.full_name                          AS broker_full_name,
+        adm.full_name                        AS admin_full_name
+      FROM accounts a
+      LEFT JOIN contacts c   ON c.id   = a.main_contact_id
+      LEFT JOIN users b      ON b.id   = a.assigned_broker_id
+      LEFT JOIN users adm    ON adm.id = a.assigned_admin_id
+      WHERE a.id = ?
+    `).get(accountId);
+
+    if (!account) return res.status(404).json({ error: 'Account not found' });
+
+    // Broker isolation — same rule as GET /:id
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && account.assigned_broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const erasures = db.prepare(
+      "SELECT id FROM data_subject_requests WHERE account_id = ? AND request_type = 'Erasure' AND status != 'Completed'"
+    ).all(account.id).map(() => ({ request_type: 'Erasure', status: 'Open' }));
+    account.popia_status        = computePopiaStatus(account, erasures);
+    account.fica_status_derived = computeFicaStatusAccount(account);
+
+    const contacts = db.prepare(`
+      SELECT id, first_name, last_name, email, mobile, contact_type
+      FROM contacts WHERE related_account_id = ?
+      ORDER BY last_name, first_name
+    `).all(accountId);
+
+    const policies = db.prepare(`
+      SELECT id, policy_name, policy_number, insurer, policy_status, renewal_date
+      FROM policies WHERE account_id = ?
+      ORDER BY renewal_date IS NULL, renewal_date DESC
+    `).all(accountId);
+
+    const assets = db.prepare(`
+      SELECT id, asset_name, asset_type, asset_section, asset_status
+      FROM assets WHERE account_id = ?
+      ORDER BY asset_name
+    `).all(accountId);
+
+    const claims = db.prepare(`
+      SELECT cl.id, cl.claim_number, cl.claim_type, cl.claim_status, cl.claim_date,
+             p.policy_number
+      FROM claims cl
+      LEFT JOIN policies p ON cl.policy_id = p.id
+      WHERE cl.account_id = ?
+      ORDER BY cl.claim_date DESC, cl.id DESC
+    `).all(accountId);
+
+    let engagements = [];
+    try {
+      engagements = db.prepare(`
+        SELECT id, engagement_name, engagement_type, stage, client_decision
+        FROM client_engagements WHERE account_id = ?
+        ORDER BY id DESC
+      `).all(accountId);
+    } catch (_) {}
+
+    let reviews = [];
+    try {
+      reviews = db.prepare(`
+        SELECT id, review_number, review_type, review_date, review_outcome, next_review_date
+        FROM reviews WHERE account_id = ?
+        ORDER BY review_date DESC, id DESC
+      `).all(accountId);
+    } catch (_) {}
+
+    let complaints = [];
+    try {
+      complaints = db.prepare(`
+        SELECT id, complaint_number, complaint_date, complaint_category, complaint_status, complaint_summary
+        FROM complaints WHERE account_id = ?
+        ORDER BY complaint_date DESC, id DESC
+      `).all(accountId);
+    } catch (_) {}
+
+    let adviceRecs = [];
+    try {
+      adviceRecs = db.prepare(`
+        SELECT ar.id, ar.advice_record_number, ar.advice_type, ar.advice_date,
+               ar.client_decision, u.full_name AS broker_full_name
+        FROM advice_records ar
+        LEFT JOIN users u ON u.id = ar.broker_id
+        WHERE ar.account_id = ?
+        ORDER BY ar.advice_date DESC, ar.id DESC
+      `).all(accountId);
+    } catch (_) {}
+
+    let sections = [];
+    try {
+      sections = db.prepare(`
+        SELECT ps.id, ps.section_name, ps.section_type,
+               p.policy_name, p.policy_number
+        FROM policy_sections ps
+        LEFT JOIN policies p ON p.id = ps.policy_id
+        WHERE ps.account_id = ?
+        ORDER BY ps.section_name
+      `).all(accountId);
+    } catch (_) {}
+
+    const documents = db.prepare(`
+      SELECT d.*, u.full_name AS uploaded_by_name
+      FROM documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.account_id = ?
+      ORDER BY d.uploaded_at DESC
+    `).all(accountId);
+
+    const { renderAccountReportPdf } = require('../lib/account-report-pdf');
+    const pdfBuffer = await renderAccountReportPdf({
+      account,
+      contacts, policies, assets, claims, engagements, reviews, complaints, adviceRecs, sections, documents,
+    });
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'accounts',
+      recordId:    accountId,
+      description: `Account report PDF generated for ${account.account_name || accountId}`,
+    });
+
+    const safeName = (account.account_name || ('account-' + accountId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="AccountReport-${safeName}.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('GET /accounts/:id/report.pdf error:', err);
+    return next(err);
+  }
+});
+
 module.exports = router;

@@ -1601,6 +1601,7 @@ const Policies = (() => {
       if (headerActions) {
         headerActions.innerHTML = `
           <button class="btn btn-secondary" onclick="Policies._amendmentMail(${id})">Create Amendment Mail</button>
+          <a class="btn btn-secondary" href="/api/policies/${id}/report.pdf" target="_blank" rel="noopener">Print</a>
           ${isTransport ? `<button class="btn btn-secondary" onclick="Policies._openGitConfirmation(${id})">GIT Confirmation</button>` : ''}
           <a href="#/policies/${id}/edit" class="btn btn-primary">Edit</a>
           <a href="#/schedule/policy/${id}" class="btn btn-primary">Show Schedule</a>`;

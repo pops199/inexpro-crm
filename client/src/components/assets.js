@@ -2097,6 +2097,7 @@ const Assets = (() => {
       headerActions.innerHTML = `
         <button class="btn btn-secondary" onclick="Assets._amendmentMail(${id})">Create Amendment Mail</button>
         <button class="btn btn-secondary" onclick="Assets._confirmationOfCoverMail(${id})">Confirmation of Cover</button>
+        <a class="btn btn-secondary" href="/api/assets/${id}/report.pdf" target="_blank" rel="noopener">Print</a>
         <a href="#/assets/${id}/edit" class="btn btn-primary">Edit</a>`;
     }
 

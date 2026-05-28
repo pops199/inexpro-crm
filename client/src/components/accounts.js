@@ -646,6 +646,7 @@ const Accounts = (() => {
         headerActions.innerHTML = `
           <a href="#/schedule/account/${id}" class="btn btn-secondary">📋 Policy Schedule</a>
           <button class="btn btn-secondary" onclick="Accounts._openMailModal(${id})">📧 Email</button>
+          <a class="btn btn-secondary" href="/api/accounts/${id}/report.pdf" target="_blank" rel="noopener">Print</a>
           <a href="#/accounts/${id}/edit" class="btn btn-primary">Edit</a>`;
       }
 

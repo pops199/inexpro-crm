@@ -897,4 +897,115 @@ router.delete('/:claimId/third-parties/:tpId', canDelete, (req, res) => {
   }
 });
 
+// ============================================================
+// GET /:id/report.pdf — full claim detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res) => {
+  try {
+    const db = getDb();
+    const claimId = parseInt(req.params.id, 10);
+
+    const claim = db.prepare(`
+      SELECT
+        cl.*,
+        p.policy_name,
+        p.policy_number,
+        p.insurer,
+        p.product_category,
+        (c.first_name || ' ' || c.last_name) AS contact_name,
+        c.email  AS contact_email,
+        c.mobile AS contact_mobile,
+        ac.account_name,
+        ps.section_name AS policy_section_name,
+        ps.section_type AS policy_section_type,
+        a.asset_name,
+        a.asset_type,
+        a.registration_number AS asset_registration_number,
+        b.full_name AS broker_name,
+        b.email     AS broker_email,
+        COALESCE(cl.claims_handler_name, ha.full_name) AS claims_handler_name,
+        ha.email    AS claims_handler_email
+      FROM claims cl
+      LEFT JOIN policies p          ON cl.policy_id = p.id
+      LEFT JOIN contacts c          ON cl.contact_id = c.id
+      LEFT JOIN accounts ac         ON cl.account_id = ac.id
+      LEFT JOIN policy_sections ps  ON cl.policy_section_id = ps.id
+      LEFT JOIN assets a            ON cl.asset_id = a.id
+      LEFT JOIN users b             ON cl.broker_id = b.id
+      LEFT JOIN users ha            ON cl.claims_handler_admin_id = ha.id
+      WHERE cl.id = ?
+    `).get(claimId);
+
+    if (!claim) return res.status(404).json({ error: 'Claim not found' });
+
+    // Broker isolation — same rule as GET /:id
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && claim.broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const thirdParties = db.prepare(`
+      SELECT ctp.*, u.full_name AS created_by_name
+      FROM claim_third_parties ctp
+      LEFT JOIN users u ON u.id = ctp.created_by
+      WHERE ctp.claim_id = ?
+      ORDER BY ctp.created_at DESC
+    `).all(claimId);
+
+    const notes = db.prepare(`
+      SELECT n.*, u.full_name AS created_by_name
+      FROM claim_notes n
+      LEFT JOIN users u ON u.id = n.created_by
+      WHERE n.claim_id = ?
+      ORDER BY n.note_date DESC, n.id DESC
+    `).all(claimId);
+
+    let asset = null;
+    if (claim.asset_id) {
+      try {
+        asset = db.prepare('SELECT * FROM assets WHERE id = ?').get(claim.asset_id) || null;
+      } catch (_) {}
+    }
+
+    const documents = db.prepare(`
+      SELECT d.*, u.full_name AS uploaded_by_name
+      FROM documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.claim_id = ?
+      ORDER BY d.uploaded_at DESC
+    `).all(claimId);
+
+    let workflows = [];
+    try {
+      workflows = db.prepare(`
+        SELECT * FROM workflows
+        WHERE claim_id = ?
+        ORDER BY due_date IS NULL, due_date ASC, id DESC
+      `).all(claimId);
+    } catch (_) {
+      // workflows.claim_id column might not exist on very old DBs — ignore.
+    }
+
+    const { renderClaimReportPdf } = require('../lib/claim-report-pdf');
+    const pdfBuffer = await renderClaimReportPdf({
+      claim, thirdParties, notes, asset, documents, workflows,
+    });
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'claims',
+      recordId:    claimId,
+      description: `Claim report PDF generated for ${claim.claim_number || claimId}`,
+    });
+
+    const safeName = (claim.claim_number || ('claim-' + claimId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="ClaimReport-${safeName}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('GET /claims/:id/report.pdf error:', err);
+    res.status(500).json({ error: 'Failed to generate claim report' });
+  }
+});
+
 module.exports = router;

@@ -6,6 +6,58 @@ sits at the top.
 
 ---
 
+## v1.0.67 — 2026-05-28
+
+**Per-record Print → PDF reports on Claim, Policy, Contact, Account and Asset detail pages**
+
+### New: A "Print" button on every record detail view
+
+Open any claim, policy, contact, account or asset and you'll find a new
+**Print** button next to the existing record actions:
+
+- **Claims**: between **Email** and **Edit** (or between **Email** and
+  **Re-open Claim** on a settled claim).
+- **Policies**: between **Create Amendment Mail** and **Edit** (sits
+  before the **GIT Confirmation** button on Transport policies).
+- **Contacts**: between **Email** and **Edit**.
+- **Accounts**: between **Email** and **Edit**.
+- **Assets**: between **Confirmation of Cover** and **Edit**.
+
+The button opens a PDF report in a new browser tab; from there use the
+browser's built-in print / save controls.
+
+### What's in each report
+
+- **Inexpro letterhead** at the top of page 1, branded **footer** on
+  every page (the same style used by Records of Advice and the GIT
+  Confirmation of Insurance).
+- A heading block with the record's name plus the most useful identifying
+  fields (claim number + policy + contact/account, policy number +
+  insurer, etc.).
+- **Every section** that appears on the detail page, in order.
+- **Every tab at the bottom**, each under its own heading — except
+  **Timeline** and **Versions**, which are excluded by design (those are
+  audit views, not part of the printable record).
+- Tables for tabular data (assets, claims, third parties, commission,
+  post-sale events, documents, workflows, quotes, sections, etc.) with
+  per-row page-break handling so long lists flow across pages cleanly.
+
+### Compliance / security
+
+- **Broker isolation** is enforced on each report endpoint — brokers can
+  only print records they're already allowed to view.
+- Encrypted PII (SA ID, passport, bank account number) appears only in
+  its masked form on the report. Plaintext still requires the existing
+  admin-password reveal flow.
+- Each report generation is recorded in the audit log as an
+  `EXPORT` event on the relevant module.
+
+### Schema / migration
+
+No schema changes — reports are read-only.
+
+---
+
 ## v1.0.66 — 2026-05-28
 
 **Policy: new "Quote sent" status · Asset form: Policy Section is now searchable and back-fills the asset type**

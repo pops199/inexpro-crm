@@ -670,4 +670,146 @@ router.get('/:id/documents', (req, res) => {
   return res.json(docs);
 });
 
+// ============================================================
+// GET /:id/report.pdf — full contact detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const contactId = parseInt(req.params.id, 10);
+
+    const contact = db.prepare(`
+      SELECT
+        c.*,
+        b.full_name AS broker_full_name,
+        a.full_name AS admin_full_name
+      FROM contacts c
+      LEFT JOIN users b ON b.id = c.assigned_broker_id
+      LEFT JOIN users a ON a.id = c.assigned_admin_id
+      WHERE c.id = ?
+    `).get(contactId);
+
+    if (!contact) return res.status(404).json({ error: 'Contact not found' });
+
+    // Broker isolation: brokers can only print their own contacts, except
+    // supplier contacts which are shared.
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && contact.assigned_broker_id !== scopedBrokerId
+        && !isSupplierContact(contact)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Compute compliance status the same way the detail JSON does so the
+    // report reflects what's on screen.
+    const erasures = db.prepare(
+      "SELECT id FROM data_subject_requests WHERE contact_id = ? AND request_type = 'Erasure' AND status != 'Completed'"
+    ).all(contact.id).map(() => ({ request_type: 'Erasure', status: 'Open' }));
+    const redacted = redactContactForResponse(contact);
+    redacted.popia_status = computePopiaStatus(contact, erasures);
+    redacted.fica_status_derived = computeFicaStatus(contact);
+
+    const policies = db.prepare(`
+      SELECT id, policy_name, policy_number, insurer, policy_status, renewal_date
+      FROM policies WHERE contact_id = ?
+      ORDER BY renewal_date IS NULL, renewal_date DESC
+    `).all(contactId);
+
+    const claims = db.prepare(`
+      SELECT cl.id, cl.claim_number, cl.claim_type, cl.claim_status, cl.claim_date,
+             p.policy_number
+      FROM claims cl
+      LEFT JOIN policies p ON cl.policy_id = p.id
+      WHERE cl.contact_id = ?
+      ORDER BY cl.claim_date DESC, cl.id DESC
+    `).all(contactId);
+
+    const assets = db.prepare(`
+      SELECT id, asset_name, asset_type, asset_section, asset_status
+      FROM assets WHERE contact_id = ?
+      ORDER BY asset_name
+    `).all(contactId);
+
+    let engagements = [];
+    try {
+      engagements = db.prepare(`
+        SELECT id, engagement_name, engagement_type, stage, client_decision
+        FROM client_engagements WHERE contact_id = ?
+        ORDER BY id DESC
+      `).all(contactId);
+    } catch (_) {}
+
+    let reviews = [];
+    try {
+      reviews = db.prepare(`
+        SELECT id, review_number, review_type, review_date, review_outcome, next_review_date
+        FROM reviews WHERE contact_id = ?
+        ORDER BY review_date DESC, id DESC
+      `).all(contactId);
+    } catch (_) {}
+
+    let complaints = [];
+    try {
+      complaints = db.prepare(`
+        SELECT id, complaint_number, complaint_date, complaint_category, complaint_status, complaint_summary
+        FROM complaints WHERE contact_id = ?
+        ORDER BY complaint_date DESC, id DESC
+      `).all(contactId);
+    } catch (_) {}
+
+    let adviceRecs = [];
+    try {
+      adviceRecs = db.prepare(`
+        SELECT ar.id, ar.advice_record_number, ar.advice_type, ar.advice_date,
+               ar.client_decision, u.full_name AS broker_full_name
+        FROM advice_records ar
+        LEFT JOIN users u ON u.id = ar.broker_id
+        WHERE ar.contact_id = ?
+        ORDER BY ar.advice_date DESC, ar.id DESC
+      `).all(contactId);
+    } catch (_) {}
+
+    let sections = [];
+    try {
+      sections = db.prepare(`
+        SELECT ps.id, ps.section_name, ps.section_type,
+               p.policy_name, p.policy_number
+        FROM policy_sections ps
+        LEFT JOIN policies p ON p.id = ps.policy_id
+        WHERE ps.contact_id = ?
+        ORDER BY ps.section_name
+      `).all(contactId);
+    } catch (_) {}
+
+    const documents = db.prepare(`
+      SELECT d.*, u.full_name AS uploaded_by_name
+      FROM documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.contact_id = ?
+      ORDER BY d.uploaded_at DESC
+    `).all(contactId);
+
+    const { renderContactReportPdf } = require('../lib/contact-report-pdf');
+    const pdfBuffer = await renderContactReportPdf({
+      contact: redacted,
+      policies, claims, assets, engagements, reviews, complaints, adviceRecs, sections, documents,
+    });
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'contacts',
+      recordId:    contactId,
+      description: `Contact report PDF generated for ${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
+    });
+
+    const safeName = ((contact.last_name || '') + '-' + (contact.first_name || ('contact-' + contactId)))
+      .replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="ContactReport-${safeName || contactId}.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('GET /contacts/:id/report.pdf error:', err);
+    return next(err);
+  }
+});
+
 module.exports = router;

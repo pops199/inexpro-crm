@@ -1610,4 +1610,128 @@ router.post('/:id/git-confirmation/sign-request', async (req, res, next) => {
     return next(err);
   }
 });
+
+// ============================================================
+// GET /:id/report.pdf — full policy detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const policyId = parseInt(req.params.id, 10);
+
+    const policy = db.prepare(`
+      SELECT
+        p.*,
+        (c.first_name  || ' ' || c.last_name)  AS contact_name,
+        (ci.first_name || ' ' || ci.last_name) AS co_insured_name,
+        a.account_name,
+        b.full_name    AS broker_name,
+        adm.full_name  AS admin_name,
+        creator.full_name AS created_by_name,
+        ce.engagement_name
+      FROM policies p
+      LEFT JOIN contacts c            ON p.contact_id = c.id
+      LEFT JOIN contacts ci           ON p.co_insured_contact_id = ci.id
+      LEFT JOIN accounts a            ON p.account_id = a.id
+      LEFT JOIN users b               ON p.assigned_broker_id = b.id
+      LEFT JOIN users adm             ON p.assigned_admin_id = adm.id
+      LEFT JOIN users creator         ON p.created_by = creator.id
+      LEFT JOIN client_engagements ce ON p.engagement_id = ce.id
+      WHERE p.id = ?
+    `).get(policyId);
+
+    if (!policy) return res.status(404).json({ error: 'Policy not found' });
+
+    // Broker isolation — same rule as GET /:id
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && policy.assigned_broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Resolve other_contact_ids → array of { id, name } for the heading
+    let otherContacts = [];
+    try {
+      const ids = JSON.parse(policy.other_contact_ids || '[]');
+      if (Array.isArray(ids) && ids.length) {
+        const placeholders = ids.map(() => '?').join(',');
+        otherContacts = db.prepare(
+          `SELECT id, (first_name || ' ' || last_name) AS name FROM contacts WHERE id IN (${placeholders})`
+        ).all(...ids);
+      }
+    } catch (_) {}
+    policy.other_contacts = otherContacts;
+
+    policy.total_premium = computePolicyTotalPremium(db, policy.id);
+
+    const assets     = db.prepare('SELECT * FROM assets WHERE policy_id = ? ORDER BY asset_section, asset_name').all(policyId);
+    const claims     = db.prepare(`
+      SELECT cl.*, (c.first_name || ' ' || c.last_name) AS contact_name, ac.account_name
+      FROM claims cl
+      LEFT JOIN contacts c  ON cl.contact_id = c.id
+      LEFT JOIN accounts ac ON cl.account_id = ac.id
+      WHERE cl.policy_id = ?
+      ORDER BY cl.claim_date DESC
+    `).all(policyId);
+
+    let commission = [];
+    try {
+      commission = db.prepare('SELECT * FROM commission_log WHERE policy_id = ? ORDER BY created_at DESC').all(policyId);
+    } catch (_) {}
+
+    let postSale = [];
+    try {
+      postSale = db.prepare('SELECT * FROM post_sale_events WHERE policy_id = ? ORDER BY event_date DESC, id DESC').all(policyId);
+    } catch (_) {}
+
+    const documents = db.prepare(`
+      SELECT d.*, u.full_name AS uploaded_by_name
+      FROM documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.policy_id = ?
+      ORDER BY d.uploaded_at DESC
+    `).all(policyId);
+
+    let quotes = [];
+    try {
+      quotes = db.prepare(`
+        SELECT q.*, u.full_name AS uploaded_by_name
+        FROM policy_quotes q
+        LEFT JOIN users u ON u.id = q.uploaded_by_id
+        WHERE q.policy_id = ?
+        ORDER BY q.uploaded_at DESC
+      `).all(policyId);
+    } catch (_) {}
+
+    let gitConfirms = [];
+    try {
+      gitConfirms = db.prepare(`
+        SELECT id, status, recipient_name, recipient_email, created_at, signed_at, document_id
+        FROM signature_requests
+        WHERE policy_id = ? AND template_key = 'git_confirmation'
+        ORDER BY created_at DESC
+      `).all(policyId);
+    } catch (_) {}
+
+    const { renderPolicyReportPdf } = require('../lib/policy-report-pdf');
+    const pdfBuffer = await renderPolicyReportPdf({
+      policy, assets, claims, commission, postSale, documents, quotes, gitConfirms,
+    });
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'policies',
+      recordId:    policyId,
+      description: `Policy report PDF generated for ${policy.policy_number || policyId}`,
+    });
+
+    const safeName = (policy.policy_number || ('policy-' + policyId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="PolicyReport-${safeName}.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('GET /policies/:id/report.pdf error:', err);
+    return next(err);
+  }
+});
+
 module.exports = router;
