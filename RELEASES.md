@@ -6,6 +6,36 @@ sits at the top.
 
 ---
 
+## v1.0.70 — 2026-05-29
+
+**GIT Confirmation: broker signature embedded above typed name**
+
+When the final signed GIT Confirmation PDF comes back from the client,
+it now carries the **broker's signature image** above the typed broker
+name in the closing block (between *"Regards,"* / *"Yours faithfully,"*
+and the printed name), just before the client's Acknowledgement page.
+
+- Pulled from the broker's profile (`users.signature_filename`) — same
+  source as the email signature.
+- Rendered **full content width** (page edge to page edge inside the
+  margins) so it reads cleanly when printed or viewed.
+- Capped at 110pt tall to stop oversized PNGs from pushing the typed
+  name onto a new page.
+- Falls back to the legacy hand-sign gap when the user has no
+  signature image on file — nothing breaks for brokers who haven't
+  uploaded one yet.
+
+Applied to **both** GIT variants:
+- South African Inexpro Confirmation of Insurance
+- Belogix Namibia Confirmation of Cover (N$)
+
+The broker's unsigned **preview download** also embeds the signature so
+the broker sees exactly what the client will sign.
+
+No schema change.
+
+---
+
 ## v1.0.69 — 2026-05-29
 
 **Claims: richer incident capture + Police Report block**

@@ -72,7 +72,7 @@ function ordinal(n) {
  * @param {{policy: object, body: object, signature?: {buf:Buffer, signerName:string, signedAt:Date, signedIp?:string, signedUa?:string}}} opts
  * @returns {Promise<Buffer>}
  */
-async function renderBelogixNamibiaGitConfirmationPdf({ policy, body, signature }) {
+async function renderBelogixNamibiaGitConfirmationPdf({ policy, body, signature, brokerSignaturePath }) {
   policy = policy || {};
   body = body || {};
 
@@ -289,7 +289,26 @@ async function renderBelogixNamibiaGitConfirmationPdf({ policy, body, signature 
 
     pdfDoc.moveDown(0.8);
     pdfDoc.text('Yours faithfully,', MARGIN, pdfDoc.y, { width: CONTENT_W });
-    pdfDoc.moveDown(2.2);
+
+    // Broker signature image (full content width) — mirrors the SA
+    // renderer so the Namibia variant has the same closing look.
+    let drewBrokerSig = false;
+    if (brokerSignaturePath) {
+      try {
+        const img = pdfDoc.openImage(brokerSignaturePath);
+        const MAX_H = 110;
+        const ratio = Math.min(CONTENT_W / img.width, MAX_H / img.height);
+        const dispW = img.width * ratio;
+        const dispH = img.height * ratio;
+        if (pdfDoc.y + 18 + dispH > SAFE_BOTTOM) pdfDoc.addPage();
+        const sigY = pdfDoc.y + 6;
+        pdfDoc.image(brokerSignaturePath, MARGIN, sigY, { width: dispW, height: dispH });
+        pdfDoc.y = sigY + dispH + 4;
+        drewBrokerSig = true;
+      } catch (_) {}
+    }
+    if (!drewBrokerSig) pdfDoc.moveDown(2.2);
+
     pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
       .text(body.prepared_by_name || 'Steph van der Vyver', MARGIN, pdfDoc.y, { width: CONTENT_W });
     pdfDoc.font('Helvetica').fontSize(SMALL).fillColor('#444')

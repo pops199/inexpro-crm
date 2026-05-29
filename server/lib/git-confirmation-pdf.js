@@ -49,10 +49,15 @@ function fmtDateLong(iso) {
 }
 
 /**
- * @param {{policy: object, body: object, signature?: {buf:Buffer, signerName:string, signedAt:Date, signedIp?:string, signedUa?:string}}} opts
+ * @param {{
+ *   policy: object,
+ *   body: object,
+ *   signature?: {buf:Buffer, signerName:string, signedAt:Date, signedIp?:string, signedUa?:string},
+ *   brokerSignaturePath?: string|null,
+ * }} opts
  * @returns {Promise<Buffer>}
  */
-async function renderGitConfirmationPdf({ policy, body, signature }) {
+async function renderGitConfirmationPdf({ policy, body, signature, brokerSignaturePath }) {
   policy = policy || {};
   body = body || {};
 
@@ -289,7 +294,36 @@ async function renderGitConfirmationPdf({ policy, body, signature }) {
     pdfDoc.moveDown(0.8);
     pdfDoc.font('Helvetica').fontSize(BODY).fillColor('#222')
       .text('Regards,', MARGIN, pdfDoc.y);
-    pdfDoc.moveDown(2.5);
+
+    // ── Broker signature image (full content width) ───────────
+    // Placed between "Regards," and the typed broker name. The image
+    // scales to span MARGIN→MARGIN+CONTENT_W so the signature reads
+    // clearly across the whole page. Capped at 110pt tall to stop a
+    // tall PNG from pushing the typed name onto the next page. If
+    // the file is missing/unreadable we fall back to the legacy
+    // hand-signing gap so nothing breaks visually.
+    let drewBrokerSig = false;
+    if (brokerSignaturePath) {
+      try {
+        const img = pdfDoc.openImage(brokerSignaturePath);
+        const MAX_H = 110;
+        const ratio = Math.min(CONTENT_W / img.width, MAX_H / img.height);
+        const dispW = img.width * ratio;
+        const dispH = img.height * ratio;
+        // Keep the signature on the same page as the closing block — if
+        // it would spill into the safe-bottom area, drop to a new page
+        // first so it isn't clipped by the footer.
+        if (pdfDoc.y + 18 + dispH > SAFE_BOTTOM) pdfDoc.addPage();
+        const sigY = pdfDoc.y + 6;
+        pdfDoc.image(brokerSignaturePath, MARGIN, sigY, { width: dispW, height: dispH });
+        pdfDoc.y = sigY + dispH + 4;
+        drewBrokerSig = true;
+      } catch (_) {
+        // Fall through to the legacy gap below if the image can't render.
+      }
+    }
+    if (!drewBrokerSig) pdfDoc.moveDown(2.5);
+
     pdfDoc.font('Helvetica-Bold').fontSize(BODY).fillColor('#222')
       .text(body.prepared_by_name || 'Inexpro Broker', MARGIN, pdfDoc.y);
 

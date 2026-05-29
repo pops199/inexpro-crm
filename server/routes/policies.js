@@ -1512,7 +1512,15 @@ router.post('/:id/git-confirmation', async (req, res, next) => {
     const renderer = useNamibian
       ? require('../lib/belogix-namibia-git-pdf').renderBelogixNamibiaGitConfirmationPdf
       : require('../lib/git-confirmation-pdf').renderGitConfirmationPdf;
-    const buf = await renderer({ policy, body: reqBody });
+    // Embed the requesting broker's signature image so the downloaded
+    // preview matches what the final signed copy will look like.
+    let brokerSignaturePath = null;
+    try {
+      const { resolveSignaturePath } = require('../lib/email-signature');
+      const sig = resolveSignaturePath(req.session?.userId, { db });
+      if (sig && sig.fullPath) brokerSignaturePath = sig.fullPath;
+    } catch (_) {}
+    const buf = await renderer({ policy, body: reqBody, brokerSignaturePath });
 
     res.locals.logAudit({
       action: 'EXPORT',

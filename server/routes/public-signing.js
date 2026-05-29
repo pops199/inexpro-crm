@@ -164,6 +164,15 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
       const renderer = useNamibian
         ? require('../lib/belogix-namibia-git-pdf').renderBelogixNamibiaGitConfirmationPdf
         : require('../lib/git-confirmation-pdf').renderGitConfirmationPdf;
+      // Resolve the broker's signature image (from their profile) so the
+      // final signed PDF carries the broker's signature above their
+      // typed name — same source as the email signature.
+      let brokerSignaturePath = null;
+      try {
+        const { resolveSignaturePath } = require('../lib/email-signature');
+        const sig = resolveSignaturePath(sr.created_by, { db });
+        if (sig && sig.fullPath) brokerSignaturePath = sig.fullPath;
+      } catch (_) {}
       pdfBuffer = await renderer({
         policy,
         body:      formData,
@@ -172,6 +181,7 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
           signerName: String(signer_name).trim(),
           signedAt, signedIp, signedUa,
         },
+        brokerSignaturePath,
       });
     } else if (sr.template_key === 'roa_confirmation') {
       const { renderRoaPdf } = require('../lib/roa-pdf');
