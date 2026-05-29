@@ -542,20 +542,21 @@ const Claims = (() => {
                 <div class="form-grid form-grid-2">
 
                   <div class="form-group">
-                    <label class="form-label required">Claim Date</label>
+                    <label class="form-label required">Date of Incident</label>
                     <input type="date" name="claim_date" class="form-control" required
                       value="${esc(d.claim_date ? d.claim_date.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Time of Incident</label>
+                    <input type="time" name="incident_time" class="form-control"
+                      value="${esc(d.incident_time || '')}" />
                   </div>
 
                   <div class="form-group">
                     <label class="form-label required">Date Reported</label>
                     <input type="date" name="date_reported" class="form-control" required
                       value="${esc(d.date_reported ? d.date_reported.slice(0,10) : '')}" />
-                  </div>
-
-                  <div class="form-group form-group-full">
-                    <label class="form-label required">Incident Description</label>
-                    <textarea name="incident_description" class="form-control" rows="4" required>${esc(d.incident_description || '')}</textarea>
                   </div>
 
                   <div class="form-group">
@@ -565,6 +566,85 @@ const Claims = (() => {
                       <input type="number" name="estimated_value" class="form-control" step="0.01" min="0"
                         value="${esc(d.estimated_value || '')}" />
                     </div>
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label" style="display:flex;align-items:center;gap:.5rem;">
+                      <span>Incident Location</span>
+                      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;"
+                        id="claim-incident-maps-address" title="Open address in Google Maps">📍 Open in Google Maps</button>
+                      <button type="button" class="btn btn-secondary btn-sm" style="font-size:.72rem;"
+                        id="claim-incident-maps-gps" title="Open GPS coords in Google Maps">🌐 Open GPS</button>
+                    </label>
+                    <input type="text" name="incident_location_address" class="form-control"
+                      value="${esc(d.incident_location_address || '')}"
+                      placeholder="Street / suburb / city where the incident occurred" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">GPS Latitude</label>
+                    <input type="text" name="incident_gps_lat" class="form-control"
+                      value="${esc(d.incident_gps_lat || '')}" placeholder="e.g. -25.7461" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">GPS Longitude</label>
+                    <input type="text" name="incident_gps_lng" class="form-control"
+                      value="${esc(d.incident_gps_lng || '')}" placeholder="e.g. 28.1881" />
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label required">Incident Description</label>
+                    <textarea name="incident_description" class="form-control" rows="4" required>${esc(d.incident_description || '')}</textarea>
+                  </div>
+
+                </div>
+              </fieldset>
+
+              <!-- ── Police Report ── -->
+              <fieldset class="form-section">
+                <legend class="form-section-title">Police Report</legend>
+                <div class="form-grid form-grid-2">
+
+                  <div class="form-group">
+                    <label class="form-label">Police Case Number</label>
+                    <input type="text" name="police_case_number" class="form-control"
+                      value="${esc(d.police_case_number || '')}" placeholder="e.g. CAS 123/04/2026" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Police Station Reported</label>
+                    <input type="text" name="police_station_reported" class="form-control"
+                      value="${esc(d.police_station_reported || '')}" placeholder="e.g. Brooklyn SAPS" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Date Reported</label>
+                    <input type="date" name="police_report_date_reported" class="form-control"
+                      value="${esc(d.police_report_date_reported ? d.police_report_date_reported.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Police Officer Name</label>
+                    <input type="text" name="police_officer_name" class="form-control"
+                      value="${esc(d.police_officer_name || '')}" placeholder="Officer in charge" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="checklist-item">
+                      <input type="checkbox" name="police_report_received"
+                        ${d.police_report_received ? 'checked' : ''} />
+                      <span>Copy of Police Report Received</span>
+                    </label>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Add Attachment <span style="font-weight:400;color:var(--text-muted);">(Police report file)</span></label>
+                    <input type="file" id="claim-police-report-file" class="form-control"
+                      accept=".pdf,.jpg,.jpeg,.png,.docx" />
+                    <small id="claim-police-report-hint" style="color:var(--text-muted);display:block;margin-top:.25rem;">
+                      ${isEdit ? 'File uploads on save and appears in the Documents tab.' : 'File uploads after the claim is created and appears in the Documents tab.'}
+                    </small>
                   </div>
 
                 </div>
@@ -1170,6 +1250,33 @@ const Claims = (() => {
     wireContactAccountToggle(formEl);
     wireCurrencySelector(formEl);
 
+    // ── Incident-location Google Maps shortcuts ──
+    // Mirrors the contacts module: one button opens the typed address in
+    // Google Maps, the other opens the GPS lat/lng pin directly.
+    const mapsAddrBtn = document.getElementById('claim-incident-maps-address');
+    if (mapsAddrBtn) {
+      mapsAddrBtn.addEventListener('click', () => {
+        const addr = formEl.querySelector('[name="incident_location_address"]')?.value?.trim();
+        if (!addr) {
+          showToast('Enter the incident location address first.', 'warning');
+          return;
+        }
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank', 'noopener');
+      });
+    }
+    const mapsGpsBtn = document.getElementById('claim-incident-maps-gps');
+    if (mapsGpsBtn) {
+      mapsGpsBtn.addEventListener('click', () => {
+        const lat = formEl.querySelector('[name="incident_gps_lat"]')?.value?.trim();
+        const lng = formEl.querySelector('[name="incident_gps_lng"]')?.value?.trim();
+        if (!lat || !lng) {
+          showToast('Enter GPS latitude and longitude first.', 'warning');
+          return;
+        }
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + ',' + lng)}`, '_blank', 'noopener');
+      });
+    }
+
     // ── Driver Details visibility based on claim_type ──
     const claimTypeSelect = document.querySelector('[name="claim_type"]');
     const driverBlock     = document.getElementById('claim-driver-details-block');
@@ -1256,11 +1363,32 @@ const Claims = (() => {
         if (tpData.is_insured !== undefined) tpData.is_insured = tpData.is_insured === '1' ? 1 : 0;
         const hasTp = Boolean(tpData.surname);
 
+        // Optional police-report attachment — uploaded after save against the
+        // claim's existing documents collection so it shows up in the
+        // Documents tab.
+        const policeFileEl = document.getElementById('claim-police-report-file');
+        const policeFile = policeFileEl?.files?.[0] || null;
+
+        const uploadPoliceReport = async (claimId) => {
+          if (!policeFile) return;
+          try {
+            const fd = new FormData();
+            fd.append('file', policeFile);
+            fd.append('module', 'claims');
+            fd.append('record_id', claimId);
+            fd.append('description', 'Police Report');
+            await Api.documents.upload(fd);
+          } catch (e) {
+            showToast('Claim saved, but police report upload failed: ' + (e.message || e), 'error');
+          }
+        };
+
         try {
           if (isEdit) {
             await Api.claims.update(id, data);
             // Save/update third party if filled
             if (hasTp) await Api.claims.thirdPartiesCreate(id, tpData);
+            await uploadPoliceReport(id);
             showToast('Claim updated.', 'success');
             navigate(`claims/${id}`);
           } else {
@@ -1268,6 +1396,7 @@ const Claims = (() => {
             const newId   = (created.data || created).id;
             // Save third party if filled
             if (hasTp) await Api.claims.thirdPartiesCreate(newId, tpData);
+            await uploadPoliceReport(newId);
             showToast('Claim created.', 'success');
             // Ask user if they want to send the claim to the insurer
             if (confirm('Claim created successfully. Would you like to send this claim to the insurer?')) {
@@ -1363,8 +1492,44 @@ const Claims = (() => {
               ${field('Claim Name', esc(d.claim_name || '—'))}
               ${field('Claim Type', esc(d.claim_type || '—'))}
               ${field('Status', statusBadgeHtml(d.claim_status))}
-              ${field('Claim Date', d.claim_date ? formatDate(d.claim_date) : '—')}
+              ${field('Date of Incident', d.claim_date ? formatDate(d.claim_date) : '—')}
+              ${field('Time of Incident', esc(d.incident_time || '—'))}
               ${field('Date Reported', d.date_reported ? formatDate(d.date_reported) : '—')}
+            </div>
+          </div>
+
+          <!-- Incident Location -->
+          ${(d.incident_location_address || d.incident_gps_lat || d.incident_gps_lng) ? (() => {
+            const addr = d.incident_location_address || '';
+            const lat  = d.incident_gps_lat || '';
+            const lng  = d.incident_gps_lng || '';
+            const addrUrl = addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : null;
+            const gpsUrl  = (lat && lng) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + ',' + lng)}` : null;
+            return `
+            <div class="detail-section card">
+              <div class="detail-section-title" style="display:flex;align-items:center;gap:.5rem;">
+                <span>Incident Location</span>
+                ${addrUrl ? `<a href="${addrUrl}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;">📍 Open in Google Maps</a>` : ''}
+                ${gpsUrl  ? `<a href="${gpsUrl}"  target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="${addrUrl ? '' : 'margin-left:auto;'}font-size:.72rem;">🌐 Open GPS</a>` : ''}
+              </div>
+              <div class="detail-grid">
+                ${field('Address',       esc(addr || '—'))}
+                ${field('GPS Latitude',  esc(lat  || '—'))}
+                ${field('GPS Longitude', esc(lng  || '—'))}
+              </div>
+            </div>`;
+          })() : ''}
+
+          <!-- Police Report — always shown so brokers can confirm at a glance
+               whether police details are on file. Empty rows render as "—". -->
+          <div class="detail-section card">
+            <div class="detail-section-title">Police Report</div>
+            <div class="detail-grid">
+              ${field('Police Case Number',  esc(d.police_case_number || '—'))}
+              ${field('Police Station Reported', esc(d.police_station_reported || '—'))}
+              ${field('Date Reported',         d.police_report_date_reported ? formatDate(d.police_report_date_reported) : '—')}
+              ${field('Police Officer Name',   esc(d.police_officer_name || '—'))}
+              ${field('Copy of Police Report Received', bool(d.police_report_received))}
             </div>
           </div>
 
@@ -1927,11 +2092,22 @@ Please find below the details of a new claim to be processed:
 ═══════════════════════════════════════════
 CLAIM DETAILS
 ═══════════════════════════════════════════
-Claim Number:    ${dash(d.claim_number)}
-Claim Type:      ${dash(d.claim_type)}
-Status:          ${dash(d.claim_status)}
-Claim Date:      ${fmt(d.claim_date)}
-Date Reported:   ${fmt(d.date_reported)}
+Claim Number:      ${dash(d.claim_number)}
+Claim Type:        ${dash(d.claim_type)}
+Status:            ${dash(d.claim_status)}
+Date of Incident:  ${fmt(d.claim_date)}
+Time of Incident:  ${dash(d.incident_time)}
+Date Reported:     ${fmt(d.date_reported)}
+${(d.incident_location_address || (d.incident_gps_lat && d.incident_gps_lng)) ? `Incident Location: ${dash(d.incident_location_address)}${(d.incident_gps_lat && d.incident_gps_lng) ? `\nGPS:               ${d.incident_gps_lat}, ${d.incident_gps_lng}` : ''}\n` : ''}${(d.police_case_number || d.police_station_reported || d.police_officer_name) ? `
+═══════════════════════════════════════════
+POLICE REPORT
+═══════════════════════════════════════════
+Case Number:       ${dash(d.police_case_number)}
+Station:           ${dash(d.police_station_reported)}
+Date Reported:     ${fmt(d.police_report_date_reported)}
+Officer:           ${dash(d.police_officer_name)}
+Report Received:   ${d.police_report_received ? 'Yes' : 'No'}
+` : ''}
 
 ═══════════════════════════════════════════
 POLICY / CLIENT
@@ -1984,12 +2160,23 @@ ${today}`;
         <p>Please find below the details of a new claim to be processed:</p>
 
         ${section('Claim Details',
-          fieldRow('Claim Number',  d.claim_number)  +
-          fieldRow('Claim Type',    d.claim_type)    +
-          fieldRow('Status',        d.claim_status)  +
-          fieldRow('Claim Date',    fmt(d.claim_date))    +
-          fieldRow('Date Reported', fmt(d.date_reported))
+          fieldRow('Claim Number',     d.claim_number)  +
+          fieldRow('Claim Type',       d.claim_type)    +
+          fieldRow('Status',           d.claim_status)  +
+          fieldRow('Date of Incident', fmt(d.claim_date)) +
+          (d.incident_time ? fieldRow('Time of Incident', d.incident_time) : '') +
+          fieldRow('Date Reported',    fmt(d.date_reported)) +
+          (d.incident_location_address ? fieldRow('Incident Location', d.incident_location_address) : '') +
+          ((d.incident_gps_lat && d.incident_gps_lng) ? fieldRow('GPS Coordinates', `${d.incident_gps_lat}, ${d.incident_gps_lng}`) : '')
         )}
+
+        ${(d.police_case_number || d.police_station_reported || d.police_officer_name) ? section('Police Report',
+          fieldRow('Case Number',      d.police_case_number) +
+          fieldRow('Station',          d.police_station_reported) +
+          fieldRow('Date Reported',    fmt(d.police_report_date_reported)) +
+          fieldRow('Officer',          d.police_officer_name) +
+          fieldRow('Report Received',  d.police_report_received ? 'Yes' : 'No')
+        ) : ''}
 
         ${section('Policy / Client',
           fieldRow('Client',         clientName) +

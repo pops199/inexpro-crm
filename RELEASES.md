@@ -6,6 +6,65 @@ sits at the top.
 
 ---
 
+## v1.0.69 — 2026-05-29
+
+**Claims: richer incident capture + Police Report block**
+
+### Claim form changes (Dates & Incident section)
+
+- **"Claim Date" is now "Date of Incident"** — same underlying field
+  (`claim_date`), clearer regulatory language, and matches the way
+  insurers and SAPS reference the loss event.
+- **New: "Time of Incident"** — a time picker (24-hour) sitting next
+  to the date, so the incident moment is captured precisely.
+- **New: "Incident Location"** — an address line with **📍 Open in
+  Google Maps** and **🌐 Open GPS** buttons (same mechanic used in
+  Contacts → Physical Address). Lat/Lng can be pasted in and pinned
+  directly. Both the address and the GPS pin survive to the detail
+  view, the underwriter email, and the claim PDF report.
+
+### New: Police Report section
+
+A dedicated fieldset between the incident block and Driver Details
+captures everything an insurer asks for on theft / hijack / accident
+matters:
+
+- Police Case Number (e.g. `CAS 123/04/2026`)
+- Police Station Reported
+- Date Reported
+- Police Officer Name
+- **Copy of Police Report Received** tick-box (broker confirmation)
+- **Add Attachment** file picker — uploads the report against the
+  claim on save and surfaces automatically in the **Documents tab** at
+  the bottom of the claim. No second upload step needed.
+
+### Schema / migration
+
+`claims` gets nine new columns (migration
+`0010_claims_incident_details.sql`):
+`incident_time`, `incident_location_address`, `incident_gps_lat`,
+`incident_gps_lng`, `police_case_number`, `police_station_reported`,
+`police_report_date_reported`, `police_officer_name`,
+`police_report_received`.
+
+All existing claims keep working — every new field is optional and
+nullable except the existing `claim_date` (still required, now labelled
+"Date of Incident").
+
+### Detail view, PDF & underwriter email
+
+- Detail page now shows **Date of Incident** + **Time of Incident** in
+  the Claim Details card, a separate **Incident Location** card (shown
+  when populated), and a **Police Report** card that is **always**
+  visible so brokers can see at a glance whether SAPS details are on
+  file (empty rows render as "—").
+- The PDF claim report (Print button) adds the Incident Location and
+  Police Report sections in line with the rest of the layout.
+- The "Send to Underwriter" email body carries the same new fields so
+  the insurer sees them on first read.
+
+---
+
 ## v1.0.68 — 2026-05-28
 
 **GIT Confirmations: track how many times the signing link was opened**

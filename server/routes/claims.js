@@ -230,7 +230,17 @@ router.post('/', (req, res) => {
       broker_dispute_action,
       post_claim_satisfaction,
       outcome_vs_roa_expectation,
-      complaint_arising
+      complaint_arising,
+      // Incident detail enrichment (migration 0010)
+      incident_time,
+      incident_location_address,
+      incident_gps_lat,
+      incident_gps_lng,
+      police_case_number,
+      police_station_reported,
+      police_report_date_reported,
+      police_officer_name,
+      police_report_received
     } = req.body;
 
     // Validation
@@ -245,7 +255,7 @@ router.post('/', (req, res) => {
     ) {
       return res.status(400).json({
         error:
-          'claim_number, policy_id, claim_date, date_reported, claim_type, incident_description, and claim_status are required'
+          'claim_number, policy_id, claim_date (date of incident), date_reported, claim_type, incident_description, and claim_status are required'
       });
     }
 
@@ -324,6 +334,9 @@ router.post('/', (req, res) => {
           claim_category, claim_reference_number, insurer_assessment_date,
           repudiation_reason, repudiation_reason_notes, broker_dispute_action,
           post_claim_satisfaction, outcome_vs_roa_expectation, complaint_arising,
+          incident_time, incident_location_address, incident_gps_lat, incident_gps_lng,
+          police_case_number, police_station_reported, police_report_date_reported,
+          police_officer_name, police_report_received,
           created_by, created_at, updated_at
         ) VALUES (
           ?, ?, ?, ?, ?,
@@ -343,6 +356,9 @@ router.post('/', (req, res) => {
           ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?,
           ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
       `).run(
@@ -363,6 +379,9 @@ router.post('/', (req, res) => {
         claim_category || null, claim_reference_number || null, insurer_assessment_date || null,
         repudiation_reason || null, repudiation_reason_notes || null, broker_dispute_action || null,
         post_claim_satisfaction || null, outcome_vs_roa_expectation || null, (complaint_arising ? 1 : 0),
+        incident_time || null, incident_location_address || null, incident_gps_lat || null, incident_gps_lng || null,
+        police_case_number || null, police_station_reported || null, police_report_date_reported || null,
+        police_officer_name || null, (police_report_received ? 1 : 0),
         req.session.userId
       );
 
@@ -475,7 +494,17 @@ router.put('/:id', (req, res) => {
       broker_dispute_action,
       post_claim_satisfaction,
       outcome_vs_roa_expectation,
-      complaint_arising
+      complaint_arising,
+      // Incident detail enrichment (migration 0010)
+      incident_time,
+      incident_location_address,
+      incident_gps_lat,
+      incident_gps_lng,
+      police_case_number,
+      police_station_reported,
+      police_report_date_reported,
+      police_officer_name,
+      police_report_received
     } = req.body;
 
     // Repudiation workflow: when moving to Rejected, require reason + action
@@ -571,6 +600,15 @@ router.put('/:id', (req, res) => {
         post_claim_satisfaction    = COALESCE(?, post_claim_satisfaction),
         outcome_vs_roa_expectation = COALESCE(?, outcome_vs_roa_expectation),
         complaint_arising          = COALESCE(?, complaint_arising),
+        incident_time              = COALESCE(?, incident_time),
+        incident_location_address  = COALESCE(?, incident_location_address),
+        incident_gps_lat           = COALESCE(?, incident_gps_lat),
+        incident_gps_lng           = COALESCE(?, incident_gps_lng),
+        police_case_number       = COALESCE(?, police_case_number),
+        police_station_reported    = COALESCE(?, police_station_reported),
+        police_report_date_reported = COALESCE(?, police_report_date_reported),
+        police_officer_name        = COALESCE(?, police_officer_name),
+        police_report_received     = COALESCE(?, police_report_received),
         updated_at                 = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
@@ -625,6 +663,15 @@ router.put('/:id', (req, res) => {
       post_claim_satisfaction ?? null,
       outcome_vs_roa_expectation ?? null,
       complaint_arising !== undefined ? (complaint_arising ? 1 : 0) : null,
+      incident_time ?? null,
+      incident_location_address ?? null,
+      incident_gps_lat ?? null,
+      incident_gps_lng ?? null,
+      police_case_number ?? null,
+      police_station_reported ?? null,
+      police_report_date_reported ?? null,
+      police_officer_name ?? null,
+      police_report_received !== undefined ? (police_report_received ? 1 : 0) : null,
       req.params.id
     );
 

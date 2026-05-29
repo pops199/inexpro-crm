@@ -933,3 +933,19 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-28 15:17
 - Modified 5 files
 - Files: client/public/index.html, client/src/components/policies.js, server/db/migrations/0009_signature_requests_view_count.sql, server/db/sessions.db, server/routes/public-signing.js
+
+## 2026-05-28 15:19
+- Modified 6 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
+
+## 2026-05-29 08:35
+- Modified 11 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, package.json, server/db/inexpro.db (+6 more)
+
+## 2026-05-29 08:39
+- Modified 8 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, server/db/inexpro.db-wal, server/db/migrations/0010_claims_incident_details.sql (+3 more)
+
+## 2026-05-29 08:40
+- Modified 5 files
+- Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, server/db/inexpro.db-wal, server/db/sessions.db

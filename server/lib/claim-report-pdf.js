@@ -271,12 +271,33 @@ async function renderClaimReportPdf({ claim, thirdParties, notes, asset, documen
 
     // ═══ CLAIM DETAILS ════════════════════════════════════════════
     sectionHead('Claim Details');
-    labelValueRow('Claim Number',  dash(claim.claim_number));
-    labelValueRow('Claim Name',    dash(claim.claim_name));
-    labelValueRow('Claim Type',    dash(claim.claim_type));
-    labelValueRow('Status',        dash(claim.claim_status));
-    labelValueRow('Claim Date',    dateStr(claim.claim_date));
-    labelValueRow('Date Reported', dateStr(claim.date_reported));
+    labelValueRow('Claim Number',     dash(claim.claim_number));
+    labelValueRow('Claim Name',       dash(claim.claim_name));
+    labelValueRow('Claim Type',       dash(claim.claim_type));
+    labelValueRow('Status',           dash(claim.claim_status));
+    labelValueRow('Date of Incident', dateStr(claim.claim_date));
+    if (claim.incident_time) labelValueRow('Time of Incident', claim.incident_time);
+    labelValueRow('Date Reported',    dateStr(claim.date_reported));
+
+    // ═══ INCIDENT LOCATION (optional) ═════════════════════════════
+    if (claim.incident_location_address || claim.incident_gps_lat || claim.incident_gps_lng) {
+      sectionHead('Incident Location');
+      if (claim.incident_location_address) labelValueRow('Address',       claim.incident_location_address);
+      if (claim.incident_gps_lat)          labelValueRow('GPS Latitude',  claim.incident_gps_lat);
+      if (claim.incident_gps_lng)          labelValueRow('GPS Longitude', claim.incident_gps_lng);
+    }
+
+    // ═══ POLICE REPORT (optional) ═════════════════════════════════
+    if (claim.police_case_number || claim.police_station_reported ||
+        claim.police_report_date_reported || claim.police_officer_name ||
+        claim.police_report_received) {
+      sectionHead('Police Report');
+      if (claim.police_case_number)          labelValueRow('Case Number',     claim.police_case_number);
+      if (claim.police_station_reported)     labelValueRow('Station',         claim.police_station_reported);
+      if (claim.police_report_date_reported) labelValueRow('Date Reported',   dateStr(claim.police_report_date_reported));
+      if (claim.police_officer_name)         labelValueRow('Officer Name',    claim.police_officer_name);
+      labelValueRow('Report Received', yesNo(claim.police_report_received));
+    }
 
     // ═══ PARTIES ══════════════════════════════════════════════════
     sectionHead('Parties');

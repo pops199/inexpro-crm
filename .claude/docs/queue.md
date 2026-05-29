@@ -2404,3 +2404,53 @@ Files changed: 5
 - `server/routes/public-signing.js`
 Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-28 15:19 — auto-detected change
+Files changed: 6
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 56af6591-db1b-412b-a9ea-1d9b76a0d941
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-29 08:35 — auto-detected change
+Files changed: 11
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `package.json`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/migrations/0010_claims_incident_details.sql`
+- `server/db/sessions.db`
+- `server/lib/claim-report-pdf.js`
+- `server/routes/claims.js`
+Session: af5b0835-82ed-4260-b085-ab38ecae5131
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-29 08:39 — auto-detected change
+Files changed: 8
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/inexpro.db-wal`
+- `server/db/migrations/0010_claims_incident_details.sql`
+- `server/db/sessions.db`
+- `server/lib/claim-report-pdf.js`
+- `server/routes/claims.js`
+Session: af5b0835-82ed-4260-b085-ab38ecae5131
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-29 08:40 — auto-detected change
+Files changed: 5
+- `RELEASES.md`
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: af5b0835-82ed-4260-b085-ab38ecae5131
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
