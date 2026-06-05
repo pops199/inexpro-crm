@@ -6,6 +6,24 @@ sits at the top.
 
 ---
 
+## v1.0.71 — 2026-06-05
+
+**Audit Trail report: CSV export now downloads the full log for the date range**
+
+The **↓ CSV** button under *Reports → Audit Trail* previously exported only
+the 50 rows visible on the current page. It now pulls **every record**
+matching the selected filters (dates, module, action, user).
+
+- Pages through `/api/admin/audit-log` at 200 records per request until the
+  whole result set is gathered, then writes a single CSV.
+- Uses the same inclusive end-date logic as the on-screen report, so the
+  full chosen *To Date* is included.
+- Button shows an *"↓ Exporting…"* state while gathering pages and toasts
+  on failure.
+- Read-only change — no server route or schema changes.
+
+---
+
 ## v1.0.70 — 2026-05-29
 
 **GIT Confirmation: broker signature embedded above typed name**

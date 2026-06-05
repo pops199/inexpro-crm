@@ -2245,11 +2245,44 @@ ${xlsSections}
     }
   }
 
-  function exportAuditCsv(container) {
-    if (!_auditResults.length) { showToast('No data to export.', 'warning'); return; }
+  async function exportAuditCsv(container) {
+    const csvBtn = container?.querySelector('#at-csv-btn');
+
+    // Fetch ALL rows matching the current filters (not just the displayed page).
+    // The server caps `limit` at 200, so page through until every record is pulled.
+    let allRows = [];
+    try {
+      if (csvBtn) { csvBtn.disabled = true; csvBtn.textContent = '↓ Exporting…'; }
+
+      const baseParams = {};
+      if (_auditFilters.from)    baseParams.from    = _auditFilters.from;
+      if (_auditFilters.to)      baseParams.to      = _auditFilters.to + 'T23:59:59';
+      if (_auditFilters.module)  baseParams.module  = _auditFilters.module;
+      if (_auditFilters.action)  baseParams.action  = _auditFilters.action;
+      if (_auditFilters.user_id) baseParams.user_id = _auditFilters.user_id;
+
+      const PAGE_SIZE = 200;
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const res = await Api.admin.auditLog({ ...baseParams, page, limit: PAGE_SIZE });
+        const rows = res.data || [];
+        allRows = allRows.concat(rows);
+        totalPages = res.pagination?.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+    } catch (err) {
+      showToast('Failed to export audit log: ' + (err.message || err), 'danger');
+      return;
+    } finally {
+      if (csvBtn) { csvBtn.disabled = false; csvBtn.textContent = '↓ CSV'; }
+    }
+
+    if (!allRows.length) { showToast('No data to export.', 'warning'); return; }
+
     const cols = ['timestamp','module','action','record_id','user_full_name','description','changes'];
     const header = cols.map(c => c.replace(/_/g,' ').toUpperCase()).join(',');
-    const rows = _auditResults.map(r => {
+    const rows = allRows.map(r => {
       const changes = r.action === 'UPDATE'
         ? _auditBuildDiff(r.old_value, r.new_value)
             .map(c => `${c.label}: [${c.from}] → [${c.to}]`)
