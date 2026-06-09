@@ -325,6 +325,15 @@ const Claims = (() => {
       );
     }
 
+    // Hide settled claims by default to keep the working list uncluttered.
+    // They reappear only when the user explicitly picks "Settled" in the
+    // status filter. The dropdown reflects the current selection on both the
+    // initial render and the live filter path, so reading it here covers both.
+    const statusSel = document.getElementById('claim-filter-status');
+    if ((statusSel?.value || '') !== 'Settled') {
+      rows = rows.filter(c => c.claim_status !== 'Settled');
+    }
+
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${colCount}" class="table-empty">No claims found.</td></tr>`;
       return;

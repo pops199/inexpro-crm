@@ -2454,3 +2454,107 @@ Files changed: 5
 - `server/db/sessions.db`
 Session: af5b0835-82ed-4260-b085-ab38ecae5131
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-05-29 08:47 — auto-detected change
+Files changed: 7
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+- `server/lib/belogix-namibia-git-pdf.js`
+- `server/lib/git-confirmation-pdf.js`
+- `server/routes/policies.js`
+- `server/routes/public-signing.js`
+Session: af5b0835-82ed-4260-b085-ab38ecae5131
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-05 05:48 — auto-detected change
+Files changed: 5
+- `client/public/index.html`
+- `client/src/components/reports.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 087d4841-775d-4472-843e-efbb248e8aee
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-05 05:49 — auto-detected change
+Files changed: 2
+- `RELEASES.md`
+- `package.json`
+Session: 087d4841-775d-4472-843e-efbb248e8aee
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-09 04:27 — auto-detected change
+Files changed: 2
+- `client/public/index.html`
+- `client/src/components/claims.js`
+Session: fdf80b31-dfad-441a-9393-e0b093d1dbec
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-09 04:32 — auto-detected change
+Files changed: 4
+- `client/public/claim_forms/~$expro Intermediary Disclosure 2026.docx`
+- `client/public/index.html`
+- `client/src/utils.js`
+- `server/routes/admin.js`
+Session: fdf80b31-dfad-441a-9393-e0b093d1dbec
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-09 04:45 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/contacts.js`
+- `server/lib/inexpro-disclosure-pdf.js`
+- `server/routes/settings.js`
+Session: fdf80b31-dfad-441a-9393-e0b093d1dbec
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-09 05:07 — auto-detected change
+Files changed: 11
+- `client/public/index.html`
+- `client/src/components/contacts.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/lib/inexpro-disclosure-content.js`
+- `server/lib/inexpro-disclosure-pdf.js`
+- `server/lib/signable-templates.js`
+- `server/routes/public-signing.js`
+- `server/routes/settings.js`
+Session: fdf80b31-dfad-441a-9393-e0b093d1dbec
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-09 — Session annotation (v1.0.72) — User-facing: YES
+
+Three shipped changes (`contacts.js` and `settings.js` ended **net-unchanged** —
+an interim static-attachment approach was replaced by the signable-template
+flow, which is fully server-side plus the existing picker).
+
+**1. Claims list hides Settled by default** — `client/src/components/claims.js`
+(`renderTableRows`). Claims with status `Settled` are filtered out unless the
+top **Status** filter is set to `Settled`. Reads the `#claim-filter-status`
+dropdown live, so it applies on both initial render and the live filter path.
+Keeps the working list uncluttered. No server/schema change.
+
+**2. Contacts — assigned broker reveals a client's ID with their own password** —
+`server/routes/admin.js` (`/reveal-encrypted`) + `client/src/utils.js`
+(`EncryptedField` modal copy). The SA ID Number stays masked for everyone on
+read. The reveal endpoint now authorises EITHER an admin password (any module)
+OR, for the **contacts** module only, the password of the broker assigned to
+that contact (POPIA need-to-know). Admins unchanged. Every reveal is
+audit-logged, now distinguishing the assigned-broker path. Modal wording is
+contacts-aware.
+
+**3. Intermediary Disclosure Notice — fill-and-sign link flow** — new
+`server/lib/inexpro-disclosure-content.js` (single source of truth: sections
+1–17 with the docx tables, client fill-in fields, HTML body renderer),
+reworked `server/lib/inexpro-disclosure-pdf.js`, new dynamic signable template
+in `server/lib/signable-templates.js` (key `intermediary_disclosure`, category
+**General**), and signing wiring in `server/routes/public-signing.js`.
+Workflow: contact email → Add Attachment → **General** → *"Intermediary
+Disclosure Notice (e-sign link)"* → email carries a signing link → client reads
+the full disclosure (with tables), fills their details, signs on-screen → signed
+PDF (client details + signature stamped; broker signature on behalf of Inexpro
+CC spanning the page width) is filed automatically under that contact's
+**Documents**. Same pattern as the GIT Confirmation. Branded letterhead/footer.

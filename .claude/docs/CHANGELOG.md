@@ -949,3 +949,31 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-05-29 08:40
 - Modified 5 files
 - Files: RELEASES.md, client/public/index.html, client/src/components/claims.js, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-05-29 08:47
+- Modified 7 files
+- Files: RELEASES.md, package.json, server/db/sessions.db, server/lib/belogix-namibia-git-pdf.js, server/lib/git-confirmation-pdf.js (+2 more)
+
+## 2026-06-05 05:48
+- Modified 5 files
+- Files: client/public/index.html, client/src/components/reports.js, server/db/inexpro.db, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-06-05 05:49
+- Modified 2 files
+- Files: RELEASES.md, package.json
+
+## 2026-06-09 04:27
+- Modified 2 files
+- Files: client/public/index.html, client/src/components/claims.js
+
+## 2026-06-09 04:32
+- Modified 4 files
+- Files: client/public/claim_forms/~$expro Intermediary Disclosure 2026.docx, client/public/index.html, client/src/utils.js, server/routes/admin.js
+
+## 2026-06-09 04:45
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/contacts.js, server/lib/inexpro-disclosure-pdf.js, server/routes/settings.js
+
+## 2026-06-09 05:07
+- Modified 11 files
+- Files: client/public/index.html, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+6 more)

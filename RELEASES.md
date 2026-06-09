@@ -6,6 +6,47 @@ sits at the top.
 
 ---
 
+## v1.0.72 — 2026-06-09
+
+**Claims: settled claims hidden by default · Contacts: broker-self ID reveal · Intermediary Disclosure e-sign flow**
+
+Three changes this release.
+
+**1. Claims list hides Settled claims by default**
+
+The Claims list no longer shows claims with a status of **Settled**, keeping
+the working view focused on active files. They reappear only when **Settled**
+is explicitly chosen in the Status filter at the top. Works on both the
+initial load and the live search/filter path.
+
+**2. Contacts: assigned broker can reveal a client's ID Number with their own password**
+
+The SA ID Number (and other contact PII) stays masked on read for everyone.
+Previously only an **admin** password could reveal it. Now the **broker
+assigned to a contact** can reveal that contact's PII with **their own**
+password (POPIA need-to-know) — admins keep full access as before. Every
+reveal is still audit-logged, now distinguishing the assigned-broker path.
+Scoped to the contacts module; all other modules stay admin-only.
+
+**3. Intermediary Disclosure Notice — fill-and-sign link flow**
+
+The statutory **Intermediary Disclosure Notice** is now a signable document,
+like the GIT Confirmation. In a contact's email → **Add Attachment**, a new
+**General** group offers *"Intermediary Disclosure Notice (e-sign link)"*.
+Sending embeds a secure signing link; the client reads the full disclosure
+(sections 1–17, with the original document's tables), fills in their details,
+and signs on-screen. On submit the signed PDF is filed automatically under
+that contact's **Documents**.
+
+- The client's typed details + drawn signature are stamped into the
+  acknowledgement section; the broker's signature is applied on behalf of
+  Inexpro CC (spanning the page width, replacing the printed signature form).
+- Branded with the standard Inexpro letterhead + footer.
+- Document content lives in one place (`inexpro-disclosure-content.js`) shared
+  by the on-screen signing page and the filed PDF, so they always match.
+
+---
+
 ## v1.0.71 — 2026-06-05
 
 **Audit Trail report: CSV export now downloads the full log for the date range**

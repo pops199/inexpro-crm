@@ -1342,18 +1342,25 @@ const EncryptedField = (() => {
     // Centered, regardless of where the eye icon is on the page.
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);' +
       'display:flex;align-items:center;justify-content:center;z-index:9999;';
+    // Contacts allow an assigned broker to reveal their own client's PII with
+    // their OWN password (POPIA need-to-know); every other module is admin-only.
+    const _isContacts = wrap.dataset.module === 'contacts';
+    const _heading = _isContacts ? 'Password required' : 'Admin password required';
+    const _hint = _isContacts
+      ? 'Enter your password to confirm. Admins can reveal any contact; the broker assigned to this contact can reveal it with their own password. Every reveal is audit-logged.'
+      : 'Enter your admin password to confirm — every reveal is audit-logged.';
     overlay.innerHTML = `
       <div class="modal" style="background:var(--card-bg);color:var(--text);padding:1.4rem 1.5rem;
                                 border:1px solid var(--border);border-radius:8px;
                                 box-shadow:0 14px 40px rgba(0,0,0,.25);width:380px;max-width:92vw;">
-        <h3 style="margin:0 0 .35rem 0;font-size:1.05rem;color:var(--text);">Admin password required</h3>
+        <h3 style="margin:0 0 .35rem 0;font-size:1.05rem;color:var(--text);">${_heading}</h3>
         <p style="margin:0 0 .85rem 0;color:var(--text-light);font-size:.85rem;">
           Reveal <strong>${_esc(wrap.dataset.field)}</strong> on
           <strong>${_esc(wrap.dataset.module)}</strong> record #${_esc(wrap.dataset.recordId)}.
-          Enter your admin password to confirm — every reveal is audit-logged.
+          ${_hint}
         </p>
         <input type="password" id="encrypted-reveal-pw" class="form-control" autocomplete="current-password"
-               placeholder="Admin password"
+               placeholder="Password"
                style="width:100%;margin-bottom:.6rem;" />
         <div id="encrypted-reveal-err"
              style="display:none;color:var(--danger,#a71d2a);font-size:.8rem;margin-bottom:.6rem;"></div>

@@ -81,6 +81,10 @@ router.get('/:token', (req, res) => {
   // a static HTML template.
   let bodyHtml;
   let footerHtml;
+  // Extra fill-in fields rendered above the signature box (e.g. the
+  // Intermediary Disclosure's client-detail fields). Posted back as
+  // form_answers and stamped into the signed PDF.
+  let extraFields = [];
   if (tpl.dynamic) {
     let formData = {};
     try { formData = sr.form_data ? JSON.parse(sr.form_data) : {}; } catch (_) {}
@@ -90,6 +94,11 @@ router.get('/:token', (req, res) => {
     } else if (sr.template_key === 'roa_confirmation') {
       bodyHtml   = renderRoaSigningHtml(db, formData);
       footerHtml = '';
+    } else if (sr.template_key === 'intermediary_disclosure') {
+      const { renderDisclosureBodyHtml, CLIENT_FIELDS } = require('../lib/inexpro-disclosure-content');
+      bodyHtml    = renderDisclosureBodyHtml(ph);
+      footerHtml  = '';
+      extraFields = CLIENT_FIELDS;
     } else {
       bodyHtml   = '<p>This document is ready for your signature.</p>';
       footerHtml = '';
@@ -104,6 +113,7 @@ router.get('/:token', (req, res) => {
     title: tpl.title,
     bodyHtml,
     footerHtml,
+    extraFields,
     hasMarketingConsent: !!tpl.hasMarketingConsent,
     // Always render the signer-name field blank so the client must type
     // their own name. Pre-filling from the contact record meant most
@@ -129,7 +139,7 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
     const tpl = getTemplate(sr.template_key);
     if (!tpl) return res.status(500).json({ error: 'Template missing' });
 
-    const { signer_name, marketing_consent, signature_png_base64 } = req.body || {};
+    const { signer_name, marketing_consent, signature_png_base64, form_answers } = req.body || {};
     if (!signer_name || !String(signer_name).trim()) {
       return res.status(400).json({ error: 'Full name is required' });
     }
@@ -182,6 +192,28 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
           signedAt, signedIp, signedUa,
         },
         brokerSignaturePath,
+      });
+    } else if (sr.template_key === 'intermediary_disclosure') {
+      // Static statutory document; the client's typed details + signature
+      // are stamped in, and the broker's signature is applied on behalf of
+      // Inexpro CC (same signature source as the email/GIT flows).
+      const { renderIntermediaryDisclosurePdf } = require('../lib/inexpro-disclosure-pdf');
+      let brokerSignaturePath = null;
+      let preparedByName = null;
+      try {
+        const { resolveSignaturePath } = require('../lib/email-signature');
+        const sigp = resolveSignaturePath(sr.created_by, { db });
+        if (sigp && sigp.fullPath) brokerSignaturePath = sigp.fullPath;
+      } catch (_) {}
+      try {
+        const u = db.prepare('SELECT full_name FROM users WHERE id = ?').get(sr.created_by);
+        preparedByName = (u && u.full_name) || null;
+      } catch (_) {}
+      pdfBuffer = await renderIntermediaryDisclosurePdf({
+        signature: { buf: signatureBuf, signerName: String(signer_name).trim(), signedAt, signedIp, signedUa },
+        clientFields: (form_answers && typeof form_answers === 'object') ? form_answers : {},
+        brokerSignaturePath,
+        preparedByName,
       });
     } else if (sr.template_key === 'roa_confirmation') {
       const { renderRoaPdf } = require('../lib/roa-pdf');
@@ -252,6 +284,7 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
     const friendlyFilename =
         sr.template_key === 'git_confirmation' ? `GIT Confirmation - ${clientNameForFile}.pdf`
       : sr.template_key === 'roa_confirmation' ? `Record of Advice - ${clientNameForFile}.pdf`
+      : sr.template_key === 'intermediary_disclosure' ? `Intermediary Disclosure - ${clientNameForFile}.pdf`
       : `POPIA Consent - ${clientNameForFile}.pdf`;
 
     // For ROA-template requests we also link the signed PDF to the
@@ -629,7 +662,17 @@ h1{color:#1a5276;font-size:22px;margin-bottom:12px;}p{line-height:1.6;font-size:
 <body><div class="box"><h1>${escHtml(title)}</h1><p>${escHtml(message)}</p></div></body></html>`;
 }
 
-function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingConsent, prefillName }) {
+function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingConsent, prefillName, extraFields }) {
+  const xf = Array.isArray(extraFields) ? extraFields : [];
+  const extraFieldsHtml = xf.length ? `
+    <h3>Your details</h3>
+    <div class="xf-grid">
+      ${xf.map(f => `
+        <div class="xf-field">
+          <label for="xf-${escHtml(f.name)}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+          <input type="text" id="xf-${escHtml(f.name)}" data-xf="${escHtml(f.name)}"${f.required ? ' data-required="1"' : ''}>
+        </div>`).join('')}
+    </div>` : '';
   return `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8">
@@ -655,6 +698,10 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
   .form-row{display:grid;grid-template-columns:1fr 200px;gap:12px;margin:14px 0;}
   .form-row label{display:block;font-size:13px;color:#444;margin-bottom:4px;font-weight:600;}
   .form-row input{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;}
+  .xf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 4px;}
+  .xf-field label{display:block;font-size:13px;color:#444;margin-bottom:4px;font-weight:600;}
+  .xf-field input{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;}
+  @media (max-width:560px){.xf-grid{grid-template-columns:1fr;}}
   .submit-row{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
   .btn{padding:10px 22px;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;}
   .btn-primary{background:#1a5276;color:#fff;}
@@ -680,6 +727,8 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
     </div>` : ''}
 
     ${footerHtml}
+
+    ${extraFieldsHtml}
 
     <h3>Sign below</h3>
     <p style="font-size:13px;color:#555;">Draw your signature in the box below using your mouse or finger.</p>
@@ -773,6 +822,19 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
     if (checked) marketing = checked.value;
     ${hasMarketingConsent ? "if (!marketing) return showError('Please indicate your direct marketing preference.');" : ''}
 
+    // Collect the extra fill-in fields (if any) and enforce required ones.
+    var formAnswers = {};
+    var xfEls = document.querySelectorAll('[data-xf]');
+    for (var i = 0; i < xfEls.length; i++) {
+      var el = xfEls[i];
+      var val = (el.value || '').trim();
+      if (el.getAttribute('data-required') && !val) {
+        var lbl = el.previousElementSibling ? el.previousElementSibling.textContent.replace(' *', '') : 'all required fields';
+        return showError('Please complete: ' + lbl);
+      }
+      formAnswers[el.getAttribute('data-xf')] = val;
+    }
+
     var btn = document.getElementById('submit-btn');
     btn.disabled = true; btn.textContent = 'Submitting...';
 
@@ -783,6 +845,7 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
         body: JSON.stringify({
           signer_name: name,
           marketing_consent: marketing,
+          form_answers: formAnswers,
           signature_png_base64: canvas.toDataURL('image/png')
         })
       });

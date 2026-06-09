@@ -917,9 +917,12 @@ router.get('/export-xlsx/:module', requireAdmin, (req, res, next) => {
   }
 });
 
-// ─── POST /reveal-encrypted — verify admin password and return decrypted value ───
+// ─── POST /reveal-encrypted — verify password and return decrypted value ───
 //
 // Body: { password, module, record_id, field }
+// Authorised by EITHER an active admin's password (any module) OR, for the
+// contacts module only, the password of the broker assigned to that contact
+// (POPIA need-to-know — a broker can read the PII of a client they manage).
 // Allowed module/field combinations are whitelisted to prevent arbitrary table reads.
 // Every successful reveal is written to audit_log with the user, module/record/field
 // touched and the IP address.
@@ -945,34 +948,51 @@ router.post('/reveal-encrypted', (req, res) => {
   // active admin entering THEIR own password. Try the supplied password
   // against every admin/admin_only password hash and accept the first match.
   const sessionUser = db.prepare(
-    'SELECT id, role, active, full_name, username FROM users WHERE id = ?'
+    'SELECT id, role, active, full_name, username, password_hash FROM users WHERE id = ?'
   ).get(req.session.userId);
   if (!sessionUser || !sessionUser.active) return res.status(401).json({ error: 'Session invalid.' });
   const sessionLabel = sessionUser.full_name || sessionUser.username || `user ${sessionUser.id}`;
+
+  // POPIA "need to know": the broker ASSIGNED to a contact may reveal that
+  // contact's own PII with THEIR OWN password — no admin required. Scoped to
+  // the contacts module and to the record they actually manage; every other
+  // module (policies, claims, accounts, broker_profiles) stays admin-only.
+  let brokerSelfAuth = false;
+  if (module === 'contacts' && record_id) {
+    const owner = db.prepare('SELECT assigned_broker_id FROM contacts WHERE id = ?').get(record_id);
+    if (owner && owner.assigned_broker_id != null
+        && String(owner.assigned_broker_id) === String(sessionUser.id)
+        && sessionUser.password_hash
+        && bcrypt.compareSync(String(password), sessionUser.password_hash)) {
+      brokerSelfAuth = true;
+    }
+  }
 
   const admins = db.prepare(
     `SELECT id, password_hash, full_name, username
      FROM users
      WHERE active = 1 AND role IN ('admin', 'admin_only')`
   ).all();
-  if (!admins.length) {
+  if (!admins.length && !brokerSelfAuth) {
     return res.status(503).json({ error: 'No active admin users on file — cannot reveal encrypted values.' });
   }
 
   let matchedAdmin = null;
-  for (const a of admins) {
-    if (a.password_hash && bcrypt.compareSync(String(password), a.password_hash)) {
-      matchedAdmin = a;
-      break;
+  if (!brokerSelfAuth) {
+    for (const a of admins) {
+      if (a.password_hash && bcrypt.compareSync(String(password), a.password_hash)) {
+        matchedAdmin = a;
+        break;
+      }
     }
   }
-  if (!matchedAdmin) {
+  if (!matchedAdmin && !brokerSelfAuth) {
     const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
     res.locals.logAudit?.({
       action: 'REVEAL_DENIED', module: 'admin_reveal', recordId: parseInt(record_id, 10) || null,
       description: `${sessionLabel} attempted (and failed) to reveal ${module}.${field} on record ${record_id} at ${ts} UTC`,
     });
-    return res.status(401).json({ error: 'Incorrect admin password.' });
+    return res.status(401).json({ error: 'Incorrect password.' });
   }
   // Reuse the single `user` name below so the rest of the handler is unchanged.
   const user = sessionUser;
@@ -1014,13 +1034,19 @@ router.post('/reveal-encrypted', (req, res) => {
   } catch (_) { /* fall back to "record N" */ }
 
   // Audit description records BOTH the logged-in user (could be a broker) AND
-  // the admin whose password authorised the reveal.
-  const adminLabel = matchedAdmin.full_name || matchedAdmin.username || `user ${matchedAdmin.id}`;
+  // the admin whose password authorised the reveal — or, for the assigned-broker
+  // self-reveal path, that the broker authorised it with their own password.
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19); // YYYY-MM-DD HH:MM:SS UTC
-  const sameSession = matchedAdmin.id === sessionUser.id;
-  const desc = sameSession
-    ? `${adminLabel} revealed ${module}.${field} for "${subjectName}" at ${ts} UTC`
-    : `${sessionLabel} revealed ${module}.${field} for "${subjectName}" — authorised by admin ${adminLabel} at ${ts} UTC`;
+  let desc;
+  if (brokerSelfAuth) {
+    desc = `${sessionLabel} (assigned broker) revealed ${module}.${field} for "${subjectName}" at ${ts} UTC`;
+  } else {
+    const adminLabel = matchedAdmin.full_name || matchedAdmin.username || `user ${matchedAdmin.id}`;
+    const sameSession = matchedAdmin.id === sessionUser.id;
+    desc = sameSession
+      ? `${adminLabel} revealed ${module}.${field} for "${subjectName}" at ${ts} UTC`
+      : `${sessionLabel} revealed ${module}.${field} for "${subjectName}" — authorised by admin ${adminLabel} at ${ts} UTC`;
+  }
 
   res.locals.logAudit?.({
     action:   'REVEAL',

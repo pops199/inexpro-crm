@@ -156,6 +156,24 @@ const TEMPLATES = {
     bodyHtml:   '',
     footerHtml: '',
   },
+  // Intermediary Disclosure Notice — DYNAMIC template. The signing page
+  // renders the full statutory disclosure (sections 1–17, with the docx
+  // tables) plus fill-in client-detail fields. On submit the client's typed
+  // details + drawn signature are stamped into the filed PDF, alongside the
+  // broker's signature on behalf of Inexpro CC. No broker form_data needed —
+  // the document is static; only the client fields are captured at sign time.
+  intermediary_disclosure: {
+    key:        'intermediary_disclosure',
+    label:      'Intermediary Disclosure Notice',
+    category:   'General',
+    title:      'Statutory Disclosure Notice to Clients',
+    filename:   'intermediary-disclosure.pdf',
+    description: 'Statutory Intermediary Disclosure Notice — signed by client',
+    hasMarketingConsent: false,
+    dynamic:    true,
+    bodyHtml:   '',
+    footerHtml: '',
+  },
   // Record of Advice — DYNAMIC template. The signing page pulls the
   // advice_record row referenced by form_data.advice_record_id and
   // renders its needs / recommendation / suitability content. The signed
