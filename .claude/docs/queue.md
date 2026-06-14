@@ -2683,3 +2683,27 @@ Files changed: 6
 - `server/db/sessions.db`
 Session: c577cd75-5e2f-464a-a7c2-143526e3a356
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 18:05 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 18:24 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 18:59 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -1031,12 +1031,9 @@ const Claims = (() => {
                 <div class="form-grid form-grid-2">
 
                   <div class="form-group">
-                    <label class="form-label">Settlement Amount</label>
-                    <div class="input-prefix-group">
-                      <span class="input-prefix cur-label">R</span>
-                      <input type="number" name="settlement_amount" id="claim-settlement-amount" class="form-control" step="0.01" min="0"
-                        value="${esc(d.settlement_amount || '')}" />
-                    </div>
+                    <label class="form-label">Settlement Amount (<span class="cur-label">R</span>)</label>
+                    <input type="number" name="settlement_amount" id="claim-settlement-amount" class="form-control" step="0.01" min="0"
+                      value="${esc(d.settlement_amount || '')}" />
                   </div>
 
                   <div class="form-group">
@@ -1258,14 +1255,21 @@ const Claims = (() => {
       warnEl = document.createElement('div');
       warnEl.id = 'claim-gate-warn';
       warnEl.style.cssText = `
-        margin:.5rem 0 .75rem; padding:.6rem .85rem;
+        margin:.25rem 0 1rem; padding:.6rem .85rem;
         background:#fdecea; border-left:3px solid #c0392b;
         color:#7a1f15; font-size:.83rem; border-radius:4px;
         display:none;
       `;
-      polSel.closest('.form-group')?.parentNode?.insertBefore(
-        warnEl, polSel.closest('.form-group')
-      );
+      // Place it full-width right under the "Core Details" header (first
+      // section legend) rather than inside the grid next to a field.
+      const coreLegend = formEl.querySelector('.form-section-title');
+      if (coreLegend) {
+        coreLegend.insertAdjacentElement('afterend', warnEl);
+      } else {
+        polSel.closest('.form-group')?.parentNode?.insertBefore(
+          warnEl, polSel.closest('.form-group')
+        );
+      }
     }
 
     const update = () => {

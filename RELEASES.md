@@ -6,6 +6,15 @@ sits at the top.
 
 ---
 
+## v1.0.75 — 2026-06-14
+
+**Claims form polish**
+
+- The **Settlement Amount** label now shows the currency — "Settlement Amount (R)" / "(N$)" — matching Estimated Value and the Excess fields, and flips with the currency selector.
+- The "Claim cannot be created" warning (inactive policy/asset) now appears full-width directly under the **Core Details** header instead of squeezed into the field grid next to Claim Status.
+
+---
+
 ## v1.0.74 — 2026-06-14
 
 **Admin navigation fixes · Claims form overhaul: new fields, reorder, live status band · claim-save drift fix**
