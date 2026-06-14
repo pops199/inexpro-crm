@@ -1608,7 +1608,7 @@
         const allUsers = usersResp.data || usersResp || [];
         const adminUsers = allUsers.filter(u => u.active && (u.role === 'admin' || u.role === 'admin_only'));
         renderInto(this._detailTemplate(id, p, cpd, { adminUsers }));
-        this._bindDetail(id, { adminUsers, userId: p.user_id });
+        this._bindDetail(id, { adminUsers, userId: p.user_id, cpd, currentCycle: p.current_cpd_cycle || '' });
       } catch (err) {
         renderInto(`<div class="alert alert-danger">${esc(err.message)}</div>`);
       }
@@ -1659,8 +1659,19 @@
     },
 
     _detailTemplate(id, p, cpd, opts = {}) {
-      const cpdPts = cpd.reduce((s, x) => s + (x.points_awarded || 0), 0);
+      const currentCycle = p.current_cpd_cycle || '';
+      // Points + status reflect the CURRENT cycle only — past-cycle activities
+      // live in Archive History and must not inflate the working total.
+      const currentCpd = cpd.filter(c => (c.cpd_cycle || '') === currentCycle);
+      const cpdPts = currentCpd.reduce((s, x) => s + (x.points_awarded || 0), 0);
       const statusColor = cpdPts >= 14 ? '#1a7a3a' : cpdPts >= 8 ? '#b78105' : '#c0392b';
+
+      // Archive History options: current cycle first, then any past cycles that
+      // have logged activity, most-recent first.
+      const pastCycles = [...new Set(cpd.map(c => c.cpd_cycle).filter(Boolean))]
+        .filter(cy => cy !== currentCycle)
+        .sort((a, b) => b.localeCompare(a));
+      const cycleOptions = [currentCycle, ...pastCycles];
 
       return `
         <div class="detail-view">
@@ -1716,46 +1727,19 @@
           <!-- CPD Activities -->
           <div class="detail-tabs card">
             <div class="tabs-header">
-              <button class="tab-btn active" type="button">CPD Activities — ${esc(p.current_cpd_cycle || '')}</button>
+              <button class="tab-btn active" type="button">CPD Activities</button>
             </div>
             <div class="tab-content">
-              <div class="tab-toolbar" style="padding:.75rem;">
-                <button id="new-cpd" class="btn btn-sm btn-primary">+ Log CPD Activity</button>
-                <span style="margin-left:1rem;font-size:.9rem;color:var(--text-light,#666);">
-                  Points this cycle: <strong style="color:${statusColor};">${cpdPts} / 18</strong>
-                  &nbsp;·&nbsp; ${Math.max(0, 18 - cpdPts)} points remaining
-                </span>
+              <div class="tab-toolbar" style="padding:.75rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <div id="cpd-cycle-controls" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;flex:1 1 auto;"></div>
+                <label style="font-size:.85rem;color:var(--text-light,#666);display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+                  Archive History:
+                  <select id="cpd-cycle-select" class="form-control" style="max-width:240px;display:inline-block;height:auto;padding:.3rem .5rem;">
+                    ${cycleOptions.map(cy => `<option value="${esc(cy)}">${esc(cy)}${cy === currentCycle ? ' — current' : ''}</option>`).join('')}
+                  </select>
+                </label>
               </div>
-              <div class="table-responsive">
-                <table class="table">
-                  <thead><tr>
-                    <th>Date</th><th>Type</th><th>Activity</th><th>Provider</th>
-                    <th style="text-align:center;">Points</th><th>Approved by</th><th>Certificate</th><th></th>
-                  </tr></thead>
-                  <tbody>
-                    ${cpd.map(c => `
-                      <tr>
-                        <td>${esc(c.activity_date)}</td>
-                        <td>${esc(c.activity_type)}</td>
-                        <td>${esc(c.activity_title || '—')}</td>
-                        <td>${esc(c.activity_provider)}</td>
-                        <td style="text-align:center;">${c.points_awarded}</td>
-                        <td>${esc(c.approved_by_name || '—')}</td>
-                        <td>${(() => {
-                          const cp = c.certificate_path || '';
-                          const m = /^doc:(\d+)$/.exec(cp);
-                          if (m) return `<a href="/api/documents/${esc(m[1])}/view" target="_blank">View</a>`;
-                          if (cp && cp !== 'pending-upload') return `<span title="${esc(cp)}">📎 file</span>`;
-                          return '—';
-                        })()}</td>
-                        <td style="white-space:nowrap;">
-                          <button class="btn btn-xs btn-secondary cpd-edit" data-id="${c.id}">Edit</button>
-                          <button class="btn btn-xs btn-danger cpd-del" data-id="${c.id}">Delete</button>
-                        </td>
-                      </tr>`).join('') || '<tr><td colspan="8" class="table-empty">No CPD activities logged yet.</td></tr>'}
-                  </tbody>
-                </table>
-              </div>
+              <div id="cpd-table-wrap" class="table-responsive"></div>
             </div>
           </div>
         </div>
@@ -1782,6 +1766,83 @@
         });
       }
 
+      // CPD Activities — render the selected cycle. The working cycle is fully
+      // editable; archived (past) cycles render read-only. Switching the Archive
+      // History dropdown re-renders the table and re-binds its buttons.
+      const cpd = opts.cpd || [];
+      const currentCycle = opts.currentCycle || '';
+      const cycleSelect = document.getElementById('cpd-cycle-select');
+
+      const renderCycle = (cycle) => {
+        const editable = cycle === currentCycle;
+        const rows = cpd.filter(c => (c.cpd_cycle || '') === cycle);
+        const pts = rows.reduce((s, x) => s + (x.points_awarded || 0), 0);
+        const color = pts >= 14 ? '#1a7a3a' : pts >= 8 ? '#b78105' : '#c0392b';
+
+        const controls = document.getElementById('cpd-cycle-controls');
+        const wrap = document.getElementById('cpd-table-wrap');
+        if (!controls || !wrap) return;
+
+        if (editable) {
+          controls.innerHTML = `
+            <button id="new-cpd" class="btn btn-sm btn-primary">+ Log CPD Activity</button>
+            <span style="font-size:.9rem;color:var(--text-light,#666);">
+              Points this cycle: <strong style="color:${color};">${pts} / 18</strong>
+              &nbsp;·&nbsp; ${Math.max(0, 18 - pts)} points remaining
+            </span>`;
+        } else {
+          controls.innerHTML = `
+            <span class="badge" style="background:#7f8c8d;color:#fff;padding:.2rem .5rem;border-radius:3px;">Archived cycle — read only</span>
+            <span style="font-size:.9rem;color:var(--text-light,#666);">
+              Points logged: <strong style="color:${color};">${pts} / 18</strong>
+            </span>`;
+        }
+        wrap.innerHTML = this._cpdTableHtml(rows, editable);
+        if (editable) this._bindCpdButtons(id, opts);
+      };
+
+      if (cycleSelect) {
+        cycleSelect.addEventListener('change', () => renderCycle(cycleSelect.value));
+      }
+      renderCycle(currentCycle);
+    },
+
+    _cpdCertCell(c) {
+      const cp = c.certificate_path || '';
+      const m = /^doc:(\d+)$/.exec(cp);
+      if (m) return `<a href="/api/documents/${esc(m[1])}/view" target="_blank">View</a>`;
+      if (cp && cp !== 'pending-upload') return `<span title="${esc(cp)}">📎 file</span>`;
+      return '—';
+    },
+
+    _cpdTableHtml(rows, editable) {
+      const colspan = editable ? 8 : 7;
+      return `
+        <table class="table">
+          <thead><tr>
+            <th>Date</th><th>Type</th><th>Activity</th><th>Provider</th>
+            <th style="text-align:center;">Points</th><th>Approved by</th><th>Certificate</th>${editable ? '<th></th>' : ''}
+          </tr></thead>
+          <tbody>
+            ${rows.map(c => `
+              <tr>
+                <td>${esc(c.activity_date)}</td>
+                <td>${esc(c.activity_type)}</td>
+                <td>${esc(c.activity_title || '—')}</td>
+                <td>${esc(c.activity_provider)}</td>
+                <td style="text-align:center;">${c.points_awarded}</td>
+                <td>${esc(c.approved_by_name || '—')}</td>
+                <td>${this._cpdCertCell(c)}</td>
+                ${editable ? `<td style="white-space:nowrap;">
+                  <button class="btn btn-xs btn-secondary cpd-edit" data-id="${c.id}">Edit</button>
+                  <button class="btn btn-xs btn-danger cpd-del" data-id="${c.id}">Delete</button>
+                </td>` : ''}
+              </tr>`).join('') || `<tr><td colspan="${colspan}" class="table-empty">No CPD activities ${editable ? 'logged yet' : 'in this cycle'}.</td></tr>`}
+          </tbody>
+        </table>`;
+    },
+
+    _bindCpdButtons(id, opts = {}) {
       const newCpdBtn = document.getElementById('new-cpd');
       if (newCpdBtn) {
         newCpdBtn.addEventListener('click', () => this._openCpdModal(id, opts.adminUsers || []));

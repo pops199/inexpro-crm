@@ -6,6 +6,41 @@ sits at the top.
 
 ---
 
+## v1.0.73 — 2026-06-14
+
+**GIT Confirmation: Brokers dropdown + manual company name · Claims hide finalised statuses · Broker CPD Archive History**
+
+Four changes this release.
+
+**1. GIT Confirmation — Brokers is now a dropdown (Inexpro / Crown)**
+
+On a policy's **GIT Confirmation** form, the **Brokers** field is now a dropdown
+offering **Inexpro** and **Crown** instead of free text. Inexpro keeps the exact
+firm name ("Inexpro cc") that prints on the confirmation document and signing
+page, so existing output is unchanged; choosing Crown prints "Crown".
+
+**2. GIT Confirmation — Company Name no longer auto-fills**
+
+The **Company Name** field in the Acknowledgement of Receipt section no longer
+pre-fills with the account name — it starts blank and must be entered manually
+each time, preventing the wrong company being carried onto a signed document.
+
+**3. Claims list hides finalised claims (Settled / Rejected / Closed)**
+
+Building on the Settled-hidden behaviour, the Claims list now also hides
+**Rejected** and **Closed** claims by default to keep the working view on active
+files. Each reappears only when that exact status is chosen in the Status filter.
+
+**4. Broker Profiles — CPD Archive History (yearly cycles)**
+
+The CPD Activities panel now shows only the **current FAIS cycle** (1 Jun –
+31 May). A new **Archive History** dropdown lets you open any past cycle, shown
+read-only with its activities and certificates still viewable. Cycles roll over
+automatically each 1 June. (Also corrects the points total, which previously
+summed across all cycles.)
+
+---
+
 ## v1.0.72 — 2026-06-09
 
 **Claims: settled claims hidden by default · Contacts: broker-self ID reveal · Intermediary Disclosure e-sign flow**

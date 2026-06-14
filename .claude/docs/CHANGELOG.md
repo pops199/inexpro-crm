@@ -977,3 +977,27 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-06-09 05:07
 - Modified 11 files
 - Files: client/public/index.html, client/src/components/contacts.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+6 more)
+
+## 2026-06-09 08:18
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-06-14 07:41
+- Modified 4 files
+- Files: client/public/claim_forms/~$expro Intermediary Disclosure 2026.docx (deleted), client/public/index.html, client/src/components/policies.js, server/db/sessions.db
+
+## 2026-06-14 07:44
+- Modified 5 files
+- Files: client/src/components/policies.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-06-14 07:47
+- Modified 6 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
+
+## 2026-06-14 07:49
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/claims.js, server/db/sessions.db
+
+## 2026-06-14 07:58
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/compliance.js, server/db/sessions.db

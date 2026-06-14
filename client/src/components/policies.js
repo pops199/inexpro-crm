@@ -3173,7 +3173,10 @@ ${brokerName}`;
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
             <div class="form-group" style="margin:0;">
               <label class="form-label">Brokers</label>
-              <input class="form-control" id="git-broker-firm" value="Inexpro cc">
+              <select class="form-control" id="git-broker-firm">
+                <option value="Inexpro cc" selected>Inexpro</option>
+                <option value="Crown">Crown</option>
+              </select>
             </div>
             <div class="form-group" style="margin:0;">
               <label class="form-label">Prepared by (signature name)</label>
@@ -3270,7 +3273,7 @@ ${brokerName}`;
             </div>
             <div class="form-group" style="margin:0;">
               <label class="form-label">Company Name</label>
-              <input class="form-control" id="git-company-name" value="${esc(account?.account_name || '')}">
+              <input class="form-control" id="git-company-name" value="" placeholder="Enter company name" autocomplete="off">
             </div>
           </div>
 

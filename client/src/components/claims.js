@@ -325,13 +325,16 @@ const Claims = (() => {
       );
     }
 
-    // Hide settled claims by default to keep the working list uncluttered.
-    // They reappear only when the user explicitly picks "Settled" in the
-    // status filter. The dropdown reflects the current selection on both the
-    // initial render and the live filter path, so reading it here covers both.
+    // Hide finalised claims (Settled / Rejected / Closed) by default to keep
+    // the working list uncluttered — these are "already done". Each reappears
+    // only when the user explicitly picks that exact status in the filter.
+    // The dropdown reflects the current selection on both the initial render
+    // and the live filter path, so reading it here covers both.
+    const HIDDEN_BY_DEFAULT = ['Settled', 'Rejected', 'Closed'];
     const statusSel = document.getElementById('claim-filter-status');
-    if ((statusSel?.value || '') !== 'Settled') {
-      rows = rows.filter(c => c.claim_status !== 'Settled');
+    const selectedStatus = statusSel?.value || '';
+    if (!HIDDEN_BY_DEFAULT.includes(selectedStatus)) {
+      rows = rows.filter(c => !HIDDEN_BY_DEFAULT.includes(c.claim_status));
     }
 
     if (!rows.length) {

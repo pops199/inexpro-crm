@@ -2558,3 +2558,58 @@ the full disclosure (with tables), fills their details, signs on-screen → sign
 PDF (client details + signature stamped; broker signature on behalf of Inexpro
 CC spanning the page width) is filed automatically under that contact's
 **Documents**. Same pattern as the GIT Confirmation. Branded letterhead/footer.
+
+### 2026-06-09 08:18 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: fdf80b31-dfad-441a-9393-e0b093d1dbec
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 07:41 — auto-detected change
+Files changed: 4
+- `client/public/claim_forms/~$expro Intermediary Disclosure 2026.docx (deleted)`
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 07:44 — auto-detected change
+Files changed: 5
+- `client/src/components/policies.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 07:47 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 07:49 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 07:58 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/compliance.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
