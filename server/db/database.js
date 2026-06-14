@@ -148,6 +148,37 @@ function initDb() {
       ['driver_relationship',    'TEXT'],
       ['driver_date_of_birth',   'DATE'],
       ['driver_years_experience','INTEGER'],
+      // Cause of loss + section toggles (Core Details)
+      ['cause_of_loss',            'TEXT'],
+      ['reported_to_police',       'INTEGER NOT NULL DEFAULT 0'],
+      ['third_party_involved',     'INTEGER NOT NULL DEFAULT 0'],
+      // Claim lifecycle dates (Dates & Incident)
+      ['date_lodged_with_insurer', 'DATE'],
+      ['requirements_completed_date', 'DATE'],
+      // Excess settlement tracking (Excess)
+      ['excess_payable',           'REAL'],
+      ['excess_status',            'TEXT'],
+      ['excess_paid_date',         'DATE'],
+      // VAT treatment (Settlement & Outcome)
+      ['vat_treatment',            'TEXT'],
+      ['settlement_amount_excl_vat','REAL'],
+      // Salvage / recovery / subrogation (Third Party Details)
+      ['salvage_recovery_amount',  'REAL'],
+      ['recovery_type',            'TEXT'],
+      ['recovery_status',          'TEXT'],
+      // Self-heal: incident / police columns from migration 0010. On some DBs
+      // 0010 is recorded as applied but a column went missing (drift), which
+      // breaks claim create/update because the route references them. These are
+      // existence-checked below, so present columns are skipped harmlessly.
+      ['incident_time',              'TEXT'],
+      ['incident_location_address',  'TEXT'],
+      ['incident_gps_lat',           'TEXT'],
+      ['incident_gps_lng',           'TEXT'],
+      ['police_case_number',         'TEXT'],
+      ['police_station_reported',    'TEXT'],
+      ['police_report_date_reported','DATE'],
+      ['police_officer_name',        'TEXT'],
+      ['police_report_received',     'INTEGER NOT NULL DEFAULT 0'],
     ];
     for (const [col, type] of newClaimCols) {
       if (!claimCols2.some(c => c.name === col)) {

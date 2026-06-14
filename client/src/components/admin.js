@@ -8,11 +8,11 @@ const Admin = (() => {
     const isFullAdmin = window.currentUser?.role === 'admin';
     return `
       <div class="tab-bar" style="margin-bottom:1.5rem;">
-        ${isFullAdmin ? '<button class="tab-btn" id="tab-audit" onclick="Admin.auditLog()">Audit Log</button>' : ''}
-        <button class="tab-btn" id="tab-settings" onclick="Admin.settings()">Settings</button>
-        <button class="tab-btn" id="tab-broker-profiles" onclick="Admin.brokerFitness()">Broker Profiles</button>
-        ${isFullAdmin ? '<button class="tab-btn" id="tab-products" onclick="Admin.productsTab()">Product Library</button>' : ''}
-        ${isFullAdmin ? '<button class="tab-btn" id="tab-data-breaches" onclick="Admin.dataBreachesTab()">Data Breach Log</button>' : ''}
+        <button class="tab-btn" id="tab-settings" onclick="navigate('admin')">Settings</button>
+        <button class="tab-btn" id="tab-broker-profiles" onclick="navigate('broker-profiles')">Broker Profiles</button>
+        ${isFullAdmin ? '<button class="tab-btn" id="tab-products" onclick="navigate(\'products\')">Product Library</button>' : ''}
+        ${isFullAdmin ? '<button class="tab-btn" id="tab-data-breaches" onclick="navigate(\'data-breaches\')">Data Breach Log</button>' : ''}
+        ${isFullAdmin ? '<button class="tab-btn" id="tab-audit" onclick="navigate(\'admin/audit\')">Audit Log</button>' : ''}
       </div>
       <div id="admin-content"></div>`;
   }
@@ -526,6 +526,40 @@ const Admin = (() => {
     loadLog();
   }
 
+  // Read the active settings sub-section from the hash query, e.g.
+  // '#/admin?s=backup' → 'backup'. Returns null when none is present.
+  function _settingsSectionFromHash() {
+    const hash = window.location.hash || '';
+    const qIdx = hash.indexOf('?');
+    if (qIdx === -1) return null;
+    try {
+      return new URLSearchParams(hash.slice(qIdx + 1)).get('s');
+    } catch (_) { return null; }
+  }
+
+  // Reveal one settings sub-section: highlight its sidebar item, show only its
+  // pane, and lazy-init panes that load data on first reveal. Shared by the
+  // initial render and the sidebar click handler.
+  function _activateSettingsSection(el, subnav, target) {
+    if (subnav) {
+      subnav.querySelectorAll('.settings-nav-item').forEach(b => {
+        const active = b.dataset.section === target;
+        b.classList.toggle('active', active);
+        b.style.background = active ? 'var(--primary, #2980b9)' : 'transparent';
+        b.style.color      = active ? '#fff' : 'var(--text)';
+        b.style.fontWeight = active ? '600' : '500';
+      });
+    }
+    el.querySelectorAll('[data-section-pane]').forEach(p => {
+      p.style.display = p.dataset.sectionPane === target ? '' : 'none';
+    });
+    if (target === 'company')           Admin._initCompanyPane();
+    if (target === 'users')             Admin._initUsersPane();
+    if (target === 'security')          Admin._initSecurityPane();
+    if (target === 'dashboard-default') Admin._initDashboardDefaultPane();
+    if (target === 'system-update')     Admin._initSystemUpdatePane();
+  }
+
   async function settings() {
     setPageTitle('Settings');
     setBreadcrumb(['Admin', 'Settings']);
@@ -577,6 +611,13 @@ const Admin = (() => {
     const topItems    = sections.filter(s => !s.bottom);
     const bottomItems = sections.filter(s =>  s.bottom);
 
+    // Which sub-section to show. Read from the hash (#/admin?s=<id>) so browser
+    // Back/Forward and deep links land on the right pane instead of always
+    // resetting to the first section.
+    const validIds = new Set(sections.map(s => s.id));
+    let activeSection = _settingsSectionFromHash();
+    if (!activeSection || !validIds.has(activeSection)) activeSection = topItems[0]?.id || 'appearance';
+
     el.innerHTML = `
       <div style="display:flex;gap:1.25rem;align-items:flex-start;min-height:520px;">
 
@@ -590,11 +631,11 @@ const Admin = (() => {
           padding:.75rem;display:flex;flex-direction:column;gap:.25rem;
           position:sticky;top:1rem;align-self:flex-start;
         ">
-          ${topItems.map((s, i) => sidebarItem(s, i === 0)).join('')}
+          ${topItems.map(s => sidebarItem(s, s.id === activeSection)).join('')}
           ${bottomItems.length ? `
             <div style="flex:1;"></div>
             <div style="border-top:1px solid var(--border);margin:.5rem 0;"></div>
-            ${bottomItems.map(s => sidebarItem(s, false)).join('')}
+            ${bottomItems.map(s => sidebarItem(s, s.id === activeSection)).join('')}
           ` : ''}
         </nav>
 
@@ -1146,33 +1187,28 @@ const Admin = (() => {
       </div>
     `;
 
-    // Wire sidebar nav: clicking an item shows the matching <section>
+    // Wire sidebar nav: clicking an item shows the matching <section> AND
+    // records the section in the URL (#/admin?s=<id>) via pushState so the
+    // browser Back button returns to the previous section instead of jumping
+    // out to the default settings pane. pushState avoids a full re-render;
+    // Back/Forward fire popstate → router → settings() reads the section back.
     const subnav = document.getElementById('settings-subnav');
     if (subnav) {
       subnav.querySelectorAll('.settings-nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
           const target = btn.dataset.section;
-          // Toggle active styles on nav items
-          subnav.querySelectorAll('.settings-nav-item').forEach(b => {
-            const active = b === btn;
-            b.classList.toggle('active', active);
-            b.style.background = active ? 'var(--primary, #2980b9)' : 'transparent';
-            b.style.color      = active ? '#fff' : 'var(--text)';
-            b.style.fontWeight = active ? '600' : '500';
-          });
-          // Show only the matching pane
-          el.querySelectorAll('[data-section-pane]').forEach(p => {
-            p.style.display = p.dataset.sectionPane === target ? '' : 'none';
-          });
-          // Lazy-init panes that need data on first reveal
-          if (target === 'company')           Admin._initCompanyPane();
-          if (target === 'users')             Admin._initUsersPane();
-          if (target === 'security')          Admin._initSecurityPane();
-          if (target === 'dashboard-default') Admin._initDashboardDefaultPane();
-          if (target === 'system-update')     Admin._initSystemUpdatePane();
+          try {
+            const base = window.location.href.split('#')[0];
+            window.history.pushState(null, '', base + '#/admin?s=' + encodeURIComponent(target));
+          } catch (_) { /* pushState unavailable — pane still switches below */ }
+          _activateSettingsSection(el, subnav, target);
         });
       });
     }
+
+    // Apply the initial section (from the hash) so the correct pane is visible
+    // and lazily initialised on first paint.
+    _activateSettingsSection(el, subnav, activeSection);
 
     // Populate the export-module select
     if (isFullAdmin) {

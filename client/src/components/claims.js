@@ -46,6 +46,45 @@ const Claims = (() => {
     'Disputed',
   ];
 
+  const CAUSE_OF_LOSS_OPTIONS = [
+    'Fire / explosion',
+    'Theft / burglary',
+    'Motor accident / collision',
+    'Water damage / burst pipes',
+    'Storm / weather / natural perils',
+    'Mechanical / electrical breakdown',
+    'Liability / third-party',
+    'Goods in transit',
+    'Accidental damage',
+    'Other (specify in description)',
+  ];
+
+  const EXCESS_STATUS_OPTIONS = [
+    'Not yet due',
+    'Outstanding',
+    'Paid',
+    'Waived',
+    'Deducted from settlement',
+  ];
+
+  const VAT_TREATMENT_OPTIONS = [
+    'VAT inclusive',
+    'VAT exclusive',
+    'Not applicable',
+  ];
+
+  const RECOVERY_TYPE_OPTIONS = [
+    'Salvage sale',
+    'Third-party recovery',
+    'Subrogation',
+  ];
+
+  const RECOVERY_STATUS_OPTIONS = [
+    'Pending',
+    'Received',
+    'Written off',
+  ];
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function esc(str) {
@@ -457,6 +496,14 @@ const Claims = (() => {
         }
       }
 
+      // Section toggles: Police Report and Third Party Details are hidden by
+      // default and revealed by their Core-Details checkbox. On edit, auto-reveal
+      // if the flag is set OR any of that section's data already exists.
+      const policeInit = !!(d.reported_to_police || d.police_case_number || d.police_station_reported
+        || d.police_officer_name || d.police_report_date_reported || d.police_report_received);
+      const tpInit = !!(d.third_party_involved || d.tp_surname || d.salvage_recovery_amount
+        || d.recovery_type || d.recovery_status);
+
       el.innerHTML = `
         <div class="form-page">
           <div class="card">
@@ -536,6 +583,29 @@ const Claims = (() => {
                     </select>
                   </div>
 
+                  <div class="form-group">
+                    <label class="form-label">Cause of Loss</label>
+                    <select name="cause_of_loss" class="form-control">
+                      ${selectOpts(CAUSE_OF_LOSS_OPTIONS, d.cause_of_loss, '— Select Cause —')}
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" aria-hidden="true">&nbsp;</label>
+                    <div style="display:flex;align-items:center;justify-content:space-evenly;gap:1rem;min-height:38px;">
+                      <label class="checklist-item" style="margin:0;">
+                        <input type="checkbox" name="reported_to_police" id="claim-reported-police"
+                          ${policeInit ? 'checked' : ''} />
+                        <span>Reported to Police</span>
+                      </label>
+                      <label class="checklist-item" style="margin:0;">
+                        <input type="checkbox" name="third_party_involved" id="claim-tp-involved"
+                          ${tpInit ? 'checked' : ''} />
+                        <span>Third Party Involved</span>
+                      </label>
+                    </div>
+                  </div>
+
                 </div>
               </fieldset>
 
@@ -545,120 +615,6 @@ const Claims = (() => {
                 <div id="claim-related-contacts-rows"></div>
                 <div style="margin-top:.5rem;">
                   <button type="button" class="btn btn-secondary btn-sm" id="add-claim-contact-btn">+ Add Contact</button>
-                </div>
-              </fieldset>
-
-              <!-- ── Dates & Incident ── -->
-              <fieldset class="form-section">
-                <legend class="form-section-title">Dates &amp; Incident</legend>
-                <div class="form-grid form-grid-2">
-
-                  <div class="form-group">
-                    <label class="form-label required">Date of Incident</label>
-                    <input type="date" name="claim_date" class="form-control" required
-                      value="${esc(d.claim_date ? d.claim_date.slice(0,10) : '')}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Time of Incident</label>
-                    <input type="time" name="incident_time" class="form-control"
-                      value="${esc(d.incident_time || '')}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label required">Date Reported</label>
-                    <input type="date" name="date_reported" class="form-control" required
-                      value="${esc(d.date_reported ? d.date_reported.slice(0,10) : '')}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Estimated Value</label>
-                    <div class="input-prefix-group">
-                      <span class="input-prefix cur-label">R</span>
-                      <input type="number" name="estimated_value" class="form-control" step="0.01" min="0"
-                        value="${esc(d.estimated_value || '')}" />
-                    </div>
-                  </div>
-
-                  <div class="form-group form-group-full">
-                    <label class="form-label" style="display:flex;align-items:center;gap:.5rem;">
-                      <span>Incident Location</span>
-                      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;"
-                        id="claim-incident-maps-address" title="Open address in Google Maps">📍 Open in Google Maps</button>
-                      <button type="button" class="btn btn-secondary btn-sm" style="font-size:.72rem;"
-                        id="claim-incident-maps-gps" title="Open GPS coords in Google Maps">🌐 Open GPS</button>
-                    </label>
-                    <input type="text" name="incident_location_address" class="form-control"
-                      value="${esc(d.incident_location_address || '')}"
-                      placeholder="Street / suburb / city where the incident occurred" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">GPS Latitude</label>
-                    <input type="text" name="incident_gps_lat" class="form-control"
-                      value="${esc(d.incident_gps_lat || '')}" placeholder="e.g. -25.7461" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">GPS Longitude</label>
-                    <input type="text" name="incident_gps_lng" class="form-control"
-                      value="${esc(d.incident_gps_lng || '')}" placeholder="e.g. 28.1881" />
-                  </div>
-
-                  <div class="form-group form-group-full">
-                    <label class="form-label required">Incident Description</label>
-                    <textarea name="incident_description" class="form-control" rows="4" required>${esc(d.incident_description || '')}</textarea>
-                  </div>
-
-                </div>
-              </fieldset>
-
-              <!-- ── Police Report ── -->
-              <fieldset class="form-section">
-                <legend class="form-section-title">Police Report</legend>
-                <div class="form-grid form-grid-2">
-
-                  <div class="form-group">
-                    <label class="form-label">Police Case Number</label>
-                    <input type="text" name="police_case_number" class="form-control"
-                      value="${esc(d.police_case_number || '')}" placeholder="e.g. CAS 123/04/2026" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Police Station Reported</label>
-                    <input type="text" name="police_station_reported" class="form-control"
-                      value="${esc(d.police_station_reported || '')}" placeholder="e.g. Brooklyn SAPS" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Date Reported</label>
-                    <input type="date" name="police_report_date_reported" class="form-control"
-                      value="${esc(d.police_report_date_reported ? d.police_report_date_reported.slice(0,10) : '')}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Police Officer Name</label>
-                    <input type="text" name="police_officer_name" class="form-control"
-                      value="${esc(d.police_officer_name || '')}" placeholder="Officer in charge" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="checklist-item">
-                      <input type="checkbox" name="police_report_received"
-                        ${d.police_report_received ? 'checked' : ''} />
-                      <span>Copy of Police Report Received</span>
-                    </label>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Add Attachment <span style="font-weight:400;color:var(--text-muted);">(Police report file)</span></label>
-                    <input type="file" id="claim-police-report-file" class="form-control"
-                      accept=".pdf,.jpg,.jpeg,.png,.docx" />
-                    <small id="claim-police-report-hint" style="color:var(--text-muted);display:block;margin-top:.25rem;">
-                      ${isEdit ? 'File uploads on save and appears in the Documents tab.' : 'File uploads after the claim is created and appears in the Documents tab.'}
-                    </small>
-                  </div>
-
                 </div>
               </fieldset>
 
@@ -721,173 +677,131 @@ const Claims = (() => {
                 </div>
               </fieldset>
 
-              <!-- ── Client Communication ── -->
+              <!-- ── Dates & Incident ── -->
               <fieldset class="form-section">
-                <legend class="form-section-title">Client Communication</legend>
+                <legend class="form-section-title">Dates &amp; Incident</legend>
                 <div class="form-grid form-grid-2">
 
                   <div class="form-group">
+                    <label class="form-label required">Date of Incident</label>
+                    <input type="date" name="claim_date" class="form-control" required
+                      value="${esc(d.claim_date ? d.claim_date.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Time of Incident</label>
+                    <input type="time" name="incident_time" class="form-control"
+                      value="${esc(d.incident_time || '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label required">Date Reported (to us)</label>
+                    <input type="date" name="date_reported" class="form-control" required
+                      value="${esc(d.date_reported ? d.date_reported.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Date Lodged with Insurer</label>
+                    <input type="date" name="date_lodged_with_insurer" class="form-control"
+                      value="${esc(d.date_lodged_with_insurer ? d.date_lodged_with_insurer.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Requirements Completed Date</label>
+                    <input type="date" name="requirements_completed_date" class="form-control"
+                      value="${esc(d.requirements_completed_date ? d.requirements_completed_date.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Estimated Value (<span class="cur-label">R</span>)</label>
+                    <input type="number" name="estimated_value" class="form-control" step="0.01" min="0"
+                      value="${esc(d.estimated_value || '')}" />
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label" style="display:flex;align-items:center;gap:.5rem;">
+                      <span>Incident Location</span>
+                      <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:.72rem;"
+                        id="claim-incident-maps-address" title="Open address in Google Maps">📍 Open in Google Maps</button>
+                      <button type="button" class="btn btn-secondary btn-sm" style="font-size:.72rem;"
+                        id="claim-incident-maps-gps" title="Open GPS coords in Google Maps">🌐 Open GPS</button>
+                    </label>
+                    <input type="text" name="incident_location_address" class="form-control"
+                      value="${esc(d.incident_location_address || '')}"
+                      placeholder="Street / suburb / city where the incident occurred" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">GPS Latitude</label>
+                    <input type="text" name="incident_gps_lat" class="form-control"
+                      value="${esc(d.incident_gps_lat || '')}" placeholder="e.g. -25.7461" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">GPS Longitude</label>
+                    <input type="text" name="incident_gps_lng" class="form-control"
+                      value="${esc(d.incident_gps_lng || '')}" placeholder="e.g. 28.1881" />
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label required">Incident Description</label>
+                    <textarea name="incident_description" class="form-control" rows="4" required>${esc(d.incident_description || '')}</textarea>
+                  </div>
+
+                </div>
+              </fieldset>
+
+              <!-- ── Police Report (revealed by "Reported to Police") ── -->
+              <fieldset class="form-section" id="claim-police-section" style="${policeInit ? '' : 'display:none;'}">
+                <legend class="form-section-title">Police Report</legend>
+                <div class="form-grid form-grid-2">
+
+                  <div class="form-group">
+                    <label class="form-label">Police Case Number</label>
+                    <input type="text" name="police_case_number" class="form-control"
+                      value="${esc(d.police_case_number || '')}" placeholder="e.g. CAS 123/04/2026" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Police Station Reported</label>
+                    <input type="text" name="police_station_reported" class="form-control"
+                      value="${esc(d.police_station_reported || '')}" placeholder="e.g. Brooklyn SAPS" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Date Reported</label>
+                    <input type="date" name="police_report_date_reported" class="form-control"
+                      value="${esc(d.police_report_date_reported ? d.police_report_date_reported.slice(0,10) : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Police Officer Name</label>
+                    <input type="text" name="police_officer_name" class="form-control"
+                      value="${esc(d.police_officer_name || '')}" placeholder="Officer in charge" />
+                  </div>
+
+                  <div class="form-group">
                     <label class="checklist-item">
-                      <input type="checkbox" name="client_kept_informed"
-                        ${d.client_kept_informed ? 'checked' : ''} />
-                      <span>Client Kept Informed</span>
+                      <input type="checkbox" name="police_report_received"
+                        ${d.police_report_received ? 'checked' : ''} />
+                      <span>Copy of Police Report Received</span>
                     </label>
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label">Last Client Update Date</label>
-                    <input type="date" name="last_client_update_date" class="form-control"
-                      value="${esc(d.last_client_update_date ? d.last_client_update_date.slice(0,10) : '')}" />
+                    <label class="form-label">Add Attachment <span style="font-weight:400;color:var(--text-muted);">(Police report file)</span></label>
+                    <input type="file" id="claim-police-report-file" class="form-control"
+                      accept=".pdf,.jpg,.jpeg,.png,.docx" />
+                    <small id="claim-police-report-hint" style="color:var(--text-muted);display:block;margin-top:.25rem;">
+                      ${isEdit ? 'File uploads on save and appears in the Documents tab.' : 'File uploads after the claim is created and appears in the Documents tab.'}
+                    </small>
                   </div>
 
                 </div>
               </fieldset>
 
-              <!-- ── Conduct & Dispute ── -->
-              <fieldset class="form-section">
-                <legend class="form-section-title">Conduct &amp; Dispute</legend>
-
-                <div id="delay-warning" class="alert alert-warning" style="${d.delay_flag ? '' : 'display:none;'}">
-                  &#9888; <strong>Delay Flag Active</strong> — This claim has been flagged for processing delay. Ensure the client has been informed and the file is escalated.
-                </div>
-
-                <div class="checklist-grid">
-
-                  <label class="checklist-item">
-                    <input type="checkbox" name="delay_flag" id="claim-delay-flag"
-                      ${d.delay_flag ? 'checked' : ''} />
-                    <span class="text-danger"><strong>Delay Flag</strong></span>
-                  </label>
-
-                  <label class="checklist-item">
-                    <input type="checkbox" name="fair_process_concern" id="claim-fair-process"
-                      ${d.fair_process_concern ? 'checked' : ''} />
-                    <span class="text-danger"><strong>Fair Process Concern</strong></span>
-                  </label>
-
-                  <label class="checklist-item">
-                    <input type="checkbox" name="dispute_raised" id="claim-dispute"
-                      ${d.dispute_raised ? 'checked' : ''} />
-                    <span>Dispute Raised</span>
-                  </label>
-
-                </div>
-
-                <div class="form-group" id="claim-dispute-details-group"
-                  style="margin-top:12px; ${d.dispute_raised ? '' : 'display:none;'}">
-                  <label class="form-label">Dispute Details</label>
-                  <textarea name="dispute_details" class="form-control" rows="3">${esc(d.dispute_details || '')}</textarea>
-                </div>
-
-              </fieldset>
-
-              <!-- ── Excess ── -->
-              <fieldset class="form-section">
-                <legend class="form-section-title">Excess</legend>
-                <input type="hidden" id="claim-asset-value-hidden" value="${esc(d.asset_value != null ? d.asset_value : '')}" />
-                <div class="form-grid form-grid-2">
-
-                  <div class="form-group">
-                    <label class="form-label">Basic Excess (<span class="cur-label">R</span>)</label>
-                    <input type="number" name="excess" id="claim-excess" class="form-control" min="0" step="0.01"
-                      placeholder="0.00" value="${esc(d.excess != null ? d.excess : '')}" />
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Excess % of Claim Value <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
-                    <input type="number" name="excess_pct_claim" id="claim-excess-pct-claim" class="form-control"
-                      min="0" max="100" step="0.01" placeholder="e.g. 10"
-                      value="${esc(d.excess_pct_claim != null ? d.excess_pct_claim : '')}" />
-                    <small id="claim-excess-pct-claim-calc" style="color:var(--text-muted);margin-top:.2rem;display:block;"></small>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Excess % of Insured Value <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
-                    <input type="number" name="excess_pct_insured" id="claim-excess-pct-insured" class="form-control"
-                      min="0" max="100" step="0.01" placeholder="e.g. 2.5"
-                      value="${esc(d.excess_pct_insured != null ? d.excess_pct_insured : '')}" />
-                    <small id="claim-excess-pct-insured-calc" style="color:var(--text-muted);margin-top:.2rem;display:block;"></small>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Minimum Excess (<span class="cur-label">R</span>)</label>
-                    <input type="number" name="minimum_excess" id="claim-minimum-excess" class="form-control"
-                      min="0" step="0.01" placeholder="0.00"
-                      value="${esc(d.minimum_excess != null ? d.minimum_excess : '')}" />
-                  </div>
-
-                </div>
-              </fieldset>
-
-              <!-- ── Settlement ── -->
-              <fieldset class="form-section">
-                <legend class="form-section-title">Settlement &amp; Outcome</legend>
-                <div class="form-grid form-grid-2">
-
-                  <div class="form-group">
-                    <label class="form-label">Settlement Amount</label>
-                    <div class="input-prefix-group">
-                      <span class="input-prefix cur-label">R</span>
-                      <input type="number" name="settlement_amount" class="form-control" step="0.01" min="0"
-                        value="${esc(d.settlement_amount || '')}" />
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Settlement Date</label>
-                    <input type="date" name="settlement_date" class="form-control"
-                      value="${esc(d.settlement_date ? d.settlement_date.slice(0,10) : '')}" />
-                  </div>
-
-                  <!-- Repudiation / Dispute Resolution (TCF Outcome 5) — visible when status = Rejected -->
-                  <div class="form-group form-group-full" id="claim-repudiation-group"
-                    style="${d.claim_status === 'Rejected' ? '' : 'display:none;'}">
-                    <div class="form-grid form-grid-2" style="margin:0;">
-                      <div class="form-group">
-                        <label class="form-label required">Repudiation Reason</label>
-                        <select name="repudiation_reason" class="form-control">
-                          <option value="">— Select Reason —</option>
-                          ${['Non-disclosure','Exclusion applied','Late notification','Fraudulent claim','Policy lapsed','Other']
-                            .map(o => `<option value="${o}" ${d.repudiation_reason === o ? 'selected' : ''}>${o}</option>`).join('')}
-                        </select>
-                      </div>
-                      <div class="form-group">
-                        <label class="form-label required">Broker Dispute Action</label>
-                        <select name="broker_dispute_action" class="form-control">
-                          <option value="">— Select Action —</option>
-                          ${['Accepted','Challenged','Referred to Ombudsman','Client declined to dispute']
-                            .map(o => `<option value="${o}" ${d.broker_dispute_action === o ? 'selected' : ''}>${o}</option>`).join('')}
-                        </select>
-                      </div>
-                      <div class="form-group form-group-full">
-                        <label class="form-label">Repudiation Notes <span style="font-weight:400;color:var(--text-muted);">(optional supporting detail)</span></label>
-                        <textarea name="repudiation_reason_notes" class="form-control" rows="2">${esc(d.repudiation_reason_notes || '')}</textarea>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="form-group form-group-full">
-                    <label class="form-label">Rejection Reason</label>
-                    <textarea name="rejection_reason" class="form-control" rows="2">${esc(d.rejection_reason || '')}</textarea>
-                  </div>
-
-                  <div class="form-group form-group-full">
-                    <label class="form-label">Outcome Notes</label>
-                    <textarea name="outcome_notes" class="form-control" rows="3">${esc(d.outcome_notes || '')}</textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="form-label">Related Advice Record</label>
-                    <select name="advice_record_id" class="form-control">
-                      ${adviceRecordOptions(advice, d.advice_record_id)}
-                    </select>
-                  </div>
-
-                </div>
-              </fieldset>
-
-              <!-- ── Third Party Details ── -->
-              <fieldset class="form-section">
+              <!-- ── Third Party Details (revealed by "Third Party Involved") ── -->
+              <fieldset class="form-section" id="claim-third-party-section" style="${tpInit ? '' : 'display:none;'}">
                 <legend class="form-section-title">Third Party Details</legend>
                 <div class="form-grid form-grid-2">
                   <div class="form-group">
@@ -948,6 +862,247 @@ const Claims = (() => {
                 <div class="form-group" id="tp-insurer-form-group" style="${d.tp_is_insured ? '' : 'display:none;'}">
                   <label class="form-label">Insurance Company</label>
                   <input type="text" name="tp_insurer" class="form-control" value="${esc(d.tp_insurer || '')}" />
+                </div>
+
+                <fieldset style="border:1px solid var(--border,#dee2e6);border-radius:6px;padding:.75rem 1rem;margin:.75rem 0;">
+                  <legend style="font-size:.85rem;font-weight:600;padding:0 .5rem;">Salvage &amp; Recovery</legend>
+                  <div class="form-grid form-grid-2">
+                    <div class="form-group">
+                      <label class="form-label">Salvage / Recovery Amount (<span class="cur-label">R</span>)</label>
+                      <input type="number" name="salvage_recovery_amount" class="form-control" step="0.01" min="0"
+                        placeholder="0.00" value="${esc(d.salvage_recovery_amount != null ? d.salvage_recovery_amount : '')}" />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Recovery Type</label>
+                      <select name="recovery_type" class="form-control">
+                        ${selectOpts(RECOVERY_TYPE_OPTIONS, d.recovery_type, '— Select Type —')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Recovery Status</label>
+                      <select name="recovery_status" class="form-control">
+                        ${selectOpts(RECOVERY_STATUS_OPTIONS, d.recovery_status, '— Select Status —')}
+                      </select>
+                    </div>
+                  </div>
+                  <small style="color:var(--text-muted);display:block;margin-top:.4rem;">
+                    Subrogation = the insurer's right to pursue the at-fault third party to recoup what they paid the client. Flag that it applies and note the amount; the insurer drives the actual recovery.
+                  </small>
+                </fieldset>
+              </fieldset>
+
+              <!-- ── Excess ── -->
+              <fieldset class="form-section">
+                <legend class="form-section-title">Excess</legend>
+                <input type="hidden" id="claim-asset-value-hidden" value="${esc(d.asset_value != null ? d.asset_value : '')}" />
+                <div class="form-grid form-grid-2">
+
+                  <div class="form-group">
+                    <label class="form-label">Basic Excess (<span class="cur-label">R</span>)</label>
+                    <input type="number" name="excess" id="claim-excess" class="form-control" min="0" step="0.01"
+                      placeholder="0.00" value="${esc(d.excess != null ? d.excess : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Excess % of Claim Value <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                    <input type="number" name="excess_pct_claim" id="claim-excess-pct-claim" class="form-control"
+                      min="0" max="100" step="0.01" placeholder="e.g. 10"
+                      value="${esc(d.excess_pct_claim != null ? d.excess_pct_claim : '')}" />
+                    <small id="claim-excess-pct-claim-calc" style="color:var(--text-muted);margin-top:.2rem;display:block;"></small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Excess % of Insured Value <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                    <input type="number" name="excess_pct_insured" id="claim-excess-pct-insured" class="form-control"
+                      min="0" max="100" step="0.01" placeholder="e.g. 2.5"
+                      value="${esc(d.excess_pct_insured != null ? d.excess_pct_insured : '')}" />
+                    <small id="claim-excess-pct-insured-calc" style="color:var(--text-muted);margin-top:.2rem;display:block;"></small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Minimum Excess (<span class="cur-label">R</span>)</label>
+                    <input type="number" name="minimum_excess" id="claim-minimum-excess" class="form-control"
+                      min="0" step="0.01" placeholder="0.00"
+                      value="${esc(d.minimum_excess != null ? d.minimum_excess : '')}" />
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Excess Payable (<span class="cur-label">R</span>)</label>
+                    <input type="number" name="excess_payable" id="claim-excess-payable" class="form-control"
+                      min="0" step="0.01" placeholder="0.00"
+                      value="${esc(d.excess_payable != null ? d.excess_payable : '')}" />
+                    <small style="color:var(--text-muted);margin-top:.2rem;display:block;">Auto-calculates from the % fields above — override if needed.</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Excess Status</label>
+                    <select name="excess_status" id="claim-excess-status" class="form-control">
+                      ${selectOpts(EXCESS_STATUS_OPTIONS, d.excess_status, '— Select Status —')}
+                    </select>
+                  </div>
+
+                  <div class="form-group" id="claim-excess-paid-date-group"
+                    style="${d.excess_status === 'Paid' ? '' : 'display:none;'}">
+                    <label class="form-label">Excess Paid Date</label>
+                    <input type="date" name="excess_paid_date" id="claim-excess-paid-date" class="form-control"
+                      value="${esc(d.excess_paid_date ? d.excess_paid_date.slice(0,10) : '')}" />
+                  </div>
+
+                </div>
+              </fieldset>
+
+              <!-- ── Claim Handling ── -->
+              <fieldset class="form-section">
+                <legend class="form-section-title">Claim Handling</legend>
+
+                <!-- In-progress status band — live summary of an active claim -->
+                <div id="claim-progress-band" style="display:none;align-items:center;gap:.35rem 1.25rem;flex-wrap:wrap;
+                  background:#eaf3fb;border:1px solid #b6d4ef;color:#1a5276;border-radius:6px;
+                  padding:.55rem .85rem;margin-bottom:1rem;font-size:.85rem;">
+                  <strong id="claim-progress-status" style="text-transform:uppercase;letter-spacing:.04em;"></strong>
+                  <span id="claim-progress-age"></span>
+                  <span id="claim-progress-update"></span>
+                </div>
+
+                <!-- Client Communication + Conduct & Dispute side by side -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;">
+
+                  <div>
+                    <div style="font-weight:600;font-size:.9rem;color:var(--text);margin:.25rem 0 .5rem;">Client Communication</div>
+                    <label class="checklist-item">
+                      <input type="checkbox" name="client_kept_informed"
+                        ${d.client_kept_informed ? 'checked' : ''} />
+                      <span>Client Kept Informed</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:.9rem;color:var(--text);margin:.25rem 0 .5rem;">Conduct &amp; Dispute</div>
+
+                    <div id="delay-warning" class="alert alert-warning" style="${d.delay_flag ? '' : 'display:none;'}">
+                      &#9888; <strong>Delay Flag Active</strong> — This claim has been flagged for processing delay. Ensure the client has been informed and the file is escalated.
+                    </div>
+
+                    <div class="checklist-grid">
+
+                      <label class="checklist-item">
+                        <input type="checkbox" name="delay_flag" id="claim-delay-flag"
+                          ${d.delay_flag ? 'checked' : ''} />
+                        <span class="text-danger"><strong>Delay Flag</strong></span>
+                      </label>
+
+                      <label class="checklist-item">
+                        <input type="checkbox" name="fair_process_concern" id="claim-fair-process"
+                          ${d.fair_process_concern ? 'checked' : ''} />
+                        <span class="text-danger"><strong>Fair Process Concern</strong></span>
+                      </label>
+
+                      <label class="checklist-item">
+                        <input type="checkbox" name="dispute_raised" id="claim-dispute"
+                          ${d.dispute_raised ? 'checked' : ''} />
+                        <span>Dispute Raised</span>
+                      </label>
+
+                    </div>
+
+                    <div class="form-group" id="claim-dispute-details-group"
+                      style="margin-top:12px; ${d.dispute_raised ? '' : 'display:none;'}">
+                      <label class="form-label">Dispute Details</label>
+                      <textarea name="dispute_details" class="form-control" rows="3">${esc(d.dispute_details || '')}</textarea>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Last Client Update Date — sits at the bottom of Claim Handling -->
+                <div class="form-grid form-grid-2" style="margin-top:1.1rem;">
+                  <div class="form-group">
+                    <label class="form-label">Last Client Update Date</label>
+                    <input type="date" name="last_client_update_date" class="form-control"
+                      value="${esc(d.last_client_update_date ? d.last_client_update_date.slice(0,10) : '')}" />
+                  </div>
+                </div>
+
+              </fieldset>
+
+              <!-- ── Settlement ── -->
+              <fieldset class="form-section">
+                <legend class="form-section-title">Settlement &amp; Outcome</legend>
+                <div class="form-grid form-grid-2">
+
+                  <div class="form-group">
+                    <label class="form-label">Settlement Amount</label>
+                    <div class="input-prefix-group">
+                      <span class="input-prefix cur-label">R</span>
+                      <input type="number" name="settlement_amount" id="claim-settlement-amount" class="form-control" step="0.01" min="0"
+                        value="${esc(d.settlement_amount || '')}" />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">VAT Treatment</label>
+                    <select name="vat_treatment" id="claim-vat-treatment" class="form-control">
+                      ${selectOpts(VAT_TREATMENT_OPTIONS, d.vat_treatment, '— Select —')}
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Settlement Amount excl. VAT (<span class="cur-label">R</span>) <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                    <input type="number" name="settlement_amount_excl_vat" id="claim-settlement-excl-vat" class="form-control" step="0.01" min="0"
+                      placeholder="0.00" value="${esc(d.settlement_amount_excl_vat != null ? d.settlement_amount_excl_vat : '')}" />
+                    <small style="color:var(--text-muted);margin-top:.2rem;display:block;">Auto-calculates at 15% when VAT inclusive — override if needed.</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Settlement Date</label>
+                    <input type="date" name="settlement_date" class="form-control"
+                      value="${esc(d.settlement_date ? d.settlement_date.slice(0,10) : '')}" />
+                  </div>
+
+                  <!-- Repudiation / Dispute Resolution (TCF Outcome 5) — visible when status = Rejected -->
+                  <div class="form-group form-group-full" id="claim-repudiation-group"
+                    style="${d.claim_status === 'Rejected' ? '' : 'display:none;'}">
+                    <div class="form-grid form-grid-2" style="margin:0;">
+                      <div class="form-group">
+                        <label class="form-label required">Repudiation Reason</label>
+                        <select name="repudiation_reason" class="form-control">
+                          <option value="">— Select Reason —</option>
+                          ${['Non-disclosure','Exclusion applied','Late notification','Fraudulent claim','Policy lapsed','Other']
+                            .map(o => `<option value="${o}" ${d.repudiation_reason === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label required">Broker Dispute Action</label>
+                        <select name="broker_dispute_action" class="form-control">
+                          <option value="">— Select Action —</option>
+                          ${['Accepted','Challenged','Referred to Ombudsman','Client declined to dispute']
+                            .map(o => `<option value="${o}" ${d.broker_dispute_action === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                      </div>
+                      <div class="form-group form-group-full">
+                        <label class="form-label">Repudiation Notes <span style="font-weight:400;color:var(--text-muted);">(optional supporting detail)</span></label>
+                        <textarea name="repudiation_reason_notes" class="form-control" rows="2">${esc(d.repudiation_reason_notes || '')}</textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label">Rejection Reason</label>
+                    <textarea name="rejection_reason" class="form-control" rows="2">${esc(d.rejection_reason || '')}</textarea>
+                  </div>
+
+                  <div class="form-group form-group-full">
+                    <label class="form-label">Outcome Notes</label>
+                    <textarea name="outcome_notes" class="form-control" rows="3">${esc(d.outcome_notes || '')}</textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Related Advice Record</label>
+                    <select name="advice_record_id" class="form-control">
+                      ${adviceRecordOptions(advice, d.advice_record_id)}
+                    </select>
+                  </div>
+
                 </div>
               </fieldset>
 
@@ -1212,6 +1367,50 @@ const Claims = (() => {
       });
     }
 
+    // In-progress status band (inside Claim Handling) — live tracking summary
+    // for an active claim: current status, age since reported, and last client
+    // contact. Hidden once the claim is finalised (Settled / Rejected / Closed).
+    const FINALISED_STATUSES = ['Settled', 'Rejected', 'Closed'];
+    const bandEl    = document.getElementById('claim-progress-band');
+    const bandStat  = document.getElementById('claim-progress-status');
+    const bandAge   = document.getElementById('claim-progress-age');
+    const bandUpd   = document.getElementById('claim-progress-update');
+    const dateRepEl = formEl?.querySelector('[name="date_reported"]');
+    const lastUpdEl = formEl?.querySelector('[name="last_client_update_date"]');
+
+    const daysSince = (dateStr) => {
+      if (!dateStr) return null;
+      const dt = new Date(dateStr);
+      if (isNaN(dt.getTime())) return null;
+      return Math.max(0, Math.floor((Date.now() - dt.getTime()) / 86400000));
+    };
+    const dayLabel = (n) => `${n} day${n === 1 ? '' : 's'}`;
+
+    function refreshProgressBand() {
+      if (!bandEl) return;
+      const status = statusEl ? statusEl.value : '';
+      const active = !!status && !FINALISED_STATUSES.includes(status);
+      bandEl.style.display = active ? 'flex' : 'none';
+      if (!active) return;
+      if (bandStat) bandStat.textContent = status;
+      const age = daysSince(dateRepEl ? dateRepEl.value : '');
+      if (bandAge) bandAge.textContent = age === null
+        ? 'Date reported not set'
+        : `${dayLabel(age)} since reported`;
+      const updVal  = lastUpdEl ? lastUpdEl.value : '';
+      const updDays = daysSince(updVal);
+      if (bandUpd) bandUpd.textContent = updVal
+        ? `Last client update: ${updVal}${updDays !== null ? ` (${dayLabel(updDays)} ago)` : ''}`
+        : '⚠ No client update logged yet';
+    }
+
+    if (bandEl) {
+      [statusEl, dateRepEl, lastUpdEl].forEach(el => {
+        if (el) el.addEventListener('change', refreshProgressBand);
+      });
+      refreshProgressBand();
+    }
+
     // Excess % auto-calculation
     const clExcessEl    = document.getElementById('claim-excess');
     const clPctClaim    = document.getElementById('claim-excess-pct-claim');
@@ -1219,6 +1418,15 @@ const Claims = (() => {
     const clMinExcessEl = document.getElementById('claim-minimum-excess');
     const clBaseEl      = document.querySelector('[name="estimated_value"]');   // for % of claim
     const clAssetValEl  = document.getElementById('claim-asset-value-hidden'); // for % of insured
+    const clExcessPayableEl = document.getElementById('claim-excess-payable');
+    // Track manual override: dirty when the field holds a user-entered value.
+    // JS auto-fills don't fire 'input', so they never mark it dirty.
+    if (clExcessPayableEl) {
+      clExcessPayableEl.dataset.dirty = clExcessPayableEl.value ? '1' : '';
+      clExcessPayableEl.addEventListener('input', () => {
+        clExcessPayableEl.dataset.dirty = clExcessPayableEl.value ? '1' : '';
+      });
+    }
 
     function clEffective(pct, base, min) {
       if (!pct || !base) return null;
@@ -1246,10 +1454,11 @@ const Claims = (() => {
       if (calcClaim)   calcClaim.textContent   = effC !== null ? ('= ' + fmtRcl(effC)   + (min > 0 && (pctC/100)*claimBase   < min ? ' (min. excess applies)' : '')) : (pctC > 0 ? 'Enter estimated claim value to calculate' : '');
       if (calcInsured) calcInsured.textContent = effI !== null ? ('= ' + fmtRcl(effI) + (min > 0 && (pctI/100)*insuredBase < min ? ' (min. excess applies)' : '')) : (pctI > 0 ? 'Enter estimated value or select asset to calculate' : '');
 
-      // Auto-fill excess Rand field
-      if (clExcessEl) {
+      // Auto-fill Excess Payable (the computed rand figure) unless the user has
+      // overridden it. Basic Excess stays a manual / asset-sourced value.
+      if (clExcessPayableEl && clExcessPayableEl.dataset.dirty !== '1') {
         const result = effC ?? effI;
-        if (result !== null) clExcessEl.value = result.toFixed(2);
+        if (result !== null) clExcessPayableEl.value = result.toFixed(2);
       }
     }
     if (clPctClaim && clPctInsured) {
@@ -1258,6 +1467,54 @@ const Claims = (() => {
       });
       refreshClCalcs();
     }
+
+    // ── Section toggles: Reported to Police → Police Report;
+    //    Third Party Involved → Third Party Details. Hidden until ticked. ──
+    const reportedPoliceEl = document.getElementById('claim-reported-police');
+    const policeSection    = document.getElementById('claim-police-section');
+    if (reportedPoliceEl && policeSection) {
+      reportedPoliceEl.addEventListener('change', () => {
+        policeSection.style.display = reportedPoliceEl.checked ? '' : 'none';
+      });
+    }
+    const tpInvolvedEl  = document.getElementById('claim-tp-involved');
+    const tpSection     = document.getElementById('claim-third-party-section');
+    if (tpInvolvedEl && tpSection) {
+      tpInvolvedEl.addEventListener('change', () => {
+        tpSection.style.display = tpInvolvedEl.checked ? '' : 'none';
+      });
+    }
+
+    // ── Excess Paid Date — only relevant when Excess Status = 'Paid' ──
+    const excessStatusEl   = document.getElementById('claim-excess-status');
+    const excessPaidGroup  = document.getElementById('claim-excess-paid-date-group');
+    if (excessStatusEl && excessPaidGroup) {
+      excessStatusEl.addEventListener('change', () => {
+        excessPaidGroup.style.display = excessStatusEl.value === 'Paid' ? '' : 'none';
+      });
+    }
+
+    // ── Settlement VAT — auto-calc excl-VAT at 15% when inclusive (overridable) ──
+    const setlAmtEl  = document.getElementById('claim-settlement-amount');
+    const vatTreatEl = document.getElementById('claim-vat-treatment');
+    const setlExclEl = document.getElementById('claim-settlement-excl-vat');
+    if (setlExclEl) {
+      setlExclEl.dataset.dirty = setlExclEl.value ? '1' : '';
+      setlExclEl.addEventListener('input', () => {
+        setlExclEl.dataset.dirty = setlExclEl.value ? '1' : '';
+      });
+    }
+    function refreshVatExcl() {
+      if (!setlExclEl || setlExclEl.dataset.dirty === '1') return;
+      const amt = parseFloat(setlAmtEl ? setlAmtEl.value : '') || 0;
+      const treat = vatTreatEl ? vatTreatEl.value : '';
+      if (!amt || treat === 'VAT exclusive') { setlExclEl.value = amt && treat === 'VAT exclusive' ? amt.toFixed(2) : ''; return; }
+      if (treat === 'VAT inclusive') setlExclEl.value = (amt / 1.15).toFixed(2);
+      else setlExclEl.value = ''; // 'Not applicable' / unset → leave blank
+    }
+    if (setlAmtEl)  setlAmtEl.addEventListener('input', refreshVatExcl);
+    if (vatTreatEl) vatTreatEl.addEventListener('change', refreshVatExcl);
+    refreshVatExcl();
 
     wireContactAccountToggle(formEl);
     wireCurrencySelector(formEl);
@@ -1503,10 +1760,15 @@ const Claims = (() => {
               ${field('Claim Number', esc(d.claim_number || '—'))}
               ${field('Claim Name', esc(d.claim_name || '—'))}
               ${field('Claim Type', esc(d.claim_type || '—'))}
+              ${field('Cause of Loss', esc(d.cause_of_loss || '—'))}
               ${field('Status', statusBadgeHtml(d.claim_status))}
               ${field('Date of Incident', d.claim_date ? formatDate(d.claim_date) : '—')}
               ${field('Time of Incident', esc(d.incident_time || '—'))}
-              ${field('Date Reported', d.date_reported ? formatDate(d.date_reported) : '—')}
+              ${field('Date Reported (to us)', d.date_reported ? formatDate(d.date_reported) : '—')}
+              ${field('Date Lodged with Insurer', d.date_lodged_with_insurer ? formatDate(d.date_lodged_with_insurer) : '—')}
+              ${field('Requirements Completed', d.requirements_completed_date ? formatDate(d.requirements_completed_date) : '—')}
+              ${field('Reported to Police', bool(d.reported_to_police))}
+              ${field('Third Party Involved', bool(d.third_party_involved))}
             </div>
           </div>
 
@@ -1586,6 +1848,8 @@ const Claims = (() => {
             <div class="detail-grid">
               ${field('Estimated Value', d.estimated_value ? fmtCur(d.estimated_value) : '—')}
               ${field('Settlement Amount', d.settlement_amount ? fmtCur(d.settlement_amount) : '—')}
+              ${d.vat_treatment ? field('VAT Treatment', esc(d.vat_treatment)) : ''}
+              ${d.settlement_amount_excl_vat != null ? field('Settlement (excl. VAT)', fmtCur(d.settlement_amount_excl_vat)) : ''}
               ${field('Settlement Date', d.settlement_date ? formatDate(d.settlement_date) : '—')}
               ${d.excess != null ? field('Basic Excess', fmtCur(d.excess)) : ''}
               ${d.excess_pct_claim != null ? field('Excess (% of Claim)',
@@ -1599,6 +1863,12 @@ const Claims = (() => {
                     : d.excess_pct_insured + '%')
                 : ''}
               ${d.minimum_excess != null ? field('Minimum Excess', fmtCur(d.minimum_excess)) : ''}
+              ${d.excess_payable != null ? field('Excess Payable', fmtCur(d.excess_payable)) : ''}
+              ${d.excess_status ? field('Excess Status', esc(d.excess_status)) : ''}
+              ${d.excess_paid_date ? field('Excess Paid Date', formatDate(d.excess_paid_date)) : ''}
+              ${d.salvage_recovery_amount != null ? field('Salvage / Recovery Amount', fmtCur(d.salvage_recovery_amount)) : ''}
+              ${d.recovery_type ? field('Recovery Type', esc(d.recovery_type)) : ''}
+              ${d.recovery_status ? field('Recovery Status', esc(d.recovery_status)) : ''}
             </div>
           </div>
 

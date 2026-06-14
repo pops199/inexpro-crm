@@ -2613,3 +2613,73 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: c577cd75-5e2f-464a-a7c2-143526e3a356
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 08:09 — auto-detected change
+Files changed: 4
+- `RELEASES.md`
+- `package.json`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 08:24 — auto-detected change
+Files changed: 7
+- `client/public/index.html`
+- `client/src/components/admin.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/db/sessions.db-journal`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 17:13 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+- `server/db/sessions.db-journal (deleted)`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 17:31 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/database.js`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+- `server/routes/claims.js`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 17:48 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 17:56 — auto-detected change
+Files changed: 5
+- `server/db/database.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 18:01 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/claims.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

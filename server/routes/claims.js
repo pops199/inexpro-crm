@@ -240,7 +240,25 @@ router.post('/', (req, res) => {
       police_station_reported,
       police_report_date_reported,
       police_officer_name,
-      police_report_received
+      police_report_received,
+      // Cause of loss + section toggles (Core Details)
+      cause_of_loss,
+      reported_to_police,
+      third_party_involved,
+      // Claim lifecycle dates (Dates & Incident)
+      date_lodged_with_insurer,
+      requirements_completed_date,
+      // Excess settlement tracking
+      excess_payable,
+      excess_status,
+      excess_paid_date,
+      // VAT treatment (Settlement & Outcome)
+      vat_treatment,
+      settlement_amount_excl_vat,
+      // Salvage / recovery / subrogation (Third Party Details)
+      salvage_recovery_amount,
+      recovery_type,
+      recovery_status
     } = req.body;
 
     // Validation
@@ -337,6 +355,11 @@ router.post('/', (req, res) => {
           incident_time, incident_location_address, incident_gps_lat, incident_gps_lng,
           police_case_number, police_station_reported, police_report_date_reported,
           police_officer_name, police_report_received,
+          cause_of_loss, reported_to_police, third_party_involved,
+          date_lodged_with_insurer, requirements_completed_date,
+          excess_payable, excess_status, excess_paid_date,
+          vat_treatment, settlement_amount_excl_vat,
+          salvage_recovery_amount, recovery_type, recovery_status,
           created_by, created_at, updated_at
         ) VALUES (
           ?, ?, ?, ?, ?,
@@ -359,6 +382,11 @@ router.post('/', (req, res) => {
           ?, ?, ?, ?,
           ?, ?, ?,
           ?, ?,
+          ?, ?, ?,
+          ?, ?,
+          ?, ?, ?,
+          ?, ?,
+          ?, ?, ?,
           ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
       `).run(
@@ -382,6 +410,11 @@ router.post('/', (req, res) => {
         incident_time || null, incident_location_address || null, incident_gps_lat || null, incident_gps_lng || null,
         police_case_number || null, police_station_reported || null, police_report_date_reported || null,
         police_officer_name || null, (police_report_received ? 1 : 0),
+        cause_of_loss || null, (reported_to_police ? 1 : 0), (third_party_involved ? 1 : 0),
+        date_lodged_with_insurer || null, requirements_completed_date || null,
+        excess_payable ?? null, excess_status || null, excess_paid_date || null,
+        vat_treatment || null, settlement_amount_excl_vat ?? null,
+        salvage_recovery_amount ?? null, recovery_type || null, recovery_status || null,
         req.session.userId
       );
 
@@ -504,7 +537,25 @@ router.put('/:id', (req, res) => {
       police_station_reported,
       police_report_date_reported,
       police_officer_name,
-      police_report_received
+      police_report_received,
+      // Cause of loss + section toggles (Core Details)
+      cause_of_loss,
+      reported_to_police,
+      third_party_involved,
+      // Claim lifecycle dates (Dates & Incident)
+      date_lodged_with_insurer,
+      requirements_completed_date,
+      // Excess settlement tracking
+      excess_payable,
+      excess_status,
+      excess_paid_date,
+      // VAT treatment (Settlement & Outcome)
+      vat_treatment,
+      settlement_amount_excl_vat,
+      // Salvage / recovery / subrogation (Third Party Details)
+      salvage_recovery_amount,
+      recovery_type,
+      recovery_status
     } = req.body;
 
     // Repudiation workflow: when moving to Rejected, require reason + action
@@ -609,6 +660,19 @@ router.put('/:id', (req, res) => {
         police_report_date_reported = COALESCE(?, police_report_date_reported),
         police_officer_name        = COALESCE(?, police_officer_name),
         police_report_received     = COALESCE(?, police_report_received),
+        cause_of_loss              = COALESCE(?, cause_of_loss),
+        reported_to_police         = COALESCE(?, reported_to_police),
+        third_party_involved       = COALESCE(?, third_party_involved),
+        date_lodged_with_insurer   = COALESCE(?, date_lodged_with_insurer),
+        requirements_completed_date = COALESCE(?, requirements_completed_date),
+        excess_payable             = COALESCE(?, excess_payable),
+        excess_status              = COALESCE(?, excess_status),
+        excess_paid_date           = COALESCE(?, excess_paid_date),
+        vat_treatment              = COALESCE(?, vat_treatment),
+        settlement_amount_excl_vat = COALESCE(?, settlement_amount_excl_vat),
+        salvage_recovery_amount    = COALESCE(?, salvage_recovery_amount),
+        recovery_type              = COALESCE(?, recovery_type),
+        recovery_status            = COALESCE(?, recovery_status),
         updated_at                 = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
@@ -672,6 +736,19 @@ router.put('/:id', (req, res) => {
       police_report_date_reported ?? null,
       police_officer_name ?? null,
       police_report_received !== undefined ? (police_report_received ? 1 : 0) : null,
+      cause_of_loss ?? null,
+      reported_to_police !== undefined ? (reported_to_police ? 1 : 0) : null,
+      third_party_involved !== undefined ? (third_party_involved ? 1 : 0) : null,
+      date_lodged_with_insurer ?? null,
+      requirements_completed_date ?? null,
+      excess_payable ?? null,
+      excess_status ?? null,
+      excess_paid_date ?? null,
+      vat_treatment ?? null,
+      settlement_amount_excl_vat ?? null,
+      salvage_recovery_amount ?? null,
+      recovery_type ?? null,
+      recovery_status ?? null,
       req.params.id
     );
 

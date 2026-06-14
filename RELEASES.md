@@ -6,6 +6,34 @@ sits at the top.
 
 ---
 
+## v1.0.74 — 2026-06-14
+
+**Admin navigation fixes · Claims form overhaul: new fields, reorder, live status band · claim-save drift fix**
+
+**1. Admin — Audit Log tab moved + Back button remembers where you were**
+
+The **Audit Log** tab now sits at the end of the admin tab bar (after Data Breach Log). The admin tabs and the Settings sub-sidebar are now reflected in the URL, so the browser **Back** button returns you to the tab/section you were on (e.g. Broker Profiles → open a profile → Back returns to the Broker Profiles list) instead of jumping to the main Settings page. Settings sections deep-link too (e.g. Backup & Restore).
+
+**2. Claims — new-claim form reorganised + Claim Handling group**
+
+The New Claim form now reads in a logical order: Core Details → Claim Related Contacts → Driver Details → Dates & Incident → Police Report → Third Party Details → Excess → **Claim Handling** → Settlement & Outcome → Notes. Client Communication and Conduct & Dispute are grouped side by side under **Claim Handling**, with a new live **in-progress status band** (status · days since reported · last client update) shown while a claim is active.
+
+**3. Claims — substantial new fields**
+
+- **Core Details:** *Cause of Loss* dropdown, plus *Reported to Police* and *Third Party Involved* tick-boxes that reveal the Police Report and Third Party sections (hidden by default).
+- **Dates & Incident:** *Date Lodged with Insurer* and *Requirements Completed Date* (full date progression); the Estimated Value label now shows the currency.
+- **Excess:** *Excess Payable* (auto-calculates from the % fields), *Excess Status* (Not yet due / Outstanding / Paid / Waived / Deducted from settlement), and *Excess Paid Date*.
+- **Settlement & Outcome:** *VAT Treatment* (inclusive / exclusive / not applicable) and *Settlement Amount excl. VAT* (auto-calculates at 15% when inclusive).
+- **Third Party Details:** a *Salvage & Recovery* block — amount, recovery type (salvage sale / third-party / subrogation), and recovery status.
+
+All new fields persist and appear in the claim detail view.
+
+**4. Fix — "Failed to update claim"**
+
+Resolved a database drift where the `police_case_number` column was missing on some installs (migration recorded as applied but the column absent), which broke claim create/update. The column is now self-healed on startup.
+
+---
+
 ## v1.0.73 — 2026-06-14
 
 **GIT Confirmation: Brokers dropdown + manual company name · Claims hide finalised statuses · Broker CPD Archive History**

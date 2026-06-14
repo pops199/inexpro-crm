@@ -1001,3 +1001,31 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-06-14 07:58
 - Modified 3 files
 - Files: client/public/index.html, client/src/components/compliance.js, server/db/sessions.db
+
+## 2026-06-14 08:09
+- Modified 4 files
+- Files: RELEASES.md, package.json, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-06-14 08:24
+- Modified 7 files
+- Files: client/public/index.html, client/src/components/admin.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+2 more)
+
+## 2026-06-14 17:13
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/claims.js, server/db/sessions.db, server/db/sessions.db-journal (deleted)
+
+## 2026-06-14 17:31
+- Modified 6 files
+- Files: client/public/index.html, client/src/components/claims.js, server/db/database.js, server/db/inexpro.db-wal, server/db/sessions.db (+1 more)
+
+## 2026-06-14 17:48
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/claims.js, server/db/sessions.db
+
+## 2026-06-14 17:56
+- Modified 5 files
+- Files: server/db/database.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db
+
+## 2026-06-14 18:01
+- Modified 6 files
+- Files: client/public/index.html, client/src/components/claims.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
