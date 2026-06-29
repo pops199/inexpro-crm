@@ -15,6 +15,7 @@ const CATEGORY_OPTS = [
   'Commercial Lines — Property',
   'Commercial Lines — Liability',
   'Commercial — Motor',
+  'Agriculture',
   'Specialty',
   'Other',
 ];

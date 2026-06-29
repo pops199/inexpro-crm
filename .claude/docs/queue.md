@@ -2707,3 +2707,80 @@ Files changed: 3
 - `server/db/sessions.db`
 Session: c577cd75-5e2f-464a-a7c2-143526e3a356
 User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-14 19:02 — auto-detected change
+Files changed: 3
+- `RELEASES.md`
+- `package.json`
+- `server/db/sessions.db`
+Session: c577cd75-5e2f-464a-a7c2-143526e3a356
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 05:45 — auto-detected change
+Files changed: 2
+- `server/db/sessions.db`
+- `server/routes/products.js`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 05:50 — auto-detected change
+Files changed: 2
+- `client/public/index.html`
+- `client/src/components/assets.js`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 05:54 — auto-detected change
+Files changed: 6
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/inexpro.db`
+- `server/db/inexpro.db-shm`
+- `server/db/inexpro.db-wal`
+- `server/db/sessions.db`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 05:58 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/sessions.db`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 06:09 — auto-detected change
+Files changed: 5
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/migrations/0011_assets_consolidate_vehicle_use.sql`
+- `server/db/sessions.db`
+- `server/lib/asset-report-pdf.js`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 06:11 — auto-detected change
+Files changed: 3
+- `client/public/index.html`
+- `client/src/components/policies.js`
+- `server/db/sessions.db`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 06:20 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/sessions.db`
+- `server/lib/asset-report-pdf.js`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up
+
+### 2026-06-29 06:24 — auto-detected change
+Files changed: 4
+- `client/public/index.html`
+- `client/src/components/assets.js`
+- `server/db/sessions.db`
+- `server/lib/asset-report-pdf.js`
+Session: 151b2d22-ae9c-4737-8d60-c15bddbc9dfa
+User-facing? unknown — annotate yes/no on next turn so /build-user-guide can pick it up

@@ -1041,3 +1041,39 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-06-14 18:59
 - Modified 3 files
 - Files: client/public/index.html, client/src/components/claims.js, server/db/sessions.db
+
+## 2026-06-14 19:02
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-06-29 05:45
+- Modified 2 files
+- Files: server/db/sessions.db, server/routes/products.js
+
+## 2026-06-29 05:50
+- Modified 2 files
+- Files: client/public/index.html, client/src/components/assets.js
+
+## 2026-06-29 05:54
+- Modified 6 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal (+1 more)
+
+## 2026-06-29 05:58
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/sessions.db
+
+## 2026-06-29 06:09
+- Modified 5 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/migrations/0011_assets_consolidate_vehicle_use.sql, server/db/sessions.db, server/lib/asset-report-pdf.js
+
+## 2026-06-29 06:11
+- Modified 3 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/sessions.db
+
+## 2026-06-29 06:20
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/sessions.db, server/lib/asset-report-pdf.js
+
+## 2026-06-29 06:24
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/assets.js, server/db/sessions.db, server/lib/asset-report-pdf.js

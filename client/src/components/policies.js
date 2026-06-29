@@ -1785,6 +1785,7 @@ const Policies = (() => {
               <button class="tab-btn"        data-tab="versions">Versions</button>
               <button class="tab-btn"        data-tab="quotes">Quotes</button>
               ${isTransport ? '<button class="tab-btn"        data-tab="git-confirmations">GIT Confirmations</button>' : ''}
+              <span id="pol-tab-extra" style="margin-left:auto;display:flex;align-items:center;"></span>
             </div>
             <div class="tab-content" id="pol-tab-content">
               <div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>
@@ -2004,6 +2005,11 @@ const Policies = (() => {
     const tabEl = document.getElementById('pol-tab-content');
     if (!tabEl) return;
     tabEl.innerHTML = `<div class="loading-spinner-wrapper"><div class="loading-spinner"></div></div>`;
+    // Tab-scoped controls injected into the tabs-header (e.g. the GIT
+    // Confirmations month filter) are cleared on every switch; the owning
+    // tab re-populates its own.
+    const tabExtra = document.getElementById('pol-tab-extra');
+    if (tabExtra) tabExtra.innerHTML = '';
     try {
       switch (tab) {
         case 'sections': {
@@ -2717,8 +2723,32 @@ const Policies = (() => {
       return `<span class="badge">${esc(s || '—')}</span>`;
     };
 
-    tabEl.innerHTML = `
-      <div style="padding:.85rem 1rem;">
+    // Archive History — group confirmations by the "Sent" month so the broker
+    // can narrow a long history to a single month. The key is the YYYY-MM
+    // prefix of created_at (robust across "2026-06-29 …" and ISO formats);
+    // months list most-recent first.
+    const monthKey = (r) => {
+      const m = /^(\d{4})-(\d{2})/.exec(String(r.created_at || ''));
+      return m ? `${m[1]}-${m[2]}` : '';
+    };
+    const monthLabel = (key) => {
+      const [y, mo] = key.split('-').map(Number);
+      return new Date(y, mo - 1, 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+    };
+    // Default the view to the current month. Build the list from the rows,
+    // then make sure the current month is always present (even when it has no
+    // confirmations yet) so it can be the default selection.
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthSet = new Set(rows.map(monthKey).filter(Boolean));
+    monthSet.add(currentMonthKey);
+    const months = [...monthSet].sort((a, b) => b.localeCompare(a));
+
+    const tableHtml = (list) => {
+      if (!list.length) {
+        return `<p class="tab-empty" style="margin:.5rem 0;">No GIT Confirmations for the selected month.</p>`;
+      }
+      return `
         <div class="table-responsive">
           <table class="table" style="font-size:.85rem;">
             <thead><tr>
@@ -2733,7 +2763,7 @@ const Policies = (() => {
               <th></th>
             </tr></thead>
             <tbody>
-              ${rows.map(r => {
+              ${list.map(r => {
                 const signed = r.status === 'signed' && r.document_id;
                 const sentDate   = r.created_at  ? formatDate(r.created_at)  : '—';
                 const signedDate = r.signed_at   ? formatDate(r.signed_at)   : '—';
@@ -2770,8 +2800,39 @@ const Policies = (() => {
               }).join('')}
             </tbody>
           </table>
-        </div>
+        </div>`;
+    };
+
+    tabEl.innerHTML = `
+      <div style="padding:.85rem 1rem;">
+        <div id="git-conf-table-wrap">${tableHtml(rows.filter(r => monthKey(r) === currentMonthKey))}</div>
       </div>`;
+
+    // Archive History month filter — rendered into the tabs-header slot (far
+    // right, inline with the tab labels) rather than at the bottom of the tab
+    // body. loadPolicyTab clears this slot when another tab is selected.
+    const extra = document.getElementById('pol-tab-extra');
+    if (extra) {
+      extra.innerHTML = `
+        <label style="font-size:.8rem;color:var(--text-light,#666);display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+          Archive History:
+          <select id="git-conf-month-select" class="form-control" style="min-width:160px;width:auto;height:auto;padding:.32rem .6rem;font-size:.82rem;">
+            <option value="">All months</option>
+            ${months.map(mk => `<option value="${esc(mk)}" ${mk === currentMonthKey ? 'selected' : ''}>${esc(monthLabel(mk))}</option>`).join('')}
+          </select>
+        </label>`;
+    }
+
+    // Switching the month re-renders only the table; "All months" restores
+    // the full list.
+    const sel  = document.getElementById('git-conf-month-select');
+    const wrap = tabEl.querySelector('#git-conf-table-wrap');
+    if (sel && wrap) {
+      sel.addEventListener('change', () => {
+        const mk = sel.value;
+        wrap.innerHTML = tableHtml(mk ? rows.filter(r => monthKey(r) === mk) : rows);
+      });
+    }
   }
 
   // ── Quotes tab: upload, list, approve, delete ────────────────────────────

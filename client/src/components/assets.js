@@ -246,6 +246,7 @@ const Assets = (() => {
     ],
     'Speciality': [
       'Value Added Services',
+      'No Average Benefit Fee',
     ],
   };
 
@@ -683,19 +684,19 @@ const Assets = (() => {
      * When no type is selected (blank), show ALL fields.
      */
     const FIELD_RULES = {
-      'Motor':             { reg: true,  vin: true,  engine: true,  serial: false, makeModel: true,  mmNumber: true,  fleetNo: true  },
-      'Property':          { reg: false, vin: false, engine: false, serial: true,  makeModel: false, mmNumber: false, fleetNo: false },
-      'Fire':              { reg: false, vin: false, engine: false, serial: true,  makeModel: false, mmNumber: false, fleetNo: false },
-      'Liability':         { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false },
-      'Goods in Transit':  { reg: true,  vin: true,  engine: true,  serial: false, makeModel: true,  mmNumber: true,  fleetNo: true  },
-      'Engineering':       { reg: false, vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false },
-      'Accident & Health': { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false },
-      'Miscellaneous':     { reg: false, vin: false, engine: false, serial: true,  makeModel: true,  mmNumber: false, fleetNo: false },
-      'Agriculture':       { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false },
-      'Marine':            { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false },
-      'Aviation':          { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false },
-      'Guarantee':         { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false },
-      'SASRIA':            { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false },
+      'Motor':             { reg: true,  vin: true,  engine: true,  serial: false, makeModel: true,  mmNumber: true,  fleetNo: true,  gvm: true  },
+      'Property':          { reg: false, vin: false, engine: false, serial: true,  makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
+      'Fire':              { reg: false, vin: false, engine: false, serial: true,  makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
+      'Liability':         { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
+      'Goods in Transit':  { reg: true,  vin: true,  engine: true,  serial: false, makeModel: true,  mmNumber: true,  fleetNo: true,  gvm: true  },
+      'Engineering':       { reg: false, vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false, gvm: false },
+      'Accident & Health': { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
+      'Miscellaneous':     { reg: false, vin: false, engine: false, serial: true,  makeModel: true,  mmNumber: false, fleetNo: false, gvm: false },
+      'Agriculture':       { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false, gvm: true  },
+      'Marine':            { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false, gvm: false },
+      'Aviation':          { reg: true,  vin: false, engine: true,  serial: true,  makeModel: true,  mmNumber: false, fleetNo: false, gvm: false },
+      'Guarantee':         { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
+      'SASRIA':            { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false, gvm: false },
     };
 
     function show(name, visible) {
@@ -706,7 +707,7 @@ const Assets = (() => {
 
     function applyType(type) {
       // When nothing selected hide all fields until a type is chosen
-      const r = FIELD_RULES[type] || { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false };
+      const r = FIELD_RULES[type] || { reg: false, vin: false, engine: false, serial: false, makeModel: false, mmNumber: false, fleetNo: false, gvm: false };
 
       show('registration_number', r.reg);
       show('vin_number',          r.vin);
@@ -717,6 +718,7 @@ const Assets = (() => {
       show('year',                r.makeModel);
       show('mm_number',           r.mmNumber);
       show('fleet_number',        r.fleetNo);
+      show('gvm',                 r.gvm);
 
       // Show / hide financial interest block (vehicles only)
       const isVehicle = ['Motor','Goods in Transit','Marine','Aviation','Agriculture'].includes(type);
@@ -726,6 +728,11 @@ const Assets = (() => {
       // Show / hide vehicle risk details block (vehicles only)
       const riskBlock = document.getElementById('vehicle-risk-details-block');
       if (riskBlock) riskBlock.style.display = isVehicle ? '' : 'none';
+
+      // Cover Type + Credit Shortfall live in the (always-shown) Cover Details
+      // fieldset but are vehicle-only, so toggle them individually here.
+      show('cover_type',      isVehicle);
+      show('credit_shortfall', isVehicle);
 
       // Show / hide address block — shown for buildings AND vehicles (risk address)
       const isBuildingType = ['Property', 'Fire', 'Agriculture'].includes(type);
@@ -746,7 +753,7 @@ const Assets = (() => {
       // Hide the entire Vehicle/Item Details fieldset when no relevant fields
       const vehicleFieldset = document.getElementById('vehicle-item-details-block');
       if (vehicleFieldset) {
-        const anyVisible = r.reg || r.vin || r.engine || r.serial || r.makeModel || r.mmNumber || r.fleetNo;
+        const anyVisible = r.reg || r.vin || r.engine || r.serial || r.makeModel || r.mmNumber || r.fleetNo || r.gvm;
         vehicleFieldset.style.display = anyVisible ? '' : 'none';
       }
 
@@ -803,16 +810,13 @@ const Assets = (() => {
   // ── Section-specific fields mapping ───────────────────────────────────────
 
   const SECTION_FIELD_DEFS = {
-    // Motor sections
-    'Motor': [
-      { name: 'use_type', label: 'Use Type', type: 'select', options: ['Private','Business','Dual Purpose','Hire & Reward','Courtesy'] },
-      { name: 'gvm', label: 'GVM (kg)', type: 'text' },
-      { name: 'tracking_device', label: 'Tracking Device', type: 'text', placeholder: 'e.g. Tracker, Netstar, Matrix' },
-      { name: 'territory', label: 'Territory', type: 'select', options: ['RSA Only','RSA & Neighbouring','Cross-border / SADC','Worldwide'] },
-      { name: 'cover_type', label: 'Cover Type', type: 'select', options: ['Comprehensive','Comprehensive (Excl Theft & Hijacking)','Third Party Fire & Theft','Third Party & Fire','Third Party Only','Balance of Third Party'] },
-      { name: 'regular_driver', label: 'Regular Driver', type: 'text' },
-      { name: 'credit_shortfall', label: 'Credit Shortfall Cover', type: 'checkbox' },
-    ],
+    // Motor sections have NO dynamic "Section Details" block — every motor
+    // field now lives in the fixed sections so each is captured once:
+    //   • GVM (kg)                                   → Vehicle Details
+    //   • Territory / Cover Type / Regular Driver /
+    //     Credit Shortfall                           → Vehicle Risk Details
+    // (getSectionFieldKey still returns 'Motor'; with no entry here the
+    //  dynamic block stays hidden for motor sections.)
     // Property / Buildings
     'Property': [
       { name: 'construction_type', label: 'Construction Type', type: 'select', options: ['Standard (Brick & Tile)','Non-Standard','Wood Frame','Steel','Prefab','Thatch','Mixed'] },
@@ -1298,6 +1302,12 @@ const Assets = (() => {
                       value="${esc(d.fleet_number || '')}" />
                   </div>
 
+                  <div class="form-group">
+                    <label class="form-label">GVM (kg)</label>
+                    <input type="text" name="gvm" class="form-control"
+                      value="${esc(d.gvm || '')}" />
+                  </div>
+
                 </div>
               </fieldset>
 
@@ -1325,10 +1335,26 @@ const Assets = (() => {
                     </select>
                   </div>
                   <div class="form-group">
-                    <label class="form-label">Vehicle Use</label>
-                    <select name="vehicle_use" class="form-control">
-                      ${selectOpts(['Private','Business','Private & Business'], d.vehicle_use, '— Select —')}
+                    <label class="form-label">Tracking Device</label>
+                    <input type="text" name="tracking_device" class="form-control"
+                      value="${esc(d.tracking_device || '')}" placeholder="e.g. Tracker, Netstar, Matrix" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Use Type</label>
+                    <select name="use_type" class="form-control">
+                      ${selectOpts(['Private','Business','Dual Purpose','Hire & Reward','Courtesy'], d.use_type || (d.vehicle_use === 'Private & Business' ? 'Dual Purpose' : d.vehicle_use), '— Select —')}
                     </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Territory</label>
+                    <select name="territory" class="form-control">
+                      ${selectOpts(['RSA Only','RSA & Neighbouring','Cross-border / SADC','Worldwide'], d.territory, '— Select —')}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Regular Driver</label>
+                    <input type="text" name="regular_driver" class="form-control"
+                      value="${esc(d.regular_driver || '')}" />
                   </div>
                 </div>
               </fieldset>
@@ -1467,6 +1493,18 @@ const Assets = (() => {
                     <select name="basis_of_cover" class="form-control">
                       ${selectOpts(['Replacement Value','Retail Value','Market Value','Agreed Value','Indemnity','First Loss'], d.basis_of_cover, '— Select —')}
                     </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Cover Type</label>
+                    <select name="cover_type" class="form-control">
+                      ${selectOpts(['Comprehensive','Comprehensive (Excl Theft & Hijacking)','Third Party Fire & Theft','Third Party & Fire','Third Party Only','Balance of Third Party'], d.cover_type, '— Select —')}
+                    </select>
+                  </div>
+                  <div class="form-group" style="padding-top:.25rem;">
+                    <label class="form-check-label" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                      <input type="checkbox" name="credit_shortfall" ${d.credit_shortfall ? 'checked' : ''} />
+                      Credit Shortfall Cover
+                    </label>
                   </div>
                   <div class="form-group" style="grid-column:1/-1;">
                     <label class="form-label">Conditions / Warranties</label>
@@ -2226,7 +2264,7 @@ const Assets = (() => {
           </div>` : ''}
 
           <!-- Identification (hide if no relevant fields) -->
-          ${(d.make || d.model || d.year || d.registration_number || d.vin_number || d.engine_number || d.serial_number || d.fleet_number) ? `
+          ${(d.make || d.model || d.year || d.registration_number || d.vin_number || d.engine_number || d.serial_number || d.fleet_number || d.gvm) ? `
           <div class="detail-section card">
             <div class="detail-section-title">Identification</div>
             <div class="detail-grid">
@@ -2238,6 +2276,7 @@ const Assets = (() => {
               ${d.engine_number ? field('Engine Number', esc(d.engine_number)) : ''}
               ${d.serial_number ? field('Serial Number', esc(d.serial_number)) : ''}
               ${d.fleet_number ? field('Fleet Number', esc(d.fleet_number)) : ''}
+              ${d.gvm ? field('GVM (kg)', esc(d.gvm)) : ''}
             </div>
           </div>` : ''}
 
@@ -2366,13 +2405,16 @@ const Assets = (() => {
           })()}
 
           <!-- Vehicle Risk Details -->
-          ${(d.parking_type || d.tracker_fitted || d.vehicle_use) ? `
+          ${(d.parking_type || d.tracker_fitted || d.tracking_device || d.use_type || d.vehicle_use || d.territory || d.regular_driver) ? `
           <div class="detail-section card">
             <div class="detail-section-title">Vehicle Risk Details</div>
             <div class="detail-grid">
               ${d.parking_type ? field('Parking', esc(d.parking_type === 'Other' && d.parking_other ? `Other — ${d.parking_other}` : d.parking_type)) : ''}
               ${d.tracker_fitted ? field('Tracker Device Fitted', esc(d.tracker_fitted)) : ''}
-              ${d.vehicle_use ? field('Vehicle Use', esc(d.vehicle_use)) : ''}
+              ${d.tracking_device ? field('Tracking Device', esc(d.tracking_device)) : ''}
+              ${(d.use_type || d.vehicle_use) ? field('Use Type', esc(d.use_type || d.vehicle_use)) : ''}
+              ${d.territory ? field('Territory', esc(d.territory)) : ''}
+              ${d.regular_driver ? field('Regular Driver', esc(d.regular_driver)) : ''}
             </div>
           </div>` : ''}
 
@@ -2409,12 +2451,14 @@ const Assets = (() => {
           })()}
 
           <!-- Cover Details -->
-          ${(d.sum_insured || d.basis_of_cover || d.conditions || d.extensions || d.exclusions) ? `
+          ${(d.sum_insured || d.basis_of_cover || d.cover_type || d.credit_shortfall || d.conditions || d.extensions || d.exclusions) ? `
           <div class="detail-section card">
             <div class="detail-section-title">Cover Details</div>
             <div class="detail-grid">
               ${d.sum_insured ? field('Sum Insured', cur(d.sum_insured)) : ''}
               ${d.basis_of_cover ? field('Basis of Cover', esc(d.basis_of_cover)) : ''}
+              ${d.cover_type ? field('Cover Type', esc(d.cover_type)) : ''}
+              ${d.credit_shortfall ? field('Credit Shortfall Cover', bool(d.credit_shortfall)) : ''}
             </div>
             ${d.conditions ? `<div class="detail-text-item" style="padding:.5rem 1rem;"><strong>Conditions</strong><p style="margin:.25rem 0;">${esc(d.conditions)}</p></div>` : ''}
             ${d.extensions ? `<div class="detail-text-item" style="padding:.5rem 1rem;"><strong>Extensions</strong><p style="margin:.25rem 0;">${esc(d.extensions)}</p></div>` : ''}

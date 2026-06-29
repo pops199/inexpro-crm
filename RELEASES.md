@@ -6,6 +6,31 @@ sits at the top.
 
 ---
 
+## v1.0.76 — 2026-06-29
+
+**Product Library, Assets & GIT Confirmations**
+
+**1. Product Library — new category**
+
+- Added **Agriculture** to the product category dropdown (Admin → Product Library).
+
+**2. Assets — new Speciality policy section**
+
+- Added **No Average Benefit Fee** under the Speciality asset type.
+
+**3. Policies — GIT Confirmations tab: Archive History**
+
+- The GIT Confirmations tab now has an **Archive History** month picker, top-right and inline with the tab labels. It **defaults to the current month** so you see this month's confirmations first; choose a past month, or **All months**, to widen the view.
+
+**4. Assets — Motor form cleaned up (no more duplicate entry)**
+
+- The Motor asset form used to ask for the same things in more than one place. Vehicle **Use Type** and **Tracking Device** are now captured once, in **Vehicle Risk Details** — the old simpler "Vehicle Use" field is retired and its values are carried over automatically.
+- The separate **Motor Details** section is gone; its fields moved to where they belong: **GVM (kg)** under **Vehicle Details**; **Territory** and **Regular Driver** under **Vehicle Risk Details**; **Cover Type** and **Credit Shortfall Cover** under **Cover Details**.
+- These changes flow through to the asset detail view and the printed asset PDF schedule.
+- *This release includes a one-time database update that consolidates the vehicle-use field; existing values are migrated automatically.*
+
+---
+
 ## v1.0.75 — 2026-06-14
 
 **Claims form polish**

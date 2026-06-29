@@ -76,7 +76,7 @@ async function renderAssetReportPdf(data) {
 
   // ═══ IDENTIFICATION ═══════════════════════════════════════════
   if (a.make || a.model || a.year || a.registration_number || a.vin_number
-      || a.engine_number || a.serial_number || a.fleet_number) {
+      || a.engine_number || a.serial_number || a.fleet_number || a.gvm) {
     h.sectionHead('Identification');
     if (a.make)                h.labelValueRow('Make',                a.make);
     if (a.model)               h.labelValueRow('Model',               a.model);
@@ -86,6 +86,7 @@ async function renderAssetReportPdf(data) {
     if (a.engine_number)       h.labelValueRow('Engine Number',       a.engine_number);
     if (a.serial_number)       h.labelValueRow('Serial Number',       a.serial_number);
     if (a.fleet_number)        h.labelValueRow('Fleet Number',        a.fleet_number);
+    if (a.gvm)                 h.labelValueRow('GVM (kg)',            a.gvm);
   }
 
   // ═══ VEHICLE EXTRAS ═══════════════════════════════════════════
@@ -132,15 +133,19 @@ async function renderAssetReportPdf(data) {
   }
 
   // ═══ VEHICLE RISK DETAILS ═════════════════════════════════════
-  if (a.parking_type || a.tracker_fitted || a.vehicle_use) {
+  if (a.parking_type || a.tracker_fitted || a.tracking_device || a.use_type || a.vehicle_use
+      || a.territory || a.regular_driver) {
     h.sectionHead('Vehicle Risk Details');
     if (a.parking_type) {
       const txt = a.parking_type === 'Other' && a.parking_other
         ? `Other — ${a.parking_other}` : a.parking_type;
       h.labelValueRow('Parking', txt);
     }
-    if (a.tracker_fitted) h.labelValueRow('Tracker Device Fitted', a.tracker_fitted);
-    if (a.vehicle_use)    h.labelValueRow('Vehicle Use',           a.vehicle_use);
+    if (a.tracker_fitted)  h.labelValueRow('Tracker Device Fitted', a.tracker_fitted);
+    if (a.tracking_device) h.labelValueRow('Tracking Device',       a.tracking_device);
+    if (a.use_type || a.vehicle_use) h.labelValueRow('Use Type',    a.use_type || a.vehicle_use);
+    if (a.territory)       h.labelValueRow('Territory',             a.territory);
+    if (a.regular_driver)  h.labelValueRow('Regular Driver',        a.regular_driver);
   }
 
   // ═══ FINANCIAL INTEREST ═══════════════════════════════════════
@@ -153,9 +158,11 @@ async function renderAssetReportPdf(data) {
     if (a.contract_expiry_date)     h.labelValueRow('Contract Expiry Date',    dateStr(a.contract_expiry_date));
   }
 
-  // ═══ COVER DETAILS (conditions / extensions / exclusions) ════
-  if (a.conditions || a.extensions || a.exclusions) {
+  // ═══ COVER DETAILS (cover type / shortfall / conditions / etc.) ════
+  if (a.cover_type || a.credit_shortfall || a.conditions || a.extensions || a.exclusions) {
     h.sectionHead('Cover Details');
+    if (a.cover_type)       h.labelValueRow('Cover Type',            a.cover_type);
+    if (a.credit_shortfall) h.labelValueRow('Credit Shortfall Cover', yesNo(a.credit_shortfall));
     if (a.conditions) h.paragraph('Conditions', a.conditions);
     if (a.extensions) h.paragraph('Extensions', a.extensions);
     if (a.exclusions) h.paragraph('Exclusions', a.exclusions);
