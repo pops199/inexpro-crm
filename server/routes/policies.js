@@ -1620,14 +1620,15 @@ router.post('/:id/git-confirmation/sign-request', async (req, res, next) => {
 });
 
 // ============================================================
-// GET /:id/report.pdf — full policy detail report (Inexpro letterhead)
 // ============================================================
-router.get('/:id/report.pdf', async (req, res, next) => {
-  try {
-    const db = getDb();
-    const policyId = parseInt(req.params.id, 10);
+// Policy report — shared data gather + PDF / XLSX exports
+// ============================================================
 
-    const policy = db.prepare(`
+// Loads every dataset the policy report needs (detail fields + tab content).
+// Shared by report.pdf and report.xlsx so the two exports can't drift. Returns
+// null when the policy doesn't exist; the caller handles 404 + broker isolation.
+function gatherPolicyReportData(db, policyId) {
+  const policy = db.prepare(`
       SELECT
         p.*,
         (c.first_name  || ' ' || c.last_name)  AS contact_name,
@@ -1648,31 +1649,25 @@ router.get('/:id/report.pdf', async (req, res, next) => {
       WHERE p.id = ?
     `).get(policyId);
 
-    if (!policy) return res.status(404).json({ error: 'Policy not found' });
+  if (!policy) return null;
 
-    // Broker isolation — same rule as GET /:id
-    const scopedBrokerId = getBrokerId(req);
-    if (scopedBrokerId && policy.assigned_broker_id !== scopedBrokerId) {
-      return res.status(403).json({ error: 'Access denied' });
+  // Resolve other_contact_ids → array of { id, name } for the heading
+  let otherContacts = [];
+  try {
+    const ids = JSON.parse(policy.other_contact_ids || '[]');
+    if (Array.isArray(ids) && ids.length) {
+      const placeholders = ids.map(() => '?').join(',');
+      otherContacts = db.prepare(
+        `SELECT id, (first_name || ' ' || last_name) AS name FROM contacts WHERE id IN (${placeholders})`
+      ).all(...ids);
     }
+  } catch (_) {}
+  policy.other_contacts = otherContacts;
 
-    // Resolve other_contact_ids → array of { id, name } for the heading
-    let otherContacts = [];
-    try {
-      const ids = JSON.parse(policy.other_contact_ids || '[]');
-      if (Array.isArray(ids) && ids.length) {
-        const placeholders = ids.map(() => '?').join(',');
-        otherContacts = db.prepare(
-          `SELECT id, (first_name || ' ' || last_name) AS name FROM contacts WHERE id IN (${placeholders})`
-        ).all(...ids);
-      }
-    } catch (_) {}
-    policy.other_contacts = otherContacts;
+  policy.total_premium = computePolicyTotalPremium(db, policy.id);
 
-    policy.total_premium = computePolicyTotalPremium(db, policy.id);
-
-    const assets     = db.prepare('SELECT * FROM assets WHERE policy_id = ? ORDER BY asset_section, asset_name').all(policyId);
-    const claims     = db.prepare(`
+  const assets = db.prepare('SELECT * FROM assets WHERE policy_id = ? ORDER BY asset_section, asset_name').all(policyId);
+  const claims = db.prepare(`
       SELECT cl.*, (c.first_name || ' ' || c.last_name) AS contact_name, ac.account_name
       FROM claims cl
       LEFT JOIN contacts c  ON cl.contact_id = c.id
@@ -1681,17 +1676,17 @@ router.get('/:id/report.pdf', async (req, res, next) => {
       ORDER BY cl.claim_date DESC
     `).all(policyId);
 
-    let commission = [];
-    try {
-      commission = db.prepare('SELECT * FROM commission_log WHERE policy_id = ? ORDER BY created_at DESC').all(policyId);
-    } catch (_) {}
+  let commission = [];
+  try {
+    commission = db.prepare('SELECT * FROM commission_log WHERE policy_id = ? ORDER BY created_at DESC').all(policyId);
+  } catch (_) {}
 
-    let postSale = [];
-    try {
-      postSale = db.prepare('SELECT * FROM post_sale_events WHERE policy_id = ? ORDER BY event_date DESC, id DESC').all(policyId);
-    } catch (_) {}
+  let postSale = [];
+  try {
+    postSale = db.prepare('SELECT * FROM post_sale_events WHERE policy_id = ? ORDER BY event_date DESC, id DESC').all(policyId);
+  } catch (_) {}
 
-    const documents = db.prepare(`
+  const documents = db.prepare(`
       SELECT d.*, u.full_name AS uploaded_by_name
       FROM documents d
       LEFT JOIN users u ON u.id = d.uploaded_by
@@ -1699,45 +1694,97 @@ router.get('/:id/report.pdf', async (req, res, next) => {
       ORDER BY d.uploaded_at DESC
     `).all(policyId);
 
-    let quotes = [];
-    try {
-      quotes = db.prepare(`
+  let quotes = [];
+  try {
+    quotes = db.prepare(`
         SELECT q.*, u.full_name AS uploaded_by_name
         FROM policy_quotes q
         LEFT JOIN users u ON u.id = q.uploaded_by_id
         WHERE q.policy_id = ?
         ORDER BY q.uploaded_at DESC
       `).all(policyId);
-    } catch (_) {}
+  } catch (_) {}
 
-    let gitConfirms = [];
-    try {
-      gitConfirms = db.prepare(`
+  let gitConfirms = [];
+  try {
+    gitConfirms = db.prepare(`
         SELECT id, status, recipient_name, recipient_email, created_at, signed_at, document_id
         FROM signature_requests
         WHERE policy_id = ? AND template_key = 'git_confirmation'
         ORDER BY created_at DESC
       `).all(policyId);
-    } catch (_) {}
+  } catch (_) {}
+
+  return { policy, assets, claims, commission, postSale, documents, quotes, gitConfirms };
+}
+
+// Broker-isolation guard shared by both report routes. Returns true if it has
+// already ended the response (caller should stop); false to proceed.
+function denyPolicyReportIfNotOwned(req, res, policy) {
+  const scopedBrokerId = getBrokerId(req);
+  if (scopedBrokerId && policy.assigned_broker_id !== scopedBrokerId) {
+    res.status(403).json({ error: 'Access denied' });
+    return true;
+  }
+  return false;
+}
+
+// GET /:id/report.pdf — full policy detail report (Inexpro letterhead)
+// ============================================================
+router.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const policyId = parseInt(req.params.id, 10);
+    const data = gatherPolicyReportData(db, policyId);
+    if (!data) return res.status(404).json({ error: 'Policy not found' });
+    if (denyPolicyReportIfNotOwned(req, res, data.policy)) return;
 
     const { renderPolicyReportPdf } = require('../lib/policy-report-pdf');
-    const pdfBuffer = await renderPolicyReportPdf({
-      policy, assets, claims, commission, postSale, documents, quotes, gitConfirms,
-    });
+    const pdfBuffer = await renderPolicyReportPdf(data);
 
     res.locals.logAudit({
       action:      'EXPORT',
       module:      'policies',
       recordId:    policyId,
-      description: `Policy report PDF generated for ${policy.policy_number || policyId}`,
+      description: `Policy report PDF generated for ${data.policy.policy_number || policyId}`,
     });
 
-    const safeName = (policy.policy_number || ('policy-' + policyId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    const safeName = (data.policy.policy_number || ('policy-' + policyId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="PolicyReport-${safeName}.pdf"`);
     return res.send(pdfBuffer);
   } catch (err) {
     console.error('GET /policies/:id/report.pdf error:', err);
+    return next(err);
+  }
+});
+
+// GET /:id/report.xlsx — same policy report as report.pdf, in Excel format
+// ============================================================
+router.get('/:id/report.xlsx', (req, res, next) => {
+  try {
+    const db = getDb();
+    const policyId = parseInt(req.params.id, 10);
+    const data = gatherPolicyReportData(db, policyId);
+    if (!data) return res.status(404).json({ error: 'Policy not found' });
+    if (denyPolicyReportIfNotOwned(req, res, data.policy)) return;
+
+    const { renderPolicyReportXlsx } = require('../lib/policy-report-xlsx');
+    const buffer = renderPolicyReportXlsx(data);
+
+    res.locals.logAudit({
+      action:      'EXPORT',
+      module:      'policies',
+      recordId:    policyId,
+      description: `Policy report XLSX generated for ${data.policy.policy_number || policyId}`,
+    });
+
+    const safeName = (data.policy.policy_number || ('policy-' + policyId)).replace(/[^a-zA-Z0-9_-]+/g, '_');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="PolicyReport-${safeName}.xlsx"`);
+    return res.send(buffer);
+  } catch (err) {
+    console.error('GET /policies/:id/report.xlsx error:', err);
     return next(err);
   }
 });

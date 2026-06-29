@@ -6,6 +6,15 @@ sits at the top.
 
 ---
 
+## v1.0.77 — 2026-06-29
+
+**Policies — Export to Excel**
+
+- The policy detail page has a new **Export XLS** button next to **Print**. It produces an Excel (.xlsx) version of the same policy report as the PDF — the same sections and data: Policy Details, Parties, Financial & Dates, Co-Insured, Banking, Cover & Notes, Cancellation, then Sections, Assets, Claims, Commission, Post-Sale Events, Documents, Quotes and GIT Confirmations.
+- The spreadsheet is styled to resemble the PDF: the Inexpro letterhead image at the top, bold shaded section headings, bordered tables with right-aligned amounts, sensible column widths, and the company / FSP footer band (also set as the Excel print header & footer).
+
+---
+
 ## v1.0.76 — 2026-06-29
 
 **Product Library, Assets & GIT Confirmations**
