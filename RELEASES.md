@@ -6,6 +6,28 @@ sits at the top.
 
 ---
 
+## v1.0.78 — 2026-07-02
+
+**GIT Confirmation emailing · signed-copy-to-signer · cleaner default lists**
+
+**1. Records of Advice & Client Engagements — hide closed records by default**
+
+- The **Records of Advice** list now hides **Accepted** and **Declined** ROAs on load — they appear only when you pick that decision in the top filter.
+- The **Client Engagements** list now hides the closed stages (**Accepted - Implementation**, **Implemented / Active**, **Lost / Declined**) on load — they appear only when you pick that stage in the top filter.
+
+**2. GIT Confirmation — email the signing link from the app**
+
+- After **Send for Signature**, the "Signature link created" popup now has an **email address field** and a **Send email** button (next to Copy link). It emails the recipient the link with a short note that it must be **signed digitally**, greeting them by the **Client Name** captured on the GIT form. You are **CC'd automatically** and your email signature is added at the foot; the send is recorded in the **audit trail**.
+- The GIT Confirmations tab shows a **Sent** pill once the link has been emailed, until it's opened — giving a **Sent → Viewed → Signed** view at a glance. The link works exactly as before (view + sign tracking unchanged).
+
+**3. Signed copies emailed back to the signer**
+
+- When a client signs a document, the signing page now offers an **"email me a signed copy"** address (pre-filled with where the link was sent). On signing, the **signed PDF is emailed to the signer** with the broker CC'd — in addition to being filed under the policy as before. Recorded in the audit trail.
+
+*Emailing features require SMTP to be configured (Admin → Settings). This release includes a one-time database update (email-sent tracking) applied automatically.*
+
+---
+
 ## v1.0.77 — 2026-06-29
 
 **Policies — Export to Excel**

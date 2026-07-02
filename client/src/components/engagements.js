@@ -21,6 +21,10 @@ const Engagements = (() => {
     'On Hold',
   ];
 
+  // Closed stages hidden from the default list view — they only appear when
+  // that stage is explicitly chosen in the top filter.
+  const DEFAULT_HIDDEN_STAGES = ['Accepted - Implementation', 'Implemented / Active', 'Lost / Declined'];
+
   const ENGAGEMENT_TYPES = [
     'New Business',
     'Replacement Cover',
@@ -287,6 +291,14 @@ const Engagements = (() => {
     const colCount = visibleCols.length || 1;
 
     let rows = engagements;
+
+    // Default view hides closed stages (Accepted / Active / Declined); they
+    // show only when that stage is picked in the top filter.
+    const stageVal = document.getElementById('eng-filter-stage')?.value || '';
+    if (!stageVal) {
+      rows = rows.filter(e => !DEFAULT_HIDDEN_STAGES.includes(e.stage));
+    }
+
     if (search) {
       const q = search.toLowerCase();
       rows = rows.filter(e =>

@@ -2775,9 +2775,13 @@ const Policies = (() => {
                 const signLink   = !signed && r.token ? `/sign/${esc(r.token)}` : null;
                 const views      = Number(r.view_count) || 0;
                 const lastViewed = r.last_viewed_at ? formatDate(r.last_viewed_at) : null;
+                const emailedAt  = r.email_sent_at ? formatDate(r.email_sent_at) : null;
+                // Lifecycle: Sent (emailed, not yet opened) → Viewed → (Status: Signed).
                 const linkCell   = views > 0
                   ? `<span title="Last opened ${esc(lastViewed || '—')}">Viewed (${views})</span>`
-                  : `<span style="color:var(--text-muted);">Not opened</span>`;
+                  : (emailedAt
+                      ? `<span class="badge" style="background:#3498db;color:#fff;" title="Emailed ${esc(emailedAt)}${r.last_emailed_to ? ' to ' + esc(r.last_emailed_to) : ''}">Sent</span>`
+                      : `<span style="color:var(--text-muted);">Not opened</span>`);
                 return `
                 <tr>
                   <td>${sentDate}</td>
@@ -3521,7 +3525,7 @@ ${brokerName}`;
           throw new Error(msg);
         }
         const j = await r.json();
-        _showGitSignSuccess(close, j.public_url, j.recipient_email);
+        _showGitSignSuccess(close, { requestId: j.id, policyId, publicUrl: j.public_url, recipientEmail: j.recipient_email });
       } catch (err) {
         errEl.textContent = err.message || String(err);
         errEl.style.display = 'block';
@@ -3531,10 +3535,10 @@ ${brokerName}`;
     });
   }
 
-  // Success modal shown after a GIT signature request is created. Lets
-  // the broker copy the link or open the contact email composer with
-  // the link prefilled.
-  function _showGitSignSuccess(closeParent, publicUrl, recipientEmail) {
+  // Success modal shown after a GIT signature request is created. Lets the
+  // broker copy the link, open a preview, or email the link directly to a
+  // recipient (CC'ing themselves) from inside the app.
+  function _showGitSignSuccess(closeParent, { requestId, policyId, publicUrl, recipientEmail } = {}) {
     if (closeParent) closeParent();
     const existing = document.getElementById('git-sign-success');
     if (existing) existing.remove();
@@ -3552,15 +3556,24 @@ ${brokerName}`;
             Send the link below to ${recipientEmail ? `<strong>${esc(recipientEmail)}</strong>` : 'the client'} to review and sign the GIT Confirmation.
             When they submit, the signed PDF is filed under this policy automatically.
           </p>
-          <div class="form-group" style="margin-bottom:.75rem;">
+          <div class="form-group" style="margin-bottom:.6rem;">
             <label class="form-label" style="font-size:.78rem;">Signing link (valid for 30 days)</label>
             <input class="form-control" id="git-success-url" readonly value="${esc(publicUrl)}" style="font-size:.8rem;">
           </div>
+          <div class="form-group" style="margin-bottom:.25rem;">
+            <label class="form-label" style="font-size:.78rem;">Email the link to</label>
+            <input class="form-control" id="git-success-email" type="email" placeholder="recipient@example.com"
+              value="${esc(recipientEmail || '')}" style="font-size:.8rem;">
+          </div>
+          <p style="font-size:.72rem;color:var(--text-muted);margin:.1rem 0 0;">
+            You'll be CC'd automatically. The email includes the link and a note that it must be signed digitally.
+          </p>
         </div>
         <div class="modal-footer" style="gap:.5rem;">
           <button class="btn btn-secondary" id="git-success-copy">Copy link</button>
+          <button class="btn btn-primary" id="git-success-send">Send email</button>
           <a class="btn btn-secondary" id="git-success-open" href="${esc(publicUrl)}" target="_blank" rel="noopener">Open / preview</a>
-          <button class="btn btn-primary" id="git-success-done">Done</button>
+          <button class="btn btn-secondary" id="git-success-done">Done</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -3576,6 +3589,30 @@ ${brokerName}`;
       } catch (_) {
         document.execCommand('copy');
         showToast('Link copied.', 'success');
+      }
+    });
+    overlay.querySelector('#git-success-send').addEventListener('click', async () => {
+      const emailEl = overlay.querySelector('#git-success-email');
+      const email = (emailEl.value || '').trim();
+      if (!email) { showToast('Enter an email address to send to.', 'error'); emailEl.focus(); return; }
+      const btn = overlay.querySelector('#git-success-send');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      try {
+        const r = await fetch(`/api/policies/${policyId}/git-confirmation/${requestId}/send-email`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'Failed to send email');
+        showToast(`Email sent to ${email} (you were CC'd).`, 'success');
+        btn.textContent = 'Sent ✓';
+      } catch (err) {
+        showToast(err.message || String(err), 'error');
+        btn.disabled = false;
+        btn.textContent = 'Send email';
       }
     });
   }

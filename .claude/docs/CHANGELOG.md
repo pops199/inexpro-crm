@@ -1093,3 +1093,23 @@ Append-only, one line per turn. Newest at the bottom.
 ## 2026-06-29 07:40
 - Modified 6 files
 - Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/lib/policy-report-xlsx.js (+1 more)
+
+## 2026-06-29 08:01
+- Modified 3 files
+- Files: RELEASES.md, package.json, server/db/sessions.db
+
+## 2026-06-30 14:21
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/advice-records.js, client/src/components/engagements.js, server/db/sessions.db
+
+## 2026-06-30 14:29
+- Modified 4 files
+- Files: client/public/index.html, client/src/components/policies.js, server/db/migrations/0012_signature_requests_email_sent.sql, server/routes/policies.js
+
+## 2026-06-30 17:48
+- Modified 5 files
+- Files: server/db/inexpro.db, server/db/inexpro.db-shm, server/db/inexpro.db-wal, server/db/sessions.db, server/routes/policies.js
+
+## 2026-06-30 17:52
+- Modified 2 files
+- Files: server/db/sessions.db, server/routes/public-signing.js

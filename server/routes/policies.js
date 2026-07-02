@@ -1619,6 +1619,89 @@ router.post('/:id/git-confirmation/sign-request', async (req, res, next) => {
   }
 });
 
+// POST /:id/git-confirmation/:requestId/send-email ───────────────────────
+// Emails an existing GIT Confirmation signing link to a recipient, CC'ing the
+// sending broker (via sendMail's userId auto-CC) and writing the audit-trail
+// entry. The link/token is unchanged — this only delivers it — so view + sign
+// tracking continue to work exactly as before. Stamps email_sent_at so the
+// GIT Confirmations tab can show a "Sent" pill until the link is opened.
+router.post('/:id/git-confirmation/:requestId/send-email', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const policy = db.prepare('SELECT * FROM policies WHERE id = ?').get(req.params.id);
+    if (!policy) return res.status(404).json({ error: 'Policy not found' });
+
+    const scopedBrokerId = getBrokerId(req);
+    if (scopedBrokerId && policy.assigned_broker_id !== scopedBrokerId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const sr = db.prepare(
+      "SELECT * FROM signature_requests WHERE id = ? AND policy_id = ? AND template_key = 'git_confirmation'"
+    ).get(req.params.requestId, policy.id);
+    if (!sr) return res.status(404).json({ error: 'Signature request not found' });
+
+    const email = String((req.body && req.body.email) || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(422).json({ error: 'A valid email address is required.' });
+    }
+
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const publicUrl    = `${req.protocol}://${req.get('host')}/sign/${sr.token}`;
+    const policyNumber = policy.policy_number || policy.id;
+
+    // Greeting uses the Client Name entered on the GIT Confirmation form
+    // (stored in form_data), falling back to the resolved recipient name.
+    let clientName = null;
+    try {
+      const fd = JSON.parse(sr.form_data || '{}');
+      if (fd && fd.client_name) clientName = String(fd.client_name).trim() || null;
+    } catch (_) {}
+    if (!clientName) clientName = sr.recipient_name || null;
+    const greeting = clientName ? `Good day ${esc(clientName)},` : 'Good day,';
+
+    const html = `
+      <p>${greeting}</p>
+      <p>Your <strong>GIT Confirmation of Insurance</strong> for policy <strong>${esc(policyNumber)}</strong> is ready for digital signature.</p>
+      <p>Please click the secure link below to review and sign it online:</p>
+      <p><a href="${esc(publicUrl)}">${esc(publicUrl)}</a></p>
+      <p>This document must be <strong>signed digitally</strong>. Once you submit your signature, a signed copy is filed automatically and a copy is returned to us. The link remains valid for 30 days.</p>`;
+
+    const { sendMail } = require('../lib/mailer');
+    const result = await sendMail({
+      to: email,
+      subject: `GIT Confirmation of Insurance — signature required (Policy ${policyNumber})`,
+      html,
+      userId: req.session.userId, // auto-CCs the broker + appends their signature
+      audit: {
+        module: 'policies',
+        recordId: policy.id,
+        description: `GIT Confirmation signing link emailed to ${email} for policy ${policyNumber}`,
+      },
+    });
+
+    if (!result.ok) {
+      return res.status(502).json({ error: `Email not sent: ${result.reason}` });
+    }
+
+    // The email is already sent + audited at this point — stamping the "Sent"
+    // marker is best-effort (e.g. if migration 0012 hasn't been applied yet).
+    try {
+      db.prepare(
+        'UPDATE signature_requests SET email_sent_at = CURRENT_TIMESTAMP, last_emailed_to = ? WHERE id = ?'
+      ).run(email, sr.id);
+    } catch (e) {
+      console.error('[git send-email] email_sent_at update failed (run migration 0012):', e.message);
+    }
+
+    return res.json({ ok: true, emailed_to: email });
+  } catch (err) {
+    console.error('POST /policies/:id/git-confirmation/:requestId/send-email error:', err);
+    return next(err);
+  }
+});
+
 // ============================================================
 // ============================================================
 // Policy report — shared data gather + PDF / XLSX exports

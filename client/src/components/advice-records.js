@@ -21,6 +21,10 @@ const AdviceRecords = (() => {
     'Pending',
   ];
 
+  // Closed decisions hidden from the default list view — they only appear when
+  // that decision is explicitly chosen in the top filter.
+  const DEFAULT_HIDDEN_DECISIONS = ['Accepted', 'Declined'];
+
   const TRIGGER_EVENTS = [
     'Client Engagement',
     'Policy Amendment',
@@ -328,8 +332,14 @@ const AdviceRecords = (() => {
         (r.broker_name          || '').toLowerCase().includes(q)
       );
     }
-    if (typeFilter)     rows = rows.filter(r => r.advice_type     === typeFilter);
-    if (decisionFilter) rows = rows.filter(r => r.client_decision === decisionFilter);
+    if (typeFilter)     rows = rows.filter(r => r.advice_type === typeFilter);
+    if (decisionFilter) {
+      rows = rows.filter(r => r.client_decision === decisionFilter);
+    } else {
+      // Default view hides closed decisions (Accepted / Declined); they show
+      // only when that decision is picked in the filter above.
+      rows = rows.filter(r => !DEFAULT_HIDDEN_DECISIONS.includes(r.client_decision));
+    }
 
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${colCount}" class="table-empty">No advice records found.</td></tr>`;

@@ -121,6 +121,9 @@ router.get('/:token', (req, res) => {
     // box, which then ended up on the signed PDF audit trail instead of
     // their actual typed name.
     prefillName: '',
+    // Pre-fill the "email me a copy" field with the address the link was
+    // emailed to (or the contact email), which the signer can confirm/edit.
+    prefillEmail: sr.last_emailed_to || sr.recipient_email || '',
   }));
 });
 
@@ -345,6 +348,46 @@ router.post('/:token', express.json({ limit: '5mb' }), async (req, res) => {
         `Signature request ${sr.id} signed by ${String(signer_name).trim()}; document ${documentId} created`
       );
     } catch (_) {}
+
+    // ── Email a copy of the signed document to the signer (best-effort) ──
+    // Recipient: the email they confirm on the signing page, else the address
+    // the link was emailed to, else the contact email on the request. The PDF
+    // is attached from the in-memory buffer we just generated (the on-disk
+    // copy is encrypted). The broker who created the request is CC'd and their
+    // signature appended. Any failure here must never affect the signing
+    // result — the document is already filed and the request marked signed.
+    try {
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const signerEmailRaw = (req.body && req.body.signer_email) ? String(req.body.signer_email).trim() : '';
+      const copyTo = emailOk.test(signerEmailRaw) ? signerEmailRaw
+        : (sr.last_emailed_to && emailOk.test(sr.last_emailed_to)) ? sr.last_emailed_to
+        : (sr.recipient_email && emailOk.test(sr.recipient_email)) ? sr.recipient_email
+        : null;
+      if (copyTo) {
+        const { sendMail } = require('../lib/mailer');
+        const docLabel = tpl.label || 'document';
+        const auditTarget = sr.policy_id ? { module: 'policies', recordId: sr.policy_id }
+          : sr.contact_id ? { module: 'contacts', recordId: sr.contact_id }
+          : sr.account_id ? { module: 'accounts', recordId: sr.account_id }
+          : {};
+        await sendMail({
+          to: copyTo,
+          subject: `Your signed ${docLabel}`,
+          html: `
+            <p>Good day ${escHtml(String(signer_name).trim())},</p>
+            <p>Thank you for signing your <strong>${escHtml(docLabel)}</strong>. A signed copy is attached for your records.</p>
+            <p>No further action is required.</p>`,
+          attachments: [{ filename: friendlyFilename, content: pdfBuffer }],
+          userId: sr.created_by, // From = broker, appends broker signature, CCs the broker
+          audit: {
+            ...auditTarget,
+            description: `Signed ${docLabel} emailed to ${copyTo} after signing (request ${sr.id})`,
+          },
+        });
+      }
+    } catch (mailErr) {
+      console.error('[sign] failed to email signed copy:', mailErr.message);
+    }
 
     res.json({
       message: 'Thank you — your signed consent has been recorded.',
@@ -662,7 +705,7 @@ h1{color:#1a5276;font-size:22px;margin-bottom:12px;}p{line-height:1.6;font-size:
 <body><div class="box"><h1>${escHtml(title)}</h1><p>${escHtml(message)}</p></div></body></html>`;
 }
 
-function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingConsent, prefillName, extraFields }) {
+function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingConsent, prefillName, prefillEmail, extraFields }) {
   const xf = Array.isArray(extraFields) ? extraFields : [];
   const extraFieldsHtml = xf.length ? `
     <h3>Your details</h3>
@@ -751,6 +794,13 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
       </div>
     </div>
 
+    <div class="form-row" style="grid-template-columns:1fr;">
+      <div>
+        <label for="signer-email">Your email address <span style="font-weight:400;color:#777;">— we'll email you a signed copy</span></label>
+        <input type="email" id="signer-email" value="${escHtml(prefillEmail || '')}" autocomplete="email" placeholder="you@example.com">
+      </div>
+    </div>
+
     <div class="alert alert-error"   id="alert-error"></div>
     <div class="alert alert-success" id="alert-success"></div>
 
@@ -835,6 +885,8 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
       formAnswers[el.getAttribute('data-xf')] = val;
     }
 
+    var signerEmail = (document.getElementById('signer-email').value || '').trim();
+
     var btn = document.getElementById('submit-btn');
     btn.disabled = true; btn.textContent = 'Submitting...';
 
@@ -844,6 +896,7 @@ function renderSigningPage({ token, title, bodyHtml, footerHtml, hasMarketingCon
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           signer_name: name,
+          signer_email: signerEmail,
           marketing_consent: marketing,
           form_answers: formAnswers,
           signature_png_base64: canvas.toDataURL('image/png')
