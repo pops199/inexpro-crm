@@ -6,6 +6,17 @@ sits at the top.
 
 ---
 
+## v1.0.79 - 2026-11-10
+
+**Asset Confirmation of Cover - optional territorial limits**
+
+- Added a collapsible **Territorial Limits:** checklist above Attachments in the asset Confirmation of Cover email window, with all 16 countries unchecked by default.
+- Selected countries appear in the generated PDF after the finance details and before the signature. The DRC option includes the restriction **no further north than Kolwezi**. When nothing is selected, the territorial limits section is omitted.
+- The cover PDF is regenerated from the final selections before sending, while preserving extra attachments and claim forms. If PDF generation fails, the email is not sent and can be retried.
+- The sign-off moves to a new page when needed to keep the signature clear of the territorial limits text.
+
+---
+
 ## v1.0.78 — 2026-07-02
 
 **GIT Confirmation emailing · signed-copy-to-signer · cleaner default lists**
