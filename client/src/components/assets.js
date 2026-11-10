@@ -3163,6 +3163,15 @@ ${brokerName}`;
 
   // ── Confirmation of Cover Mail ─────────────────────────────────────────────
 
+  async function _getCoverMailPdf(assetId, territorialLimits = []) {
+    const query = new URLSearchParams();
+    territorialLimits.forEach(limit => query.append('territorial_limits', limit));
+    const suffix = query.size ? `?${query}` : '';
+    const res = await fetch(`/api/assets/${assetId}/confirmation-of-cover-pdf${suffix}`, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('Failed to generate Confirmation of Cover PDF');
+    return res.json();
+  }
+
   async function _confirmationOfCoverMail(assetId) {
     let pdfData = null;
     let assetData = {};
@@ -3172,9 +3181,7 @@ ${brokerName}`;
     } catch (_) {}
 
     try {
-      const res = await fetch(`/api/assets/${assetId}/confirmation-of-cover-pdf`, { credentials: 'same-origin' });
-      if (!res.ok) throw new Error('Failed to generate Confirmation of Cover PDF');
-      pdfData = await res.json();
+      pdfData = await _getCoverMailPdf(assetId);
     } catch (err) {
       showToast('Could not generate PDF: ' + (err.message || err), 'error');
       return;
@@ -3242,6 +3249,17 @@ ${brokerName}`;
             <textarea class="form-control" id="cover-mail-body" rows="10" style="white-space:pre-wrap;">${esc(body)}</textarea>
           </div>
 
+          <details class="form-group" id="cover-mail-territorial-limits" style="border-top:1px solid var(--border-color,#dee2e6);padding-top:.75rem;">
+            <summary class="form-label" style="display:list-item;cursor:pointer;letter-spacing:0;">Territorial Limits:</summary>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:.5rem 1rem;margin-top:.75rem;">
+              ${(pdfData.territorial_limit_options || []).map(limit => `
+                <label style="display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;font-size:.85rem;min-width:0;">
+                  <input type="checkbox" name="territorial_limits" value="${esc(limit)}" style="flex-shrink:0;margin-top:.25rem;" />
+                  <span>${esc(limit)}</span>
+                </label>`).join('')}
+            </div>
+          </details>
+
           <!-- Attachments -->
           <div class="form-group" style="border-top:1px solid var(--border-color,#dee2e6);padding-top:.75rem;margin-top:.5rem;">
             <label class="form-label">Attachments</label>
@@ -3272,11 +3290,12 @@ ${brokerName}`;
     document.body.appendChild(modal);
 
     // Pre-attach the generated Confirmation of Cover PDF
-    modal._userAttachments = [{
+    modal._coverPdfAttachment = {
       filename: pdfData.filename,
       content_base64: pdfData.base64,
       content_type: 'application/pdf',
-    }];
+    };
+    modal._userAttachments = [modal._coverPdfAttachment];
     modal._claimFormNames = [];
     modal._templates = templates;
     modal._placeholders = {
@@ -3394,6 +3413,7 @@ ${brokerName}`;
     const errEl = document.getElementById('cover-mail-error');
     const btn = document.getElementById('cover-mail-send-btn');
 
+    if (btn?.disabled) return;
     if (!to || !subject || !body.trim()) {
       if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'To, Subject and Body are required.'; }
       return;
@@ -3410,17 +3430,28 @@ ${brokerName}`;
       audit_module: 'assets',
       audit_record_id: assetId,
     };
-    if (modal._userAttachments?.length) payload.user_attachments = modal._userAttachments;
-    if (modal._claimFormNames?.length)  payload.claim_form_names = modal._claimFormNames;
-
+    const limitCheckboxes = [...modal.querySelectorAll('input[name="territorial_limits"]')];
+    const territorialLimits = limitCheckboxes.filter(input => input.checked).map(input => input.value);
+    limitCheckboxes.forEach(input => { input.disabled = true; });
+    if (errEl) errEl.style.display = 'none';
     if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
     try {
+      // Regenerate before sending so the attachment uses the final selection.
+      if (modal._userAttachments?.includes(modal._coverPdfAttachment)) {
+        const pdfData = await _getCoverMailPdf(assetId, territorialLimits);
+        modal._coverPdfAttachment.filename = pdfData.filename;
+        modal._coverPdfAttachment.content_base64 = pdfData.base64;
+      }
+      if (modal._userAttachments?.length) payload.user_attachments = modal._userAttachments;
+      if (modal._claimFormNames?.length)  payload.claim_form_names = modal._claimFormNames;
       await Api.settings.sendEmail(payload);
       modal.remove();
       showToast('Confirmation of Cover sent successfully', 'success');
     } catch (e) {
       if (errEl) { errEl.style.display = 'block'; errEl.textContent = e.message || String(e); }
       if (btn)   { btn.disabled = false; btn.textContent = 'Send Email'; }
+    } finally {
+      limitCheckboxes.forEach(input => { input.disabled = false; });
     }
   }
 

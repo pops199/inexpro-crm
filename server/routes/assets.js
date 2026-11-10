@@ -973,8 +973,34 @@ router.get('/:id/amendment-pdf', async (req, res) => {
 // Uses letterhead-ROA.png as the page background and populates text
 // fields from the asset (registered owner, policy, vehicle, cover).
 // ============================================================
+const COVER_TERRITORIAL_LIMITS = [
+  'South Africa',
+  'Namibia',
+  'Botswana',
+  'Lesotho',
+  'Eswatini (Swaziland)',
+  'Zimbabwe',
+  'Malawi',
+  'Democratic Republic of Congo (DRC), no further north than Kolwezi',
+  'Mozambique',
+  'Angola',
+  'Zambia',
+  'Tanzania',
+  'Uganda',
+  'Rwanda',
+  'Burundi',
+  'Kenya',
+];
+
 router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
   try {
+    const requestedLimits = req.query.territorial_limits || [];
+    const selectedLimits = typeof requestedLimits === 'string' ? [requestedLimits] : requestedLimits;
+    if (!Array.isArray(selectedLimits) || selectedLimits.some(limit => !COVER_TERRITORIAL_LIMITS.includes(limit))) {
+      return res.status(400).json({ error: 'Select territorial limits from the available countries.' });
+    }
+    const territorialLimits = COVER_TERRITORIAL_LIMITS.filter(limit => selectedLimits.includes(limit));
+
     const db = getDb();
     const asset = db.prepare(`
       SELECT a.*,
@@ -1008,11 +1034,13 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
 
       const PAGE_W = 595.28, PAGE_H = 841.89;
 
-      // Letterhead — header only (top of page, auto-scaled to full width)
-      if (hasLetterhead) {
-        try { pdfDoc.image(letterheadPath, 0, 0, { width: PAGE_W }); }
-        catch (_) {}
+      function drawLetterhead() {
+        if (hasLetterhead) {
+          try { pdfDoc.image(letterheadPath, 0, 0, { width: PAGE_W }); }
+          catch (_) {}
+        }
       }
+      drawLetterhead();
 
       const LEFT = 60;
       const RIGHT = PAGE_W - 60;
@@ -1058,6 +1086,14 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
 
       // Start writing content — start below the letterhead header area (~150pt down)
       let y = 160;
+
+      function ensureSpace(height) {
+        if (y + height > PAGE_H - 50) {
+          pdfDoc.addPage();
+          drawLetterhead();
+          y = 160;
+        }
+      }
 
       pdfDoc.font('Helvetica').fontSize(10).fillColor('#000')
         .text(longDate, LEFT, y, { width: W, align: 'right' });
@@ -1112,29 +1148,31 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
         y = pdfDoc.y + 20;
       }
 
-      // Signature
-      pdfDoc.font('Helvetica').fontSize(10).fillColor('#000')
-        .text('Regards,', LEFT, y);
+      if (territorialLimits.length) {
+        const limitsText = territorialLimits.join(', ') + '.';
+        pdfDoc.font('Helvetica').fontSize(10);
+        ensureSpace(20 + pdfDoc.heightOfString(limitsText, { width: W }) + 20);
+        pdfDoc.font('Helvetica-Bold').text('Territorial Limits:', LEFT, y, { width: W });
+        y = pdfDoc.y + 4;
+        pdfDoc.font('Helvetica').text(limitsText, LEFT, y, { width: W });
+        y = pdfDoc.y + 20;
+      }
+
+      // Keep the sign-off together when the selected limits need more room.
+      let signatureSize = null;
       if (signaturePath) {
-        // Embed broker signature image (same source as email signature).
-        // Drop a clear line below "Regards," so the descender isn't clipped
-        // by the image, then scale the signature to the full body width
-        // (LEFT→RIGHT) while preserving aspect ratio. Capped at 220pt
-        // tall so an unusually square signature doesn't dominate the
-        // page. Name is intentionally omitted — the signature itself
-        // identifies the sender.
-        y += 22;
         try {
           const img = pdfDoc.openImage(signaturePath);
-          const maxH = 220;
-          const ratio = Math.min(W / img.width, maxH / img.height);
-          const dispW = img.width * ratio;
-          const dispH = img.height * ratio;
-          pdfDoc.image(signaturePath, LEFT, y, { width: dispW, height: dispH });
-        } catch (_) {
-          // Fallback: aspect-preserving fit box if openImage fails
-          pdfDoc.image(signaturePath, LEFT, y, { fit: [W, 220] });
-        }
+          const ratio = Math.min(W / img.width, 220 / img.height);
+          signatureSize = { width: img.width * ratio, height: img.height * ratio };
+        } catch (_) { signaturePath = null; }
+      }
+      ensureSpace(signatureSize ? 22 + signatureSize.height : 64);
+      pdfDoc.font('Helvetica').fontSize(10).fillColor('#000')
+        .text('Regards,', LEFT, y);
+      if (signatureSize) {
+        y += 22;
+        pdfDoc.image(signaturePath, LEFT, y, signatureSize);
       } else {
         // No signature image — keep a hand-sign gap and print the name.
         y += 48;
@@ -1150,6 +1188,7 @@ router.get('/:id/confirmation-of-cover-pdf', async (req, res) => {
     res.json({
       base64:   pdfBuffer.toString('base64'),
       filename: `Confirmation-of-Cover-${safeName}.pdf`,
+      territorial_limit_options: COVER_TERRITORIAL_LIMITS,
     });
   } catch (err) {
     console.error('confirmation-of-cover-pdf error:', err.message);
