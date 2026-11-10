@@ -1348,7 +1348,11 @@ const Assets = (() => {
                   <div class="form-group">
                     <label class="form-label">Territory</label>
                     <select name="territory" class="form-control">
-                      ${selectOpts(['RSA Only','RSA & Neighbouring','Cross-border / SADC','Worldwide'], d.territory, '— Select —')}
+                      ${selectOpts(
+                        ['RSA Only','RSA & Neighbouring Countries','Cross-border / SADC','Worldwide'],
+                        d.territory === 'RSA & Neighbouring' ? 'RSA & Neighbouring Countries' : d.territory,
+                        '— Select —'
+                      )}
                     </select>
                   </div>
                   <div class="form-group">

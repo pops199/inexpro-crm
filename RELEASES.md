@@ -6,6 +6,15 @@ sits at the top.
 
 ---
 
+## v1.0.80 - 2026-11-10
+
+**Assets - Territory wording**
+
+- Renamed **RSA & Neighbouring** to **RSA & Neighbouring Countries** in the vehicle Territory dropdown.
+- Existing assets with the previous wording keep the matching option selected when opened for editing.
+
+---
+
 ## v1.0.79 - 2026-11-10
 
 **Asset Confirmation of Cover - optional territorial limits**
